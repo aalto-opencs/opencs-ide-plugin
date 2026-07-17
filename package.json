@@ -19,7 +19,17 @@
         "command": "wsdPlatform.showWelcome",
         "title": "WSD Platform: Show Welcome"
       }
-    ]
+    ],
+    "configuration": {
+      "title": "WSD Platform",
+      "properties": {
+        "wsdPlatform.apiBaseUrl": {
+          "type": "string",
+          "default": "http://localhost:3000/api",   
+          "description": "Base URL of the Fitech platform API."
+        }
+      }
+    }
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
