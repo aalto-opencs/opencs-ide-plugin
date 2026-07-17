@@ -1,16 +1,10 @@
 import * as vscode from 'vscode';
+import { registerCommands } from './commands/registerCommands';
 
 export function activate(context: vscode.ExtensionContext): void {
-  const showWelcomeCommand = vscode.commands.registerCommand(
-    'wsdPlatform.showWelcome',
-    () => {
-      vscode.window.showInformationMessage(
-        'WSD Platform extension is running.',
-      );
-    },
-  );
-
-  context.subscriptions.push(showWelcomeCommand);
+  registerCommands(context);
 }
 
-export function deactivate(): void {}
+export function deactivate(): void {
+  // No cleanup is currently required.
+}
