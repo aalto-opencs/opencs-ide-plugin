@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
-import { AuthController } from '../controllers/authController';
-import { WelcomeController } from '../controllers/welcomeController';
-import { MockAuthRepository } from '../repositories/authRepository';
-import { SessionRepository } from '../repositories/sessionRepository';
-import { AuthService } from '../services/authService';
+import { AuthController } from '../features/auth/authController';
+import { MockAuthRepository } from '../features/auth/authRepository';
+import { SessionRepository } from '../features/auth/sessionRepository';
+import { AuthService } from '../features/auth/authService';
+import { WelcomeController } from '../features/welcome/welcomeController';
 
 export function registerCommands(
   context: vscode.ExtensionContext,

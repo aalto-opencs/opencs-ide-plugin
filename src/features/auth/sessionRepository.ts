@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AuthSession } from '../models/authModels';
+import { AuthSession } from './authModels';
 
 const SESSION_KEY = 'wsdPlatform.authSession';
 

@@ -1,4 +1,4 @@
-import { AuthSession } from '../models/authModels';
+import { AuthSession } from './authModels';
 
 export interface AuthRepository {
   redeemStudentCode(studentCode: string): Promise<AuthSession>;

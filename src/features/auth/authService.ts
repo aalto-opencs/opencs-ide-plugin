@@ -1,6 +1,6 @@
-import { AuthSession } from '../models/authModels';
-import { AuthRepository } from '../repositories/authRepository';
-import { SessionRepository } from '../repositories/sessionRepository';
+import { AuthSession } from './authModels';
+import { AuthRepository } from './authRepository';
+import { SessionRepository } from './sessionRepository';
 
 export class AuthService {
   public constructor(

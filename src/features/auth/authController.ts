@@ -1,5 +1,5 @@
 import * as vscode from 'vscode';
-import { AuthService } from '../services/authService';
+import { AuthService } from './authService';
 
 export class AuthController {
   public constructor(
