@@ -18,6 +18,10 @@
       {
         "command": "wsdPlatform.showWelcome",
         "title": "WSD Platform: Show Welcome"
+      },
+      {
+        "command": "wsdPlatform.signIn",
+        "title": "WSD Platform: Sign In"
       }
     ],
     "configuration": {
