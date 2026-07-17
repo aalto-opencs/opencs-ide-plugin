@@ -12,9 +12,7 @@ export class AuthController {
       password: true,
       ignoreFocusOut: true,
       validateInput: (value) =>
-        value.trim()
-          ? undefined
-          : 'Student code is required.',
+        value.trim() ? undefined : 'Student code is required.',
     });
 
     if (!studentCode) {
@@ -31,11 +29,41 @@ export class AuthController {
       );
     } catch (error: unknown) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Sign-in failed.';
+        error instanceof Error ? error.message : 'Sign-in failed.';
 
       vscode.window.showErrorMessage(message);
     }
+  }
+
+  public async showCurrentUser(): Promise<void> {
+    const session = await this.authService.getCurrentSession();
+
+    if (!session) {
+      vscode.window.showInformationMessage(
+        'You are not currently signed in.',
+      );
+      return;
+    }
+
+    vscode.window.showInformationMessage(
+      `Currently signed in as ${session.student.name}.`,
+    );
+  }
+
+  public async signOut(): Promise<void> {
+    const session = await this.authService.getCurrentSession();
+
+    if (!session) {
+      vscode.window.showInformationMessage(
+        'You are not currently signed in.',
+      );
+      return;
+    }
+
+    await this.authService.signOut();
+
+    vscode.window.showInformationMessage(
+      'You have been signed out.',
+    );
   }
 }

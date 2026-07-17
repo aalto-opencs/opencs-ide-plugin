@@ -30,8 +30,20 @@ export function registerCommands(
     () => authController.signIn(),
   );
 
+  const showCurrentUserCommand = vscode.commands.registerCommand(
+    'wsdPlatform.showCurrentUser',
+    () => authController.showCurrentUser(),
+  );
+
+  const signOutCommand = vscode.commands.registerCommand(
+    'wsdPlatform.signOut',
+    () => authController.signOut(),
+  );
+
   context.subscriptions.push(
     showWelcomeCommand,
     signInCommand,
+    showCurrentUserCommand,
+    signOutCommand,
   );
 }

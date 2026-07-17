@@ -22,6 +22,14 @@
       {
         "command": "wsdPlatform.signIn",
         "title": "WSD Platform: Sign In"
+      },
+      {
+        "command": "wsdPlatform.showCurrentUser",
+        "title": "WSD Platform: Show Current User"
+      },
+      {
+        "command": "wsdPlatform.signOut",
+        "title": "WSD Platform: Sign Out"
       }
     ],
     "configuration": {

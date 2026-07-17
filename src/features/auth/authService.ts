@@ -16,4 +16,12 @@ export class AuthService {
 
     return session;
   }
+
+  public async getCurrentSession(): Promise<AuthSession | undefined> {
+    return this.sessionRepository.get();
+  }
+
+  public async signOut(): Promise<void> {
+    await this.sessionRepository.clear();
+  }
 }
