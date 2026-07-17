@@ -9,13 +9,15 @@
   "categories": [
     "Other"
   ],
-  "activationEvents": [],
+  "activationEvents": [
+    "onCommand:wsdPlatform.showWelcome"
+  ],
   "main": "./dist/extension.js",
   "contributes": {
     "commands": [
       {
-        "command": "aalto-fitech-code.helloWorld",
-        "title": "Hello World"
+        "command": "wsdPlatform.showWelcome",
+        "title": "WSD Platform: Show Welcome"
       }
     ]
   },
