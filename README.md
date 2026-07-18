@@ -1,71 +1,139 @@
-# aalto-fitech-code README
+# WSD Platform VS Code Extension
 
-This is the README for your extension "aalto-fitech-code". After writing up a brief description, we recommend including the following sections.
+This project is a VS Code client for an existing university coding education platform. It is intended to let students authenticate, retrieve assignments and starter files, submit their source code, and view results without leaving VS Code.
 
-## Features
+The platform backend remains responsible for running tests, grading submissions, protecting hidden tests, and deciding assignment progression. This extension must not duplicate those responsibilities locally.
 
-Describe specific features of your extension including screenshots of your extension in action. Image paths are relative to this README file.
+## Project status
 
-For example if there is an image subfolder under your extension project workspace:
+The project is in an early prototype stage. The extension foundation and authentication structure are implemented, but it is not ready for production use.
 
-\!\[feature X\]\(images/feature-x.png\)
+Currently implemented:
 
-> Tip: Many popular extensions utilize animations. This is an excellent way to show off your extension! We recommend short, focused animations that are easy to follow.
+- TypeScript extension bundled with esbuild
+- centralized VS Code command registration
+- feature-based controller-service-repository organization
+- configurable platform API URL
+- mock/API authentication selection
+- sign-in, current-user, and sign-out commands
+- session persistence with VS Code `SecretStorage`
+- shared API client with JSON requests, timeout handling, and API errors
 
-## Requirements
+Not yet implemented:
 
-If you have any requirements or dependencies, add a section describing those and how to install and configure them.
+- finalized authentication against the real backend
+- authenticated assignment retrieval
+- starter-file download and safe local import
+- source-file submission
+- submission status, grade, and feedback display
+- public-test download
+- next-assignment retrieval
+- platform sidebar and tree views
 
-## Extension Settings
+## Current focus: authentication
 
-Include if your extension adds any VS Code settings through the `contributes.configuration` extension point.
+Authentication is organized under `src/features/auth`:
 
-For example:
+```text
+AuthController
+    -> AuthService
+        -> AuthRepository
+        -> SessionRepository
+```
 
-This extension contributes the following settings:
+- `AuthController` handles VS Code input and notifications.
+- `AuthService` coordinates sign-in, session lookup, and sign-out.
+- `AuthRepository` provides mock and API authentication implementations.
+- `SessionRepository` stores session information in VS Code `SecretStorage`.
 
-* `myExtension.enable`: Enable/disable this extension.
-* `myExtension.thing`: Set to `blah` to do something.
+Mock authentication is enabled by default while the backend contract is under development.
 
-## Known Issues
+### Prototype UUID decision
 
-Calling out known issues can help limit users opening duplicate issues against your extension.
+For the first prototype, the team currently plans to identify a student using the platform's existing `user_uuid`. This is a temporary development decision, not the intended production authentication design.
 
-## Release Notes
+A UUID identifies an account but does not prove that the person presenting it owns the account. It is permanent, may be exposed elsewhere in the platform, and does not provide expiration or independent revocation. The UUID flow must therefore remain isolated behind `AuthRepository` so it can later be replaced without changing assignment and submission features.
 
-Users appreciate release notes as you update your extension.
+Before production use, this mechanism should be replaced with a short-lived activation flow that exchanges a one-time code for a normal platform session token.
 
-### 1.0.0
+## Commands
 
-Initial release of ...
+Open the VS Code Command Palette and run:
 
-### 1.0.1
+- `WSD Platform: Show Welcome`
+- `WSD Platform: Sign In`
+- `WSD Platform: Show Current User`
+- `WSD Platform: Sign Out`
 
-Fixed issue #.
+## Configuration
 
-### 1.1.0
+| Setting | Default | Description |
+| --- | --- | --- |
+| `wsdPlatform.apiBaseUrl` | `http://localhost:3000/api` | Base URL of the platform API. |
+| `wsdPlatform.useMockApi` | `true` | Uses mock authentication instead of the real API. |
 
-Added features X, Y, and Z.
+## Development
 
----
+Install dependencies:
 
-## Following extension guidelines
+```bash
+npm install
+```
 
-Ensure that you've read through the extensions guidelines and follow the best practices for creating your extension.
+Check types and lint the source:
 
-* [Extension Guidelines](https://code.visualstudio.com/api/references/extension-guidelines)
+```bash
+npm run check-types
+npm run lint
+```
 
-## Working with Markdown
+Build the extension:
 
-You can author your README using Visual Studio Code. Here are some useful editor keyboard shortcuts:
+```bash
+npm run compile
+```
 
-* Split the editor (`Cmd+\` on macOS or `Ctrl+\` on Windows and Linux).
-* Toggle preview (`Shift+Cmd+V` on macOS or `Shift+Ctrl+V` on Windows and Linux).
-* Press `Ctrl+Space` (Windows, Linux, macOS) to see a list of Markdown snippets.
+Run it locally by opening the project in VS Code and pressing `F5` to start an Extension Development Host.
 
-## For more information
+## Architecture
 
-* [Visual Studio Code's Markdown Support](http://code.visualstudio.com/docs/languages/markdown)
-* [Markdown Syntax Reference](https://help.github.com/articles/markdown-basics/)
+```text
+src/
+├── commands/
+├── config/
+├── features/
+│   ├── auth/
+│   └── welcome/
+├── infrastructure/
+├── utils/
+├── views/
+└── extension.ts
+```
 
-**Enjoy!**
+Feature code follows these boundaries:
+
+- Controllers own VS Code interactions and do not call APIs directly.
+- Services coordinate application workflows and do not show UI.
+- Repositories access APIs, secure storage, or the filesystem.
+- Models define feature-specific TypeScript data structures.
+- Infrastructure contains shared technical components.
+
+## Planned development order
+
+1. Complete and verify prototype authentication.
+2. Retrieve courses, enrolments, and assignment metadata.
+3. Download and safely import handouts and starter files.
+4. Submit allowed source files to the existing backend.
+5. Display submission status, grades, and failed-test feedback.
+6. Add permitted public tests and backend-driven assignment progression.
+7. Add a WSD Platform sidebar.
+
+## Security and scope rules
+
+- Do not use this prototype authentication mechanism in production.
+- Do not log UUIDs, session tokens, activation codes, or student source files.
+- Store sensitive session information only in VS Code `SecretStorage`.
+- Do not run tests or calculate grades in the extension.
+- Do not expose hidden tests.
+- Do not silently overwrite student work.
+- Let the backend decide assignment progression.
