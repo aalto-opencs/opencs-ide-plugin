@@ -1,7 +1,25 @@
+import { ApiClient } from '../../infrastructure/apiClient';
 import { AuthSession } from './authModels';
 
 export interface AuthRepository {
   redeemStudentCode(studentCode: string): Promise<AuthSession>;
+}
+
+export class ApiAuthRepository implements AuthRepository {
+  public constructor(
+    private readonly apiClient: ApiClient,
+  ) {}
+
+  public async redeemStudentCode(
+    studentCode: string,
+  ): Promise<AuthSession> {
+    return this.apiClient.post<AuthSession>(
+      '/auth/redeem-code',
+      {
+        studentCode,
+      },
+    );
+  }
 }
 
 export class MockAuthRepository implements AuthRepository {

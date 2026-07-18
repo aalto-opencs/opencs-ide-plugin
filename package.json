@@ -39,6 +39,11 @@
           "type": "string",
           "default": "http://localhost:3000/api",   
           "description": "Base URL of the Fitech platform API."
+        },
+        "wsdPlatform.useMockApi": {
+          "type": "boolean",
+          "default": true,
+          "description": "Use mock platform data instead of the real API."
         }
       }
     }
