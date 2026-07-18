@@ -37,7 +37,7 @@
       "properties": {
         "wsdPlatform.apiBaseUrl": {
           "type": "string",
-          "default": "http://localhost:3000/api",   
+          "default": "http://localhost:8842/api",
           "description": "Base URL of the Fitech platform API."
         },
         "wsdPlatform.useMockApi": {

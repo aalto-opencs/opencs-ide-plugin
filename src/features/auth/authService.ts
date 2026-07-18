@@ -8,9 +8,8 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
   ) {}
 
-  public async signIn(studentCode: string): Promise<AuthSession> {
-    const session =
-      await this.authRepository.redeemStudentCode(studentCode);
+  public async signIn(userUuid: string): Promise<AuthSession> {
+    const session = await this.authRepository.loginWithUuid(userUuid);
 
     await this.sessionRepository.save(session);
 

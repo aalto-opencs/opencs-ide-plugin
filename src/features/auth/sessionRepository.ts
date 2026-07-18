@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { AuthSession } from './authModels';
 
-const SESSION_KEY = 'wsdPlatform.authSession';
+const SESSION_KEY = 'wsdPlatform.authSession.v2';
 
 export class SessionRepository {
   public constructor(

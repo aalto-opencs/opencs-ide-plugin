@@ -1,10 +1,11 @@
 export interface StudentProfile {
-  id: string;
-  name: string;
+  id: number;
+  firstName: string;
+  lastName: string;
+  email: string;
 }
 
 export interface AuthSession {
-  accessToken: string;
-  refreshToken: string;
+  token: string;
   student: StudentProfile;
 }

@@ -1,8 +1,17 @@
 import { ApiClient } from '../../infrastructure/apiClient';
 import { AuthSession } from './authModels';
 
+interface VscodeUuidLoginResponse {
+  auth: boolean;
+  token: string;
+  email: string;
+  id: number;
+  firstName: string;
+  lastName: string;
+}
+
 export interface AuthRepository {
-  redeemStudentCode(studentCode: string): Promise<AuthSession>;
+  loginWithUuid(userUuid: string): Promise<AuthSession>;
 }
 
 export class ApiAuthRepository implements AuthRepository {
@@ -10,32 +19,43 @@ export class ApiAuthRepository implements AuthRepository {
     private readonly apiClient: ApiClient,
   ) {}
 
-  public async redeemStudentCode(
-    studentCode: string,
+  public async loginWithUuid(
+    userUuid: string,
   ): Promise<AuthSession> {
-    return this.apiClient.post<AuthSession>(
-      '/auth/redeem-code',
+    const response = await this.apiClient.post<VscodeUuidLoginResponse>(
+      '/auth/vscode/uuid',
       {
-        studentCode,
+        userUuid,
       },
     );
+
+    return {
+      token: response.token,
+      student: {
+        id: response.id,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        email: response.email,
+      },
+    };
   }
 }
 
 export class MockAuthRepository implements AuthRepository {
-  public async redeemStudentCode(
-    studentCode: string,
+  public async loginWithUuid(
+    userUuid: string,
   ): Promise<AuthSession> {
-    if (!studentCode.trim()) {
-      throw new Error('Student code is required.');
+    if (!userUuid.trim()) {
+      throw new Error('User UUID is required.');
     }
 
     return {
-      accessToken: `mock-access-token-${Date.now()}`,
-      refreshToken: `mock-refresh-token-${Date.now()}`,
+      token: `mock-session-token-${Date.now()}`,
       student: {
-        id: 'demo-student',
-        name: 'Demo Student',
+        id: 0,
+        firstName: 'Demo',
+        lastName: 'Student',
+        email: 'demo.student@example.com',
       },
     };
   }

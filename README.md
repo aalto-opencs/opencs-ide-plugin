@@ -69,7 +69,7 @@ Open the VS Code Command Palette and run:
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `wsdPlatform.apiBaseUrl` | `http://localhost:3000/api` | Base URL of the platform API. |
+| `wsdPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL of the platform API. |
 | `wsdPlatform.useMockApi` | `true` | Uses mock authentication instead of the real API. |
 
 ## Development

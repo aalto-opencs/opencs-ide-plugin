@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { StudentProfile } from './authModels';
 import { AuthService } from './authService';
 
 export class AuthController {
@@ -7,25 +8,25 @@ export class AuthController {
   ) {}
 
   public async signIn(): Promise<void> {
-    const studentCode = await vscode.window.showInputBox({
-      prompt: 'Enter your individual student code',
+    const userUuid = await vscode.window.showInputBox({
+      prompt: 'Enter your personal user UUID',
       password: true,
       ignoreFocusOut: true,
       validateInput: (value) =>
-        value.trim() ? undefined : 'Student code is required.',
+        value.trim() ? undefined : 'User UUID is required.',
     });
 
-    if (!studentCode) {
+    if (!userUuid) {
       return;
     }
 
     try {
       const session = await this.authService.signIn(
-        studentCode.trim(),
+        userUuid.trim(),
       );
 
       vscode.window.showInformationMessage(
-        `Signed in as ${session.student.name}.`,
+        `Signed in as ${this.getStudentName(session.student)}.`,
       );
     } catch (error: unknown) {
       const message =
@@ -46,7 +47,7 @@ export class AuthController {
     }
 
     vscode.window.showInformationMessage(
-      `Currently signed in as ${session.student.name}.`,
+      `Currently signed in as ${this.getStudentName(session.student)}.`,
     );
   }
 
@@ -65,5 +66,9 @@ export class AuthController {
     vscode.window.showInformationMessage(
       'You have been signed out.',
     );
+  }
+
+  private getStudentName(student: StudentProfile): string {
+    return `${student.firstName} ${student.lastName}`.trim() || student.email;
   }
 }
