@@ -1,14 +1,8 @@
 import { ApiClient } from '../../infrastructure/apiClient';
-import { AuthSession } from './authModels';
-
-interface VscodeUuidLoginResponse {
-  auth: boolean;
-  token: string;
-  email: string;
-  id: number;
-  firstName: string;
-  lastName: string;
-}
+import {
+  AuthSession,
+  VscodeUuidLoginResponse,
+} from './authModels';
 
 export interface AuthRepository {
   loginWithUuid(userUuid: string): Promise<AuthSession>;

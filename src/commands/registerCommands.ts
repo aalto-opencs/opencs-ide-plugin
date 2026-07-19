@@ -19,12 +19,15 @@ export function registerCommands(
 ): void {
   const welcomeController = new WelcomeController();
 
-  const apiClient = new ApiClient(getApiBaseUrl());
+  const sessionRepository = new SessionRepository(context.secrets);
+  const apiClient = new ApiClient(
+    getApiBaseUrl(),
+    async () => (await sessionRepository.get())?.token,
+  );
 
   const authRepository: AuthRepository = useMockApi()
     ? new MockAuthRepository()
     : new ApiAuthRepository(apiClient);
-  const sessionRepository = new SessionRepository(context.secrets);
 
   const authService = new AuthService(
     authRepository,
