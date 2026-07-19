@@ -13,6 +13,7 @@ import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
 import { WelcomeController } from '../features/welcome/welcomeController';
 import { ApiClient } from '../infrastructure/apiClient';
+import { registerViews } from '../views/registerViews';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
@@ -34,6 +35,8 @@ export function registerCommands(
     sessionRepository,
   );
 
+  const accountTreeProvider = registerViews(context, authService);
+
   const authController = new AuthController(authService);
 
   const showWelcomeCommand = vscode.commands.registerCommand(
@@ -43,7 +46,10 @@ export function registerCommands(
 
   const signInCommand = vscode.commands.registerCommand(
     'wsdPlatform.signIn',
-    () => authController.signIn(),
+    async () => {
+      await authController.signIn();
+      accountTreeProvider.refresh();
+    },
   );
 
   const showCurrentUserCommand = vscode.commands.registerCommand(
@@ -53,7 +59,10 @@ export function registerCommands(
 
   const signOutCommand = vscode.commands.registerCommand(
     'wsdPlatform.signOut',
-    () => authController.signOut(),
+    async () => {
+      await authController.signOut();
+      accountTreeProvider.refresh();
+    },
   );
 
   context.subscriptions.push(

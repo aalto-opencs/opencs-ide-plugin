@@ -10,10 +10,34 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:wsdPlatform.showWelcome"
+    "onCommand:wsdPlatform.showWelcome",
+    "onView:wsdPlatform.account"
   ],
   "main": "./dist/extension.js",
   "contributes": {
+    "viewsContainers": {
+      "activitybar": [
+        {
+          "id": "wsdPlatform",
+          "title": "WSD Platform",
+          "icon": "media/wsd-platform.svg"
+        }
+      ]
+    },
+    "views": {
+      "wsdPlatform": [
+        {
+          "id": "wsdPlatform.account",
+          "name": "Account"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "wsdPlatform.account",
+        "contents": "Sign in to access your WSD Platform account.\n\n[Sign In](command:wsdPlatform.signIn)"
+      }
+    ],
     "commands": [
       {
         "command": "wsdPlatform.showWelcome",
