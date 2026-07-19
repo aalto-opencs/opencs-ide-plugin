@@ -1,4 +1,4 @@
-# WSD Platform VS Code Extension
+# Aalto Fitech Platform VS Code Extension
 
 This project is a VS Code client for an existing university coding education platform. It is intended to let students authenticate, retrieve assignments and starter files, submit their source code, and view results without leaving VS Code.
 
@@ -60,17 +60,17 @@ Before production use, this mechanism should be replaced with a short-lived acti
 
 Open the VS Code Command Palette and run:
 
-- `WSD Platform: Check Platform Status`
-- `WSD Platform: Sign In`
-- `WSD Platform: Show Current User`
-- `WSD Platform: Sign Out`
+- `Aalto Fitech Platform: Check Platform Status`
+- `Aalto Fitech Platform: Sign In`
+- `Aalto Fitech Platform: Show Current User`
+- `Aalto Fitech Platform: Sign Out`
 
 ## Configuration
 
 | Setting | Default | Description |
 | --- | --- | --- |
-| `wsdPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL of the platform API. |
-| `wsdPlatform.useMockApi` | `true` | Uses mock authentication instead of the real API. |
+| `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL of the platform API. |
+| `aaltoFitechPlatform.useMockApi` | `true` | Uses mock authentication instead of the real API. |
 
 ## Development
 
@@ -126,7 +126,7 @@ Feature code follows these boundaries:
 4. Submit allowed source files to the existing backend.
 5. Display submission status, grades, and failed-test feedback.
 6. Add permitted public tests and backend-driven assignment progression.
-7. Add a WSD Platform sidebar.
+7. Add an Aalto Fitech Platform sidebar.
 
 ## Security and scope rules
 

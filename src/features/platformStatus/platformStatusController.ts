@@ -11,13 +11,13 @@ export class PlatformStatusController {
 
     if (isAvailable) {
       await vscode.window.showInformationMessage(
-        'WSD Platform is available.',
+        'Aalto Fitech Platform is available.',
       );
       return;
     }
 
     await vscode.window.showWarningMessage(
-      'WSD Platform is unavailable.',
+      'Aalto Fitech Platform is unavailable.',
     );
   }
 }

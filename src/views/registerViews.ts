@@ -47,7 +47,7 @@ export class AccountTreeProvider implements
     const signOutItem = new vscode.TreeItem('Sign Out');
     signOutItem.iconPath = new vscode.ThemeIcon('sign-out');
     signOutItem.command = {
-      command: 'wsdPlatform.signOut',
+      command: 'aaltoFitechPlatform.signOut',
       title: 'Sign Out',
     };
 
@@ -77,11 +77,11 @@ export function registerViews(
     accountTreeProvider,
     courseTreeProvider,
     vscode.window.registerTreeDataProvider(
-      'wsdPlatform.account',
+      'aaltoFitechPlatform.account',
       accountTreeProvider,
     ),
     vscode.window.registerTreeDataProvider(
-      'wsdPlatform.courses',
+      'aaltoFitechPlatform.courses',
       courseTreeProvider,
     ),
   );

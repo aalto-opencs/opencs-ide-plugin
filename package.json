@@ -1,6 +1,6 @@
 {
   "name": "aalto-fitech-code",
-  "displayName": "Aalto-Fitech_code",
+  "displayName": "Aalto Fitech Platform",
   "description": "WIP",
   "version": "0.0.1",
   "engines": {
@@ -10,80 +10,80 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:wsdPlatform.checkPlatformStatus",
-    "onView:wsdPlatform.account",
-    "onView:wsdPlatform.courses"
+    "onCommand:aaltoFitechPlatform.checkPlatformStatus",
+    "onView:aaltoFitechPlatform.account",
+    "onView:aaltoFitechPlatform.courses"
   ],
   "main": "./dist/extension.js",
   "contributes": {
     "viewsContainers": {
       "activitybar": [
         {
-          "id": "wsdPlatform",
-          "title": "WSD Platform",
+          "id": "aaltoFitechPlatform",
+          "title": "Aalto Fitech Platform",
           "icon": "media/wsd-platform.svg"
         }
       ]
     },
     "views": {
-      "wsdPlatform": [
+      "aaltoFitechPlatform": [
         {
-          "id": "wsdPlatform.account",
+          "id": "aaltoFitechPlatform.account",
           "name": "Account"
         },
         {
-          "id": "wsdPlatform.courses",
+          "id": "aaltoFitechPlatform.courses",
           "name": "Courses"
         }
       ]
     },
     "viewsWelcome": [
       {
-        "view": "wsdPlatform.account",
-        "contents": "Sign in to access your WSD Platform account.\n\n[Sign In](command:wsdPlatform.signIn)"
+        "view": "aaltoFitechPlatform.account",
+        "contents": "Sign in to access your Aalto Fitech Platform account.\n\n[Sign In](command:aaltoFitechPlatform.signIn)"
       }
     ],
     "commands": [
       {
-        "command": "wsdPlatform.checkPlatformStatus",
-        "title": "WSD Platform: Check Platform Status"
+        "command": "aaltoFitechPlatform.checkPlatformStatus",
+        "title": "Aalto Fitech Platform: Check Platform Status"
       },
       {
-        "command": "wsdPlatform.signIn",
-        "title": "WSD Platform: Sign In"
+        "command": "aaltoFitechPlatform.signIn",
+        "title": "Aalto Fitech Platform: Sign In"
       },
       {
-        "command": "wsdPlatform.showCurrentUser",
-        "title": "WSD Platform: Show Current User"
+        "command": "aaltoFitechPlatform.showCurrentUser",
+        "title": "Aalto Fitech Platform: Show Current User"
       },
       {
-        "command": "wsdPlatform.signOut",
-        "title": "WSD Platform: Sign Out"
+        "command": "aaltoFitechPlatform.signOut",
+        "title": "Aalto Fitech Platform: Sign Out"
       },
       {
-        "command": "wsdPlatform.refreshCourses",
-        "title": "WSD Platform: Refresh Courses",
+        "command": "aaltoFitechPlatform.refreshCourses",
+        "title": "Aalto Fitech Platform: Refresh Courses",
         "icon": "$(refresh)"
       }
     ],
     "menus": {
       "view/title": [
         {
-          "command": "wsdPlatform.refreshCourses",
-          "when": "view == wsdPlatform.courses",
+          "command": "aaltoFitechPlatform.refreshCourses",
+          "when": "view == aaltoFitechPlatform.courses",
           "group": "navigation"
         }
       ]
     },
     "configuration": {
-      "title": "WSD Platform",
+      "title": "Aalto Fitech Platform",
       "properties": {
-        "wsdPlatform.apiBaseUrl": {
+        "aaltoFitechPlatform.apiBaseUrl": {
           "type": "string",
           "default": "http://localhost:8842/api",
           "description": "Base URL of the Fitech platform API."
         },
-        "wsdPlatform.useMockApi": {
+        "aaltoFitechPlatform.useMockApi": {
           "type": "boolean",
           "default": true,
           "description": "Use mock platform data instead of the real API."

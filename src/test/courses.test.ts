@@ -90,7 +90,7 @@ suite('Courses', () => {
       assert.strictEqual(children[0].label, 'Sign in to view your courses');
       assert.strictEqual(
         children[0].command?.command,
-        'wsdPlatform.signIn',
+        'aaltoFitechPlatform.signIn',
       );
       assert.strictEqual(requestCount, 0);
     } finally {

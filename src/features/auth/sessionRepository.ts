@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { AuthSession } from './authModels';
 
-const SESSION_KEY = 'wsdPlatform.authSession.v2';
+const SESSION_KEY = 'aaltoFitechPlatform.authSession.v2';
 
 function isAuthSession(value: unknown): value is AuthSession {
   if (

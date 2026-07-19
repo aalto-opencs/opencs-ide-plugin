@@ -66,7 +66,7 @@ suite('AccountTreeProvider', () => {
       assert.ok(children[2].iconPath instanceof vscode.ThemeIcon);
       assert.strictEqual(
         children[2].command?.command,
-        'wsdPlatform.signOut',
+        'aaltoFitechPlatform.signOut',
       );
     } finally {
       provider.dispose();

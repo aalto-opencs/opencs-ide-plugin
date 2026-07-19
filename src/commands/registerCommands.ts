@@ -60,12 +60,12 @@ export function registerCommands(
   const authController = new AuthController(authService);
 
   const checkPlatformStatusCommand = vscode.commands.registerCommand(
-    'wsdPlatform.checkPlatformStatus',
+    'aaltoFitechPlatform.checkPlatformStatus',
     () => platformStatusController.checkStatus(),
   );
 
   const signInCommand = vscode.commands.registerCommand(
-    'wsdPlatform.signIn',
+    'aaltoFitechPlatform.signIn',
     async () => {
       await authController.signIn();
       accountTreeProvider.refresh();
@@ -74,12 +74,12 @@ export function registerCommands(
   );
 
   const showCurrentUserCommand = vscode.commands.registerCommand(
-    'wsdPlatform.showCurrentUser',
+    'aaltoFitechPlatform.showCurrentUser',
     () => authController.showCurrentUser(),
   );
 
   const signOutCommand = vscode.commands.registerCommand(
-    'wsdPlatform.signOut',
+    'aaltoFitechPlatform.signOut',
     async () => {
       await authController.signOut();
       accountTreeProvider.refresh();
@@ -88,7 +88,7 @@ export function registerCommands(
   );
 
   const refreshCoursesCommand = vscode.commands.registerCommand(
-    'wsdPlatform.refreshCourses',
+    'aaltoFitechPlatform.refreshCourses',
     () => courseTreeProvider.refresh(),
   );
 

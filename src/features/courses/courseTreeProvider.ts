@@ -109,7 +109,7 @@ export class CourseTreeProvider implements
 
     item.iconPath = new vscode.ThemeIcon('sign-in');
     item.command = {
-      command: 'wsdPlatform.signIn',
+      command: 'aaltoFitechPlatform.signIn',
       title: 'Sign In',
     };
 

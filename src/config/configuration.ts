@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const CONFIGURATION_SECTION = 'wsdPlatform';
+const CONFIGURATION_SECTION = 'aaltoFitechPlatform';
 
 export function getApiBaseUrl(): string {
   return vscode.workspace
@@ -10,6 +10,6 @@ export function getApiBaseUrl(): string {
 
 export function useMockApi(): boolean {
   return vscode.workspace
-    .getConfiguration('wsdPlatform')
+    .getConfiguration(CONFIGURATION_SECTION)
     .get<boolean>('useMockApi', true);
 }
