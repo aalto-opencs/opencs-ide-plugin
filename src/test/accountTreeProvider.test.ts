@@ -49,7 +49,7 @@ suite('AccountTreeProvider', () => {
     }
   });
 
-  test('returns the stored student name and email', async () => {
+  test('returns account details and a sign-out action', async () => {
     const { provider, sessionRepository } = createProvider();
 
     try {
@@ -59,10 +59,15 @@ suite('AccountTreeProvider', () => {
 
       assert.deepStrictEqual(
         children.map((child) => child.label),
-        ['Ada Lovelace', 'ada@example.com'],
+        ['Ada Lovelace', 'ada@example.com', 'Sign Out'],
       );
       assert.ok(children[0].iconPath instanceof vscode.ThemeIcon);
       assert.ok(children[1].iconPath instanceof vscode.ThemeIcon);
+      assert.ok(children[2].iconPath instanceof vscode.ThemeIcon);
+      assert.strictEqual(
+        children[2].command?.command,
+        'wsdPlatform.signOut',
+      );
     } finally {
       provider.dispose();
     }

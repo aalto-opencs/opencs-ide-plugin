@@ -42,7 +42,14 @@ export class AccountTreeProvider implements
     const emailItem = new vscode.TreeItem(session.student.email);
     emailItem.iconPath = new vscode.ThemeIcon('mail');
 
-    return [nameItem, emailItem];
+    const signOutItem = new vscode.TreeItem('Sign Out');
+    signOutItem.iconPath = new vscode.ThemeIcon('sign-out');
+    signOutItem.command = {
+      command: 'wsdPlatform.signOut',
+      title: 'Sign Out',
+    };
+
+    return [nameItem, emailItem, signOutItem];
   }
 
   public dispose(): void {
