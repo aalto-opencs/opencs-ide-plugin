@@ -17,19 +17,25 @@ import {
   MockCourseRepository,
 } from '../features/courses/courseRepository';
 import { CourseService } from '../features/courses/courseService';
-import { WelcomeController } from '../features/welcome/welcomeController';
+import { PlatformStatusController } from '../features/platformStatus/platformStatusController';
+import { ApiPlatformStatusRepository } from '../features/platformStatus/platformStatusRepository';
+import { PlatformStatusService } from '../features/platformStatus/platformStatusService';
 import { ApiClient } from '../infrastructure/apiClient';
 import { registerViews } from '../views/registerViews';
 
 export function registerCommands(
   context: vscode.ExtensionContext,
 ): void {
-  const welcomeController = new WelcomeController();
-
+  const apiBaseUrl = getApiBaseUrl();
   const sessionRepository = new SessionRepository(context.secrets);
   const apiClient = new ApiClient(
-    getApiBaseUrl(),
+    apiBaseUrl,
     async () => (await sessionRepository.get())?.token,
+  );
+  const platformStatusController = new PlatformStatusController(
+    new PlatformStatusService(
+      new ApiPlatformStatusRepository(new ApiClient(apiBaseUrl)),
+    ),
   );
   const mockApiEnabled = useMockApi();
 
@@ -53,9 +59,9 @@ export function registerCommands(
 
   const authController = new AuthController(authService);
 
-  const showWelcomeCommand = vscode.commands.registerCommand(
-    'wsdPlatform.showWelcome',
-    () => welcomeController.showWelcome(),
+  const checkPlatformStatusCommand = vscode.commands.registerCommand(
+    'wsdPlatform.checkPlatformStatus',
+    () => platformStatusController.checkStatus(),
   );
 
   const signInCommand = vscode.commands.registerCommand(
@@ -87,7 +93,7 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    showWelcomeCommand,
+    checkPlatformStatusCommand,
     signInCommand,
     showCurrentUserCommand,
     signOutCommand,

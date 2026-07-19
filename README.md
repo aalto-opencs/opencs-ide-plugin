@@ -60,7 +60,7 @@ Before production use, this mechanism should be replaced with a short-lived acti
 
 Open the VS Code Command Palette and run:
 
-- `WSD Platform: Show Welcome`
+- `WSD Platform: Check Platform Status`
 - `WSD Platform: Sign In`
 - `WSD Platform: Show Current User`
 - `WSD Platform: Sign Out`
@@ -103,7 +103,7 @@ src/
 ├── config/
 ├── features/
 │   ├── auth/
-│   └── welcome/
+│   └── platformStatus/
 ├── infrastructure/
 ├── utils/
 ├── views/

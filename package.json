@@ -10,7 +10,7 @@
     "Other"
   ],
   "activationEvents": [
-    "onCommand:wsdPlatform.showWelcome",
+    "onCommand:wsdPlatform.checkPlatformStatus",
     "onView:wsdPlatform.account",
     "onView:wsdPlatform.courses"
   ],
@@ -45,8 +45,8 @@
     ],
     "commands": [
       {
-        "command": "wsdPlatform.showWelcome",
-        "title": "WSD Platform: Show Welcome"
+        "command": "wsdPlatform.checkPlatformStatus",
+        "title": "WSD Platform: Check Platform Status"
       },
       {
         "command": "wsdPlatform.signIn",
