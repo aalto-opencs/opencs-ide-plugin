@@ -11,6 +11,12 @@ import {
 } from '../features/auth/authRepository';
 import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
+import {
+  ApiCourseRepository,
+  CourseRepository,
+  MockCourseRepository,
+} from '../features/courses/courseRepository';
+import { CourseService } from '../features/courses/courseService';
 import { WelcomeController } from '../features/welcome/welcomeController';
 import { ApiClient } from '../infrastructure/apiClient';
 import { registerViews } from '../views/registerViews';
@@ -25,17 +31,25 @@ export function registerCommands(
     getApiBaseUrl(),
     async () => (await sessionRepository.get())?.token,
   );
+  const mockApiEnabled = useMockApi();
 
-  const authRepository: AuthRepository = useMockApi()
+  const authRepository: AuthRepository = mockApiEnabled
     ? new MockAuthRepository()
     : new ApiAuthRepository(apiClient);
+  const courseRepository: CourseRepository = mockApiEnabled
+    ? new MockCourseRepository()
+    : new ApiCourseRepository(apiClient);
 
   const authService = new AuthService(
     authRepository,
     sessionRepository,
   );
+  const courseService = new CourseService(courseRepository);
 
-  const accountTreeProvider = registerViews(context, authService);
+  const {
+    accountTreeProvider,
+    courseTreeProvider,
+  } = registerViews(context, authService, courseService);
 
   const authController = new AuthController(authService);
 
@@ -49,6 +63,7 @@ export function registerCommands(
     async () => {
       await authController.signIn();
       accountTreeProvider.refresh();
+      courseTreeProvider.refresh();
     },
   );
 
@@ -62,7 +77,13 @@ export function registerCommands(
     async () => {
       await authController.signOut();
       accountTreeProvider.refresh();
+      courseTreeProvider.refresh();
     },
+  );
+
+  const refreshCoursesCommand = vscode.commands.registerCommand(
+    'wsdPlatform.refreshCourses',
+    () => courseTreeProvider.refresh(),
   );
 
   context.subscriptions.push(
@@ -70,5 +91,6 @@ export function registerCommands(
     signInCommand,
     showCurrentUserCommand,
     signOutCommand,
+    refreshCoursesCommand,
   );
 }

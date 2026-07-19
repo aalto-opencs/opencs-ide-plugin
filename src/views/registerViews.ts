@@ -1,5 +1,7 @@
 import * as vscode from 'vscode';
 import { AuthService } from '../features/auth/authService';
+import { CourseService } from '../features/courses/courseService';
+import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 
 export class AccountTreeProvider implements
   vscode.TreeDataProvider<vscode.TreeItem>,
@@ -60,16 +62,32 @@ export class AccountTreeProvider implements
 export function registerViews(
   context: vscode.ExtensionContext,
   authService: AuthService,
-): AccountTreeProvider {
+  courseService: CourseService,
+): {
+  accountTreeProvider: AccountTreeProvider;
+  courseTreeProvider: CourseTreeProvider;
+} {
   const accountTreeProvider = new AccountTreeProvider(authService);
+  const courseTreeProvider = new CourseTreeProvider(
+    authService,
+    courseService,
+  );
 
   context.subscriptions.push(
     accountTreeProvider,
+    courseTreeProvider,
     vscode.window.registerTreeDataProvider(
       'wsdPlatform.account',
       accountTreeProvider,
     ),
+    vscode.window.registerTreeDataProvider(
+      'wsdPlatform.courses',
+      courseTreeProvider,
+    ),
   );
 
-  return accountTreeProvider;
+  return {
+    accountTreeProvider,
+    courseTreeProvider,
+  };
 }

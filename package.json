@@ -11,7 +11,8 @@
   ],
   "activationEvents": [
     "onCommand:wsdPlatform.showWelcome",
-    "onView:wsdPlatform.account"
+    "onView:wsdPlatform.account",
+    "onView:wsdPlatform.courses"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -29,6 +30,10 @@
         {
           "id": "wsdPlatform.account",
           "name": "Account"
+        },
+        {
+          "id": "wsdPlatform.courses",
+          "name": "Courses"
         }
       ]
     },
@@ -54,8 +59,22 @@
       {
         "command": "wsdPlatform.signOut",
         "title": "WSD Platform: Sign Out"
+      },
+      {
+        "command": "wsdPlatform.refreshCourses",
+        "title": "WSD Platform: Refresh Courses",
+        "icon": "$(refresh)"
       }
     ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "wsdPlatform.refreshCourses",
+          "when": "view == wsdPlatform.courses",
+          "group": "navigation"
+        }
+      ]
+    },
     "configuration": {
       "title": "WSD Platform",
       "properties": {
