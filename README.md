@@ -64,6 +64,33 @@ Open the VS Code Command Palette and run:
 - `Aalto Fitech Platform: Sign In`
 - `Aalto Fitech Platform: Show Current User`
 - `Aalto Fitech Platform: Sign Out`
+- `Aalto Fitech Platform: Select Assignment Folder`
+- `Aalto Fitech Platform: Select Course and Version`
+
+Programming exercises also provide a contextual **Download Assignment**
+action in the Courses view. After the first successful sign-in, the student
+must select an assignment root before courses are loaded. If the student
+cancels the initial selection, they remain signed in but the Courses view
+stays locked until they select a folder from the Account view. The selected
+root is shown there, can be changed there, and is remembered separately for
+each platform user. Downloads use this structure:
+
+```text
+selected-root/
+└── course-slug/
+    └── assignment-name/
+        ├── assignment-handout.md
+        ├── starter files...
+        └── .aalto-fitech-assignment.json
+```
+
+Existing assignment folders are never overwritten automatically. Only
+programming assignments are shown in the Courses tree; other exercise types
+are hidden.
+
+The Courses view asks the student to choose one enrolled course and one of
+its available versions. That selection is remembered per platform user, and
+only the selected course's content is shown in the tree.
 
 ## Configuration
 
