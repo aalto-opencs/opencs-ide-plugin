@@ -85,4 +85,19 @@ suite('ApiClient', () => {
       await server.close();
     }
   });
+
+  test('downloads binary response bytes', async () => {
+    const expected = Uint8Array.from([0, 1, 2, 127, 255]);
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(200, { 'Content-Type': 'application/zip' });
+      response.end(expected);
+    });
+
+    try {
+      const result = await new ApiClient(server.baseUrl).getBytes('/starter');
+      assert.deepStrictEqual(result, expected);
+    } finally {
+      await server.close();
+    }
+  });
 });

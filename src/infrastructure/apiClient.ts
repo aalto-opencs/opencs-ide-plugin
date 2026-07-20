@@ -16,6 +16,16 @@ export class ApiClient {
     return this.request<TResponse>(path, 'GET');
   }
 
+  public async getBytes(path: string): Promise<Uint8Array> {
+    return this.request(
+      path,
+      'GET',
+      undefined,
+      async (response) =>
+        new Uint8Array(await response.arrayBuffer()),
+    );
+  }
+
   public async post<TResponse>(
     path: string,
     body: unknown,
@@ -27,6 +37,8 @@ export class ApiClient {
     path: string,
     method: 'GET' | 'POST',
     body?: unknown,
+    parseResponse: (response: Response) => Promise<TResponse> =
+      async (response) => (await response.json()) as TResponse,
   ): Promise<TResponse> {
     const controller = new AbortController();
 
@@ -81,7 +93,7 @@ export class ApiClient {
         );
       }
 
-      return (await response.json()) as TResponse;
+      return await parseResponse(response);
     } catch (error: unknown) {
       if (error instanceof ApiError) {
         throw error;

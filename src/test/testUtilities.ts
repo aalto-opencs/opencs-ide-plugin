@@ -7,6 +7,28 @@ import {
 } from 'http';
 import * as vscode from 'vscode';
 
+export class InMemoryMemento implements vscode.Memento {
+  private readonly values = new Map<string, unknown>();
+
+  public keys(): readonly string[] {
+    return [...this.values.keys()];
+  }
+
+  public get<T>(key: string): T | undefined;
+  public get<T>(key: string, defaultValue: T): T;
+  public get<T>(key: string, defaultValue?: T): T | undefined {
+    return (this.values.get(key) as T | undefined) ?? defaultValue;
+  }
+
+  public async update(key: string, value: unknown): Promise<void> {
+    if (value === undefined) {
+      this.values.delete(key);
+      return;
+    }
+    this.values.set(key, value);
+  }
+}
+
 export class InMemorySecretStorage implements vscode.SecretStorage {
   private readonly values = new Map<string, string>();
   private readonly changeEmitter =
