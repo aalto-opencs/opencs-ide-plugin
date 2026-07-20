@@ -11,6 +11,9 @@
   ],
   "activationEvents": [
     "onCommand:aaltoFitechPlatform.checkPlatformStatus",
+    "onCommand:aaltoFitechPlatform.selectCourse",
+    "onCommand:aaltoFitechPlatform.selectAssignmentFolder",
+    "onCommand:aaltoFitechPlatform.downloadAssignment",
     "onView:aaltoFitechPlatform.account",
     "onView:aaltoFitechPlatform.courses"
   ],
@@ -64,6 +67,21 @@
         "command": "aaltoFitechPlatform.refreshCourses",
         "title": "Aalto Fitech Platform: Refresh Courses",
         "icon": "$(refresh)"
+      },
+      {
+        "command": "aaltoFitechPlatform.selectCourse",
+        "title": "Aalto Fitech Platform: Select Course and Version",
+        "icon": "$(list-selection)"
+      },
+      {
+        "command": "aaltoFitechPlatform.selectAssignmentFolder",
+        "title": "Aalto Fitech Platform: Select Assignment Folder",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "aaltoFitechPlatform.downloadAssignment",
+        "title": "Aalto Fitech Platform: Download Assignment",
+        "icon": "$(cloud-download)"
       }
     ],
     "menus": {
@@ -72,6 +90,34 @@
           "command": "aaltoFitechPlatform.refreshCourses",
           "when": "view == aaltoFitechPlatform.courses",
           "group": "navigation"
+        },
+        {
+          "command": "aaltoFitechPlatform.selectCourse",
+          "when": "view == aaltoFitechPlatform.courses",
+          "group": "navigation"
+        },
+        {
+          "command": "aaltoFitechPlatform.selectAssignmentFolder",
+          "when": "view == aaltoFitechPlatform.courses",
+          "group": "navigation"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "aaltoFitechPlatform.downloadAssignment",
+          "when": "view == aaltoFitechPlatform.courses && viewItem == programmingExercise",
+          "group": "inline"
+        },
+        {
+          "command": "aaltoFitechPlatform.downloadAssignment",
+          "when": "view == aaltoFitechPlatform.courses && viewItem == programmingExercise",
+          "group": "navigation"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "aaltoFitechPlatform.downloadAssignment",
+          "when": "false"
         }
       ]
     },

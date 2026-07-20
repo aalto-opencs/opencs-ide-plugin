@@ -1,6 +1,9 @@
 import * as vscode from 'vscode';
 import { AuthService } from '../features/auth/authService';
+import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
+import { CourseMaterialService } from '../features/courseMaterials/courseMaterialService';
 import { CourseService } from '../features/courses/courseService';
+import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 
 export class AccountTreeProvider implements
@@ -14,6 +17,7 @@ export class AccountTreeProvider implements
 
   public constructor(
     private readonly authService: AuthService,
+    private readonly assignmentFolderRepository: AssignmentFolderRepository,
   ) {}
 
   public refresh(): void {
@@ -44,6 +48,27 @@ export class AccountTreeProvider implements
     const emailItem = new vscode.TreeItem(session.student.email);
     emailItem.iconPath = new vscode.ThemeIcon('mail');
 
+    const assignmentRoot = this.assignmentFolderRepository.getRoot(
+      session.student.id,
+    );
+    const assignmentFolderItem = new vscode.TreeItem(
+      assignmentRoot ? 'Assignment Folder' : 'Select Assignment Folder',
+    );
+    assignmentFolderItem.iconPath = new vscode.ThemeIcon(
+      assignmentRoot ? 'folder' : 'folder-opened',
+    );
+    assignmentFolderItem.command = {
+      command: 'aaltoFitechPlatform.selectAssignmentFolder',
+      title: assignmentRoot
+        ? 'Change Assignment Folder'
+        : 'Select Assignment Folder',
+    };
+
+    if (assignmentRoot) {
+      assignmentFolderItem.description = assignmentRoot.fsPath;
+      assignmentFolderItem.tooltip = assignmentRoot.fsPath;
+    }
+
     const signOutItem = new vscode.TreeItem('Sign Out');
     signOutItem.iconPath = new vscode.ThemeIcon('sign-out');
     signOutItem.command = {
@@ -51,7 +76,7 @@ export class AccountTreeProvider implements
       title: 'Sign Out',
     };
 
-    return [nameItem, emailItem, signOutItem];
+    return [nameItem, emailItem, assignmentFolderItem, signOutItem];
   }
 
   public dispose(): void {
@@ -63,14 +88,23 @@ export function registerViews(
   context: vscode.ExtensionContext,
   authService: AuthService,
   courseService: CourseService,
+  courseMaterialService: CourseMaterialService,
+  assignmentFolderRepository: AssignmentFolderRepository,
+  courseSelectionRepository: CourseSelectionRepository,
 ): {
   accountTreeProvider: AccountTreeProvider;
   courseTreeProvider: CourseTreeProvider;
 } {
-  const accountTreeProvider = new AccountTreeProvider(authService);
+  const accountTreeProvider = new AccountTreeProvider(
+    authService,
+    assignmentFolderRepository,
+  );
   const courseTreeProvider = new CourseTreeProvider(
     authService,
     courseService,
+    courseMaterialService,
+    assignmentFolderRepository,
+    courseSelectionRepository,
   );
 
   context.subscriptions.push(

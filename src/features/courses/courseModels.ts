@@ -13,3 +13,8 @@ export interface CourseEnrolment {
   activeInstanceId: number | null;
   instances: CourseInstance[];
 }
+
+export interface CourseSelection {
+  courseSlug: string;
+  courseInstanceId: number;
+}

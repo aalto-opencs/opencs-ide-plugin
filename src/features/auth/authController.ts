@@ -7,7 +7,7 @@ export class AuthController {
     private readonly authService: AuthService,
   ) {}
 
-  public async signIn(): Promise<void> {
+  public async signIn(): Promise<boolean> {
     const userUuid = await vscode.window.showInputBox({
       prompt: 'Enter your personal user UUID',
       password: true,
@@ -17,7 +17,7 @@ export class AuthController {
     });
 
     if (!userUuid) {
-      return;
+      return false;
     }
 
     try {
@@ -28,11 +28,13 @@ export class AuthController {
       vscode.window.showInformationMessage(
         `Signed in as ${this.getStudentName(session.student)}.`,
       );
+      return true;
     } catch (error: unknown) {
       const message =
         error instanceof Error ? error.message : 'Sign-in failed.';
 
       vscode.window.showErrorMessage(message);
+      return false;
     }
   }
 

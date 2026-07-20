@@ -4,8 +4,12 @@ import { AuthRepository } from '../features/auth/authRepository';
 import { AuthSession } from '../features/auth/authModels';
 import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
+import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
 import { AccountTreeProvider } from '../views/registerViews';
-import { InMemorySecretStorage } from './testUtilities';
+import {
+  InMemoryMemento,
+  InMemorySecretStorage,
+} from './testUtilities';
 
 const session: AuthSession = {
   token: 'session-token',
@@ -21,6 +25,7 @@ suite('AccountTreeProvider', () => {
   function createProvider(): {
     provider: AccountTreeProvider;
     sessionRepository: SessionRepository;
+    assignmentFolderRepository: AssignmentFolderRepository;
   } {
     const sessionRepository = new SessionRepository(
       new InMemorySecretStorage(),
@@ -32,10 +37,17 @@ suite('AccountTreeProvider', () => {
       authRepository,
       sessionRepository,
     );
+    const assignmentFolderRepository = new AssignmentFolderRepository(
+      new InMemoryMemento(),
+    );
 
     return {
-      provider: new AccountTreeProvider(authService),
+      provider: new AccountTreeProvider(
+        authService,
+        assignmentFolderRepository,
+      ),
       sessionRepository,
+      assignmentFolderRepository,
     };
   }
 
@@ -49,7 +61,7 @@ suite('AccountTreeProvider', () => {
     }
   });
 
-  test('returns account details and a sign-out action', async () => {
+  test('returns account details, folder selection, and sign out', async () => {
     const { provider, sessionRepository } = createProvider();
 
     try {
@@ -59,14 +71,51 @@ suite('AccountTreeProvider', () => {
 
       assert.deepStrictEqual(
         children.map((child) => child.label),
-        ['Ada Lovelace', 'ada@example.com', 'Sign Out'],
+        [
+          'Ada Lovelace',
+          'ada@example.com',
+          'Select Assignment Folder',
+          'Sign Out',
+        ],
       );
       assert.ok(children[0].iconPath instanceof vscode.ThemeIcon);
       assert.ok(children[1].iconPath instanceof vscode.ThemeIcon);
       assert.ok(children[2].iconPath instanceof vscode.ThemeIcon);
+      assert.ok(children[3].iconPath instanceof vscode.ThemeIcon);
       assert.strictEqual(
         children[2].command?.command,
+        'aaltoFitechPlatform.selectAssignmentFolder',
+      );
+      assert.strictEqual(
+        children[3].command?.command,
         'aaltoFitechPlatform.signOut',
+      );
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('shows the current assignment folder in the account view', async () => {
+    const {
+      provider,
+      sessionRepository,
+      assignmentFolderRepository,
+    } = createProvider();
+    const root = vscode.Uri.file('/tmp/aalto-fitech-assignments');
+
+    try {
+      await sessionRepository.save(session);
+      await assignmentFolderRepository.setRoot(session.student.id, root);
+
+      const children = await provider.getChildren();
+      const folderItem = children[2];
+
+      assert.strictEqual(folderItem.label, 'Assignment Folder');
+      assert.strictEqual(folderItem.description, root.fsPath);
+      assert.strictEqual(folderItem.tooltip, root.fsPath);
+      assert.strictEqual(
+        folderItem.command?.command,
+        'aaltoFitechPlatform.selectAssignmentFolder',
       );
     } finally {
       provider.dispose();
