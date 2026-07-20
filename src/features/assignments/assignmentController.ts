@@ -44,8 +44,15 @@ export class AssignmentController {
 
   public async requireAssignmentFolder(): Promise<vscode.Uri | undefined> {
     const action = await vscode.window.showInformationMessage(
-      'Before continuing, choose an assignment folder. This is the main folder where Aalto Fitech Platform will keep all your downloaded programming assignments. The extension will create separate course and assignment folders inside it.',
-      { modal: true },
+      'Choose an assignment folder',
+      {
+        modal: true,
+        detail: [
+          'This folder will contain all your downloaded programming assignments.',
+          '',
+          'The extension will create separate course and assignment folders inside it.',
+        ].join('\n'),
+      },
       'Choose Assignment Folder',
       'Choose Later',
     );
@@ -61,8 +68,15 @@ export class AssignmentController {
       }
 
       const action = await vscode.window.showWarningMessage(
-        'An assignment folder is required before you can use the platform.',
-        { modal: true },
+        'Assignment folder not selected',
+        {
+          modal: true,
+          detail: [
+            'Select a folder now, or choose one later from the Account section.',
+            '',
+            'Courses remain unavailable until a folder is selected.',
+          ].join('\n'),
+        },
         'Select Folder',
         'Choose Later',
       );

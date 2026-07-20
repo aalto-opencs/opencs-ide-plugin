@@ -169,7 +169,7 @@ export function registerCommands(
   const selectAssignmentFolderCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.selectAssignmentFolder',
     async () => {
-      const folder = await assignmentController.selectAssignmentFolder();
+      const folder = await assignmentController.requireAssignmentFolder();
       if (folder) {
         accountTreeProvider.refresh();
         courseTreeProvider.refresh();
