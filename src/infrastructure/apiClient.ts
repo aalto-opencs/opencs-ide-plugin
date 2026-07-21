@@ -21,6 +21,7 @@ export class ApiClient {
       path,
       'GET',
       undefined,
+      {},
       async (response) =>
         new Uint8Array(await response.arrayBuffer()),
     );
@@ -30,13 +31,26 @@ export class ApiClient {
     path: string,
     body: unknown,
   ): Promise<TResponse> {
+    return this.request<TResponse>(
+      path,
+      'POST',
+      JSON.stringify(body),
+      { 'Content-Type': 'application/json' },
+    );
+  }
+
+  public async postForm<TResponse>(
+    path: string,
+    body: FormData,
+  ): Promise<TResponse> {
     return this.request<TResponse>(path, 'POST', body);
   }
 
   private async request<TResponse>(
     path: string,
     method: 'GET' | 'POST',
-    body?: unknown,
+    body?: string | FormData,
+    requestHeaders: Record<string, string> = {},
     parseResponse: (response: Response) => Promise<TResponse> =
       async (response) => (await response.json()) as TResponse,
   ): Promise<TResponse> {
@@ -48,9 +62,7 @@ export class ApiClient {
 
     try {
       const token = await this.authenticationTokenProvider();
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json',
-      };
+      const headers: Record<string, string> = { ...requestHeaders };
 
       if (token) {
         headers.Authorization = token;
@@ -61,7 +73,7 @@ export class ApiClient {
         {
           method,
           headers,
-          body: body === undefined ? undefined : JSON.stringify(body),
+          body,
           signal: controller.signal,
         },
       );
