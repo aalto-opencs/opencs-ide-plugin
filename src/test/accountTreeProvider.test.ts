@@ -61,7 +61,7 @@ suite('AccountTreeProvider', () => {
     }
   });
 
-  test('returns account details, folder selection, and sign out', async () => {
+  test('returns compact account details', async () => {
     const { provider, sessionRepository } = createProvider();
 
     try {
@@ -74,22 +74,10 @@ suite('AccountTreeProvider', () => {
         [
           'Ada Lovelace',
           'ada@example.com',
-          'Select Assignment Folder',
-          'Sign Out',
         ],
       );
       assert.ok(children[0].iconPath instanceof vscode.ThemeIcon);
       assert.ok(children[1].iconPath instanceof vscode.ThemeIcon);
-      assert.ok(children[2].iconPath instanceof vscode.ThemeIcon);
-      assert.ok(children[3].iconPath instanceof vscode.ThemeIcon);
-      assert.strictEqual(
-        children[2].command?.command,
-        'aaltoFitechPlatform.selectAssignmentFolder',
-      );
-      assert.strictEqual(
-        children[3].command?.command,
-        'aaltoFitechPlatform.signOut',
-      );
     } finally {
       provider.dispose();
     }
@@ -110,13 +98,10 @@ suite('AccountTreeProvider', () => {
       const children = await provider.getChildren();
       const folderItem = children[2];
 
-      assert.strictEqual(folderItem.label, 'Assignment Folder');
+      assert.strictEqual(folderItem.label, 'Assignments');
       assert.strictEqual(folderItem.description, root.fsPath);
       assert.strictEqual(folderItem.tooltip, root.fsPath);
-      assert.strictEqual(
-        folderItem.command?.command,
-        'aaltoFitechPlatform.selectAssignmentFolder',
-      );
+      assert.strictEqual(folderItem.command, undefined);
     } finally {
       provider.dispose();
     }

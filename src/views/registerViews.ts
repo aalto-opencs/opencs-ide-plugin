@@ -5,6 +5,15 @@ import { CourseMaterialService } from '../features/courseMaterials/courseMateria
 import { CourseService } from '../features/courses/courseService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
+import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
+import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
+import { SubmissionRepository } from '../features/submissions/submissionRepository';
+import { SubmissionTreeProvider } from '../features/submissions/submissionTreeProvider';
+import {
+  SUBMISSION_DETAILS_SCHEME,
+  SubmissionDetailsProvider,
+} from '../features/submissions/submissionDetailsProvider';
+import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
 
 export class AccountTreeProvider implements
   vscode.TreeDataProvider<vscode.TreeItem>,
@@ -51,32 +60,16 @@ export class AccountTreeProvider implements
     const assignmentRoot = this.assignmentFolderRepository.getRoot(
       session.student.id,
     );
-    const assignmentFolderItem = new vscode.TreeItem(
-      assignmentRoot ? 'Assignment Folder' : 'Select Assignment Folder',
-    );
-    assignmentFolderItem.iconPath = new vscode.ThemeIcon(
-      assignmentRoot ? 'folder' : 'folder-opened',
-    );
-    assignmentFolderItem.command = {
-      command: 'aaltoFitechPlatform.selectAssignmentFolder',
-      title: assignmentRoot
-        ? 'Change Assignment Folder'
-        : 'Select Assignment Folder',
-    };
-
+    const items = [nameItem, emailItem];
     if (assignmentRoot) {
+      const assignmentFolderItem = new vscode.TreeItem('Assignments');
+      assignmentFolderItem.iconPath = new vscode.ThemeIcon('folder');
       assignmentFolderItem.description = assignmentRoot.fsPath;
       assignmentFolderItem.tooltip = assignmentRoot.fsPath;
+      items.push(assignmentFolderItem);
     }
 
-    const signOutItem = new vscode.TreeItem('Sign Out');
-    signOutItem.iconPath = new vscode.ThemeIcon('sign-out');
-    signOutItem.command = {
-      command: 'aaltoFitechPlatform.signOut',
-      title: 'Sign Out',
-    };
-
-    return [nameItem, emailItem, assignmentFolderItem, signOutItem];
+    return items;
   }
 
   public dispose(): void {
@@ -90,10 +83,19 @@ export function registerViews(
   courseService: CourseService,
   courseMaterialService: CourseMaterialService,
   assignmentFolderRepository: AssignmentFolderRepository,
+  assignmentFileRepository: AssignmentFileRepository,
   courseSelectionRepository: CourseSelectionRepository,
+  submissionRepository: SubmissionRepository,
+  submissionHistoryRepository: SubmissionHistoryRepository,
+  isDevelopmentCompleted: (
+    userId: number,
+    assignment: ProgrammingAssignment,
+  ) => boolean = () => false,
 ): {
   accountTreeProvider: AccountTreeProvider;
   courseTreeProvider: CourseTreeProvider;
+  submissionTreeProvider: SubmissionTreeProvider;
+  submissionDetailsProvider: SubmissionDetailsProvider;
 } {
   const accountTreeProvider = new AccountTreeProvider(
     authService,
@@ -104,24 +106,49 @@ export function registerViews(
     courseService,
     courseMaterialService,
     assignmentFolderRepository,
+    assignmentFileRepository,
     courseSelectionRepository,
+    submissionRepository,
+    isDevelopmentCompleted,
   );
+  const submissionTreeProvider = new SubmissionTreeProvider(
+    authService,
+    submissionHistoryRepository,
+    submissionRepository,
+    () => courseTreeProvider.refresh(),
+  );
+  const submissionDetailsProvider = new SubmissionDetailsProvider();
+
+  const courseTreeView = vscode.window.createTreeView(
+    'aaltoFitechPlatform.courses',
+    { treeDataProvider: courseTreeProvider },
+  );
+  courseTreeProvider.attachTreeView(courseTreeView);
 
   context.subscriptions.push(
     accountTreeProvider,
     courseTreeProvider,
+    submissionTreeProvider,
+    submissionDetailsProvider,
+    vscode.workspace.registerTextDocumentContentProvider(
+      SUBMISSION_DETAILS_SCHEME,
+      submissionDetailsProvider,
+    ),
     vscode.window.registerTreeDataProvider(
       'aaltoFitechPlatform.account',
       accountTreeProvider,
     ),
+    courseTreeView,
     vscode.window.registerTreeDataProvider(
-      'aaltoFitechPlatform.courses',
-      courseTreeProvider,
+      'aaltoFitechPlatform.submissions',
+      submissionTreeProvider,
     ),
   );
 
   return {
     accountTreeProvider,
     courseTreeProvider,
+    submissionTreeProvider,
+    submissionDetailsProvider,
   };
 }

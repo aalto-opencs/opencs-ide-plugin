@@ -14,8 +14,12 @@
     "onCommand:aaltoFitechPlatform.selectCourse",
     "onCommand:aaltoFitechPlatform.selectAssignmentFolder",
     "onCommand:aaltoFitechPlatform.downloadAssignment",
+    "onCommand:aaltoFitechPlatform.showAssignmentFolder",
+    "onCommand:aaltoFitechPlatform.redownloadAssignment",
+    "onCommand:aaltoFitechPlatform.submitAssignment",
     "onView:aaltoFitechPlatform.account",
-    "onView:aaltoFitechPlatform.courses"
+    "onView:aaltoFitechPlatform.courses",
+    "onView:aaltoFitechPlatform.submissions"
   ],
   "main": "./dist/extension.js",
   "contributes": {
@@ -37,13 +41,33 @@
         {
           "id": "aaltoFitechPlatform.courses",
           "name": "Courses"
+        },
+        {
+          "id": "aaltoFitechPlatform.submissions",
+          "name": "Submissions"
         }
       ]
     },
     "viewsWelcome": [
       {
         "view": "aaltoFitechPlatform.account",
-        "contents": "Sign in to access your Aalto Fitech Platform account.\n\n[Sign In](command:aaltoFitechPlatform.signIn)"
+        "contents": "Sign in to access your Aalto Fitech Platform account.\n\n[Sign In](command:aaltoFitechPlatform.signIn)",
+        "when": "!aaltoFitechPlatform.signedIn"
+      },
+      {
+        "view": "aaltoFitechPlatform.courses",
+        "contents": "Sign in to browse your courses.\n\n[Sign In](command:aaltoFitechPlatform.signIn)",
+        "when": "!aaltoFitechPlatform.signedIn"
+      },
+      {
+        "view": "aaltoFitechPlatform.courses",
+        "contents": "Choose where programming assignments will be downloaded.\n\n[Choose Assignment Folder](command:aaltoFitechPlatform.selectAssignmentFolder)",
+        "when": "aaltoFitechPlatform.signedIn && !aaltoFitechPlatform.assignmentFolderSelected"
+      },
+      {
+        "view": "aaltoFitechPlatform.courses",
+        "contents": "Select the course and version you want to work on.\n\n[Select Course](command:aaltoFitechPlatform.selectCourse)",
+        "when": "aaltoFitechPlatform.signedIn && aaltoFitechPlatform.assignmentFolderSelected && !aaltoFitechPlatform.courseSelected"
       }
     ],
     "commands": [
@@ -61,62 +85,137 @@
       },
       {
         "command": "aaltoFitechPlatform.signOut",
-        "title": "Aalto Fitech Platform: Sign Out"
+        "title": "Aalto Fitech Platform: Sign Out",
+        "shortTitle": "Sign Out"
       },
       {
         "command": "aaltoFitechPlatform.refreshCourses",
         "title": "Aalto Fitech Platform: Refresh Courses",
+        "shortTitle": "Refresh Courses",
         "icon": "$(refresh)"
       },
       {
         "command": "aaltoFitechPlatform.selectCourse",
         "title": "Aalto Fitech Platform: Select Course and Version",
+        "shortTitle": "Change Course",
         "icon": "$(list-selection)"
       },
       {
         "command": "aaltoFitechPlatform.selectAssignmentFolder",
         "title": "Aalto Fitech Platform: Select Assignment Folder",
+        "shortTitle": "Change Assignment Folder",
         "icon": "$(folder-opened)"
       },
       {
         "command": "aaltoFitechPlatform.downloadAssignment",
         "title": "Aalto Fitech Platform: Download Assignment",
+        "shortTitle": "Download Assignment",
         "icon": "$(cloud-download)"
+      },
+      {
+        "command": "aaltoFitechPlatform.submitAssignment",
+        "title": "Aalto Fitech Platform: Submit Assignment",
+        "shortTitle": "Submit Assignment",
+        "icon": "$(cloud-upload)"
+      },
+      {
+        "command": "aaltoFitechPlatform.showAssignmentFolder",
+        "title": "Aalto Fitech Platform: Show Local Assignment Folder",
+        "shortTitle": "Show Local Folder",
+        "icon": "$(folder-opened)"
+      },
+      {
+        "command": "aaltoFitechPlatform.redownloadAssignment",
+        "title": "Aalto Fitech Platform: Redownload Assignment",
+        "shortTitle": "Redownload Assignment",
+        "icon": "$(sync)"
+      },
+      {
+        "command": "aaltoFitechPlatform.refreshSubmissions",
+        "title": "Aalto Fitech Platform: Refresh Submissions",
+        "icon": "$(refresh)"
       }
     ],
     "menus": {
       "view/title": [
         {
+          "command": "aaltoFitechPlatform.selectAssignmentFolder",
+          "when": "view == aaltoFitechPlatform.account && aaltoFitechPlatform.signedIn",
+          "group": "navigation"
+        },
+        {
+          "command": "aaltoFitechPlatform.signOut",
+          "when": "view == aaltoFitechPlatform.account && aaltoFitechPlatform.signedIn",
+          "group": "account@1"
+        },
+        {
           "command": "aaltoFitechPlatform.refreshCourses",
-          "when": "view == aaltoFitechPlatform.courses",
+          "when": "view == aaltoFitechPlatform.courses && aaltoFitechPlatform.courseSelected",
           "group": "navigation"
         },
         {
           "command": "aaltoFitechPlatform.selectCourse",
-          "when": "view == aaltoFitechPlatform.courses",
+          "when": "view == aaltoFitechPlatform.courses && aaltoFitechPlatform.signedIn && aaltoFitechPlatform.assignmentFolderSelected",
           "group": "navigation"
         },
         {
-          "command": "aaltoFitechPlatform.selectAssignmentFolder",
-          "when": "view == aaltoFitechPlatform.courses",
+          "command": "aaltoFitechPlatform.refreshSubmissions",
+          "when": "view == aaltoFitechPlatform.submissions",
           "group": "navigation"
         }
       ],
       "view/item/context": [
         {
           "command": "aaltoFitechPlatform.downloadAssignment",
-          "when": "view == aaltoFitechPlatform.courses && viewItem == programmingExercise",
-          "group": "inline"
+          "when": "view == aaltoFitechPlatform.courses && (viewItem == programmingExercise || viewItem == completedProgrammingExercise)",
+          "group": "inline@1"
         },
         {
           "command": "aaltoFitechPlatform.downloadAssignment",
-          "when": "view == aaltoFitechPlatform.courses && viewItem == programmingExercise",
+          "when": "view == aaltoFitechPlatform.courses && (viewItem == programmingExercise || viewItem == completedProgrammingExercise)",
           "group": "navigation"
+        },
+        {
+          "command": "aaltoFitechPlatform.submitAssignment",
+          "when": "view == aaltoFitechPlatform.courses && viewItem == downloadedProgrammingExercise",
+          "group": "inline@1"
+        },
+        {
+          "command": "aaltoFitechPlatform.submitAssignment",
+          "when": "view == aaltoFitechPlatform.courses && (viewItem == downloadedProgrammingExercise || viewItem == completedDownloadedProgrammingExercise)",
+          "group": "navigation"
+        },
+        {
+          "command": "aaltoFitechPlatform.showAssignmentFolder",
+          "when": "view == aaltoFitechPlatform.courses && viewItem == completedDownloadedProgrammingExercise",
+          "group": "inline@1"
+        },
+        {
+          "command": "aaltoFitechPlatform.showAssignmentFolder",
+          "when": "view == aaltoFitechPlatform.courses && (viewItem == downloadedProgrammingExercise || viewItem == completedDownloadedProgrammingExercise)",
+          "group": "navigation@1"
+        },
+        {
+          "command": "aaltoFitechPlatform.redownloadAssignment",
+          "when": "view == aaltoFitechPlatform.courses && (viewItem == downloadedProgrammingExercise || viewItem == completedDownloadedProgrammingExercise)",
+          "group": "navigation@2"
         }
       ],
       "commandPalette": [
         {
           "command": "aaltoFitechPlatform.downloadAssignment",
+          "when": "false"
+        },
+        {
+          "command": "aaltoFitechPlatform.submitAssignment",
+          "when": "false"
+        },
+        {
+          "command": "aaltoFitechPlatform.showAssignmentFolder",
+          "when": "false"
+        },
+        {
+          "command": "aaltoFitechPlatform.redownloadAssignment",
           "when": "false"
         }
       ]
