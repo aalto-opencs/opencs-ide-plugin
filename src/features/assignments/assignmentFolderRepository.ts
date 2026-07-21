@@ -17,6 +17,12 @@ export class AssignmentFolderRepository {
     await this.storage.update(this.getKey(userId), root.fsPath);
   }
 
+  public async clearAll(): Promise<void> {
+    await Promise.all(this.storage.keys()
+      .filter((key) => key.startsWith(`${ASSIGNMENT_ROOT_KEY_PREFIX}.`))
+      .map((key) => this.storage.update(key, undefined)));
+  }
+
   private getKey(userId: number): string {
     return `${ASSIGNMENT_ROOT_KEY_PREFIX}.${userId}`;
   }

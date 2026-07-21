@@ -37,6 +37,12 @@ export class CourseSelectionRepository {
     await this.storage.update(this.getKey(userId), undefined);
   }
 
+  public async clearAll(): Promise<void> {
+    await Promise.all(this.storage.keys()
+      .filter((key) => key.startsWith(`${COURSE_SELECTION_KEY_PREFIX}.`))
+      .map((key) => this.storage.update(key, undefined)));
+  }
+
   private getKey(userId: number): string {
     return `${COURSE_SELECTION_KEY_PREFIX}.${userId}`;
   }
