@@ -5,6 +5,7 @@ import {
 } from '../assignments/assignmentModels';
 import { AuthService } from '../auth/authService';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
+import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import {
   CourseChapter,
   CourseExercise,
@@ -13,10 +14,10 @@ import {
 import { CourseMaterialService } from '../courseMaterials/courseMaterialService';
 import {
   CourseEnrolment,
-  CourseInstance,
 } from './courseModels';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
+import { SubmissionRepository } from '../submissions/submissionRepository';
 
 class CourseTreeItem extends vscode.TreeItem {
   public constructor(
@@ -30,6 +31,7 @@ class CourseTreeItem extends vscode.TreeItem {
   }
 
   public assignment?: ProgrammingAssignment;
+  public completed = false;
 }
 
 export class CourseTreeProvider implements
@@ -38,6 +40,8 @@ export class CourseTreeProvider implements
   private readonly changeEmitter = new vscode.EventEmitter<
     void
   >();
+  private treeView?: vscode.TreeView<CourseTreeItem>;
+  private viewDescription?: string;
 
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
@@ -46,11 +50,25 @@ export class CourseTreeProvider implements
     private readonly courseService: CourseService,
     private readonly courseMaterialService: CourseMaterialService,
     private readonly assignmentFolderRepository: AssignmentFolderRepository,
+    private readonly assignmentFileRepository: AssignmentFileRepository,
     private readonly courseSelectionRepository: CourseSelectionRepository,
+    private readonly submissionRepository: SubmissionRepository,
+    private readonly isDevelopmentCompleted: (
+      userId: number,
+      assignment: ProgrammingAssignment,
+    ) => boolean = () => false,
   ) {}
 
   public refresh(): void {
     this.changeEmitter.fire();
+  }
+
+  public attachTreeView(treeView: vscode.TreeView<CourseTreeItem>): void {
+    this.treeView = treeView;
+  }
+
+  public get description(): string | undefined {
+    return this.viewDescription;
   }
 
   public getTreeItem(element: CourseTreeItem): vscode.TreeItem {
@@ -61,34 +79,37 @@ export class CourseTreeProvider implements
     element?: CourseTreeItem,
   ): Promise<CourseTreeItem[]> {
     if (element) {
-      if (element.children !== null) {
-        return element.children;
-      }
-
-      return this.loadCourseContent(element);
+      return element.children ?? [];
     }
 
     const session = await this.authService.getCurrentSession();
 
     if (!session) {
-      return [this.createSignInItem()];
+      this.setDescription(undefined);
+      return [];
     }
 
-    if (!this.assignmentFolderRepository.getRoot(session.student.id)) {
-      return [this.createSelectAssignmentFolderItem()];
+    const assignmentRoot = this.assignmentFolderRepository.getRoot(
+      session.student.id,
+    );
+    if (!assignmentRoot) {
+      this.setDescription(undefined);
+      return [];
     }
 
     const selection = this.courseSelectionRepository.getSelection(
       session.student.id,
     );
     if (!selection) {
-      return [this.createSelectCourseItem()];
+      this.setDescription(undefined);
+      return [];
     }
 
     try {
       const enrolments = await this.courseService.getEnrolments();
 
       if (!enrolments.length) {
+        this.setDescription(undefined);
         return [this.createMessageItem(
           'No course enrolments found.',
           'info',
@@ -104,16 +125,24 @@ export class CourseTreeProvider implements
         await this.courseSelectionRepository.clearSelection(
           session.student.id,
         );
-        return [this.createSelectCourseItem(
-          'Your previous course selection is no longer available',
+        this.setDescription(undefined);
+        return [this.createMessageItem(
+          'Your previous course selection is no longer available.',
+          'warning',
         )];
       }
 
-      return [
-        this.createCourseItem(enrolment, instance),
-        this.createSelectCourseItem('Change Course or Version'),
-      ];
+      this.setDescription(
+        `${enrolment.abbreviation || enrolment.courseName || enrolment.courseSlug} · ${instance.label}`,
+      );
+      return this.loadCourseContent(
+        enrolment.courseSlug,
+        instance.id,
+        assignmentRoot,
+        session.student.id,
+      );
     } catch (error: unknown) {
+      this.setDescription(undefined);
       const message = error instanceof Error
         ? error.message
         : 'Failed to load course enrolments.';
@@ -126,37 +155,15 @@ export class CourseTreeProvider implements
     this.changeEmitter.dispose();
   }
 
-  private createCourseItem(
-    enrolment: CourseEnrolment,
-    instance: CourseInstance,
-  ): CourseTreeItem {
-    const item = new CourseTreeItem(
-      enrolment.courseName || enrolment.courseSlug,
-      vscode.TreeItemCollapsibleState.Collapsed,
-      null,
-      enrolment.courseSlug,
-      instance.id,
-    );
-    item.description = instance.label;
-    item.tooltip = [
-      enrolment.courseSlug,
-      instance.label,
-    ].join('\n');
-    item.iconPath = new vscode.ThemeIcon('book');
-
-    return item;
-  }
-
   private async loadCourseContent(
-    contentItem: CourseTreeItem,
+    courseSlug: string,
+    courseInstanceId: number,
+    root: vscode.Uri,
+    userId: number,
   ): Promise<CourseTreeItem[]> {
-    if (!contentItem.courseSlug) {
-      return [];
-    }
-
     try {
       const structure = await this.courseMaterialService.getStructure(
-        contentItem.courseSlug,
+        courseSlug,
       );
       const programmingParts = structure
         .map((part) => ({
@@ -171,12 +178,14 @@ export class CourseTreeProvider implements
         }))
         .filter((part) => part.chapters.length > 0);
 
-      contentItem.children = programmingParts.length
-        ? programmingParts.map((part) => this.createPartItem(
+      return programmingParts.length
+        ? await Promise.all(programmingParts.map((part) => this.createPartItem(
           part,
-          contentItem.courseSlug as string,
-          contentItem.courseInstanceId ?? null,
-        ))
+          courseSlug,
+          courseInstanceId,
+          root,
+          userId,
+        )))
         : [this.createMessageItem(
           'No programming assignments found.',
           'info',
@@ -185,19 +194,25 @@ export class CourseTreeProvider implements
       const message = error instanceof Error
         ? error.message
         : 'Failed to load course content.';
-      contentItem.children = [this.createMessageItem(message, 'error')];
+      return [this.createMessageItem(message, 'error')];
     }
-
-    return contentItem.children;
   }
 
-  private createPartItem(
+  private async createPartItem(
     part: CoursePart,
     courseSlug: string,
     courseInstanceId: number | null,
-  ): CourseTreeItem {
-    const chapters = part.chapters.map((chapter) =>
-      this.createChapterItem(chapter, courseSlug, courseInstanceId));
+    root: vscode.Uri | undefined,
+    userId: number | undefined,
+  ): Promise<CourseTreeItem> {
+    const chapters = await Promise.all(part.chapters.map((chapter) =>
+      this.createChapterItem(
+        chapter,
+        courseSlug,
+        courseInstanceId,
+        root,
+        userId,
+      )));
     const item = new CourseTreeItem(
       part.name,
       chapters.length
@@ -205,17 +220,33 @@ export class CourseTreeProvider implements
         : vscode.TreeItemCollapsibleState.None,
       chapters,
     );
-    item.iconPath = new vscode.ThemeIcon('folder');
+    item.completed = chapters.length > 0 &&
+      chapters.every((chapter) => chapter.completed);
+    item.iconPath = new vscode.ThemeIcon(
+      item.completed ? 'pass' : 'folder',
+    );
+    if (item.completed) {
+      item.description = 'Completed';
+      item.tooltip = 'All programming assignments in this part are completed.';
+    }
     return item;
   }
 
-  private createChapterItem(
+  private async createChapterItem(
     chapter: CourseChapter,
     courseSlug: string,
     courseInstanceId: number | null,
-  ): CourseTreeItem {
-    const exercises = chapter.exercises.map((exercise) =>
-      this.createExerciseItem(exercise, courseSlug, courseInstanceId));
+    root: vscode.Uri | undefined,
+    userId: number | undefined,
+  ): Promise<CourseTreeItem> {
+    const exercises = await Promise.all(chapter.exercises.map((exercise) =>
+      this.createExerciseItem(
+        exercise,
+        courseSlug,
+        courseInstanceId,
+        root,
+        userId,
+      )));
     const item = new CourseTreeItem(
       chapter.name,
       exercises.length
@@ -223,15 +254,25 @@ export class CourseTreeProvider implements
         : vscode.TreeItemCollapsibleState.None,
       exercises,
     );
-    item.iconPath = new vscode.ThemeIcon('book');
+    item.completed = exercises.length > 0 &&
+      exercises.every((exercise) => exercise.completed);
+    item.iconPath = new vscode.ThemeIcon(
+      item.completed ? 'pass' : 'book',
+    );
+    if (item.completed) {
+      item.description = 'Completed';
+      item.tooltip = 'All programming assignments in this chapter are completed.';
+    }
     return item;
   }
 
-  private createExerciseItem(
+  private async createExerciseItem(
     exercise: CourseExercise,
     courseSlug: string,
     courseInstanceId: number | null,
-  ): CourseTreeItem {
+    root: vscode.Uri | undefined,
+    userId: number | undefined,
+  ): Promise<CourseTreeItem> {
     const item = new CourseTreeItem(
       exercise.name || exercise.exerciseUuid,
     );
@@ -247,54 +288,48 @@ export class CourseTreeProvider implements
     );
 
     if (isProgrammingExercise) {
-      item.contextValue = 'programmingExercise';
-      item.assignment = {
+      const assignment: ProgrammingAssignment = {
         exerciseUuid: exercise.exerciseUuid,
         name: exercise.name || exercise.exerciseUuid,
         type: exercise.type,
         courseSlug,
         courseInstanceId,
       };
+      const [downloaded, backendPassed] = await Promise.all([
+        root
+          ? this.assignmentFileRepository.isDownloadedAssignment(
+            root,
+            assignment,
+          )
+          : false,
+        this.submissionRepository.hasPassed(
+          assignment.exerciseUuid,
+          assignment.courseInstanceId,
+        ).catch(() => false),
+      ]);
+      const passed = backendPassed ||
+        (userId !== undefined &&
+          this.isDevelopmentCompleted(userId, assignment));
+      item.assignment = assignment;
+      if (passed) {
+        item.contextValue = downloaded
+          ? 'completedDownloadedProgrammingExercise'
+          : 'completedProgrammingExercise';
+        item.completed = true;
+        item.description = `Completed • ${exercise.maxPoints} pts`;
+        item.iconPath = new vscode.ThemeIcon('pass');
+        item.tooltip = [
+          assignment.name,
+          'Completed: all assignment tests passed.',
+        ].join('\n');
+      } else if (downloaded) {
+        item.contextValue = 'downloadedProgrammingExercise';
+        item.iconPath = new vscode.ThemeIcon('folder-opened');
+      } else {
+        item.contextValue = 'programmingExercise';
+      }
     }
 
-    return item;
-  }
-
-  private createSignInItem(): CourseTreeItem {
-    const item = new CourseTreeItem(
-      'Sign in to view your courses',
-    );
-
-    item.iconPath = new vscode.ThemeIcon('sign-in');
-    item.command = {
-      command: 'aaltoFitechPlatform.signIn',
-      title: 'Sign In',
-    };
-
-    return item;
-  }
-
-  private createSelectAssignmentFolderItem(): CourseTreeItem {
-    const item = new CourseTreeItem(
-      'Select an assignment folder to continue',
-    );
-    item.iconPath = new vscode.ThemeIcon('folder-opened');
-    item.command = {
-      command: 'aaltoFitechPlatform.selectAssignmentFolder',
-      title: 'Select Assignment Folder',
-    };
-    return item;
-  }
-
-  private createSelectCourseItem(
-    label = 'Select a course and version to continue',
-  ): CourseTreeItem {
-    const item = new CourseTreeItem(label);
-    item.iconPath = new vscode.ThemeIcon('list-selection');
-    item.command = {
-      command: 'aaltoFitechPlatform.selectCourse',
-      title: 'Select Course and Version',
-    };
     return item;
   }
 
@@ -305,5 +340,12 @@ export class CourseTreeProvider implements
     const item = new CourseTreeItem(message);
     item.iconPath = new vscode.ThemeIcon(icon);
     return item;
+  }
+
+  private setDescription(description: string | undefined): void {
+    this.viewDescription = description;
+    if (this.treeView) {
+      this.treeView.description = description;
+    }
   }
 }

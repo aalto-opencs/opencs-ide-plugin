@@ -5,6 +5,8 @@ import { AuthSession } from '../features/auth/authModels';
 import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
 import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
+import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
+import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
 import { CoursePart } from '../features/courseMaterials/courseMaterialModels';
 import {
   ApiCourseMaterialRepository,
@@ -20,6 +22,10 @@ import { CourseService } from '../features/courses/courseService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 import { ApiClient } from '../infrastructure/apiClient';
+import {
+  MockSubmissionRepository,
+  SubmissionRepository,
+} from '../features/submissions/submissionRepository';
 import {
   InMemorySecretStorage,
   InMemoryMemento,
@@ -172,11 +178,7 @@ suite('Courses', () => {
     try {
       const children = await provider.getChildren();
 
-      assert.strictEqual(children[0].label, 'Sign in to view your courses');
-      assert.strictEqual(
-        children[0].command?.command,
-        'aaltoFitechPlatform.signIn',
-      );
+      assert.deepStrictEqual(children, []);
       assert.strictEqual(requestCount, 0);
     } finally {
       provider.dispose();
@@ -201,14 +203,7 @@ suite('Courses', () => {
 
       const children = await provider.getChildren();
 
-      assert.strictEqual(
-        children[0].label,
-        'Select an assignment folder to continue',
-      );
-      assert.strictEqual(
-        children[0].command?.command,
-        'aaltoFitechPlatform.selectAssignmentFolder',
-      );
+      assert.deepStrictEqual(children, []);
       assert.strictEqual(requestCount, 0);
     } finally {
       provider.dispose();
@@ -234,14 +229,7 @@ suite('Courses', () => {
 
       const children = await provider.getChildren();
 
-      assert.strictEqual(
-        children[0].label,
-        'Select a course and version to continue',
-      );
-      assert.strictEqual(
-        children[0].command?.command,
-        'aaltoFitechPlatform.selectCourse',
-      );
+      assert.deepStrictEqual(children, []);
       assert.strictEqual(requestCount, 0);
     } finally {
       provider.dispose();
@@ -249,28 +237,24 @@ suite('Courses', () => {
   });
 
   test('shows only the selected course and version', async () => {
-    const { provider, sessionRepository } = createProvider({
-      getEnrolments: async () => enrolments,
-    });
+    const { provider, sessionRepository } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+    );
 
     try {
       await sessionRepository.save(session);
 
-      const courses = await provider.getChildren();
+      const parts = await provider.getChildren();
 
-      assert.strictEqual(courses[0].label, 'Web Software Development');
-      assert.strictEqual(courses[0].description, 'Spring 2026');
-      assert.strictEqual(courses[1].label, 'Change Course or Version');
-      assert.strictEqual(
-        courses[1].command?.command,
-        'aaltoFitechPlatform.selectCourse',
-      );
+      assert.strictEqual(provider.description, 'WSD · Spring 2026');
+      assert.strictEqual(parts[0].label, 'Web Applications and HTTP');
     } finally {
       provider.dispose();
     }
   });
 
-  test('loads nested course content only when expanded', async () => {
+  test('shows course parts at the root and keeps nested children local', async () => {
     let structureRequests = 0;
     const { provider, sessionRepository } = createProvider(
       { getEnrolments: async () => enrolments },
@@ -286,10 +270,7 @@ suite('Courses', () => {
     try {
       await sessionRepository.save(session);
 
-      const courses = await provider.getChildren();
-      assert.strictEqual(structureRequests, 0);
-
-      const parts = await provider.getChildren(courses[0]);
+      const parts = await provider.getChildren();
       const chapters = await provider.getChildren(parts[0]);
       const exercises = await provider.getChildren(chapters[0]);
 
@@ -312,8 +293,90 @@ suite('Courses', () => {
         '11111111-1111-4111-8111-111111111111\nprogramming-exercise',
       );
 
-      await provider.getChildren(courses[0]);
-      assert.strictEqual(structureRequests, 1);
+      await provider.getChildren();
+      assert.strictEqual(structureRequests, 2);
+
+      provider.refresh();
+      await provider.getChildren();
+      assert.strictEqual(structureRequests, 3);
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('marks a chapter and part completed after the last assignment passes', async () => {
+    let passed = false;
+    const submissionRepository: SubmissionRepository = {
+      submit: async () => ({ submissionUuid: 'submission-1' }),
+      getStatus: async () => ({
+        correct: passed,
+        gradingStatus: 'PROCESSED',
+        gradingData: null,
+      }),
+      hasPassed: async () => passed,
+    };
+    const { provider, sessionRepository } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+      true,
+      true,
+      submissionRepository,
+    );
+
+    try {
+      await sessionRepository.save(session);
+      const initialParts = await provider.getChildren();
+      assert.strictEqual(initialParts[0].description, undefined);
+
+      passed = true;
+      provider.refresh();
+      const completedParts = await provider.getChildren();
+      const completedChapters = await provider.getChildren(completedParts[0]);
+      const completedExercises = await provider.getChildren(
+        completedChapters[0],
+      );
+
+      assert.strictEqual(completedParts[0].description, 'Completed');
+      assert.strictEqual(completedChapters[0].description, 'Completed');
+      assert.strictEqual(
+        completedExercises[0].description,
+        'Completed • 2 pts',
+      );
+      assert.strictEqual(
+        (completedParts[0].iconPath as vscode.ThemeIcon).id,
+        'pass',
+      );
+      assert.strictEqual(
+        (completedChapters[0].iconPath as vscode.ThemeIcon).id,
+        'pass',
+      );
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('applies an in-memory development completion override', async () => {
+    const { provider, sessionRepository } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+      true,
+      true,
+      new MockSubmissionRepository(),
+      (userId, assignment) =>
+        userId === session.student.id &&
+        assignment.exerciseUuid === structure[0].chapters[0]
+          .exercises[0].exerciseUuid,
+    );
+
+    try {
+      await sessionRepository.save(session);
+      const parts = await provider.getChildren();
+      const chapters = await provider.getChildren(parts[0]);
+      const exercises = await provider.getChildren(chapters[0]);
+
+      assert.strictEqual(exercises[0].description, 'Completed • 2 pts');
+      assert.strictEqual(chapters[0].description, 'Completed');
+      assert.strictEqual(parts[0].description, 'Completed');
     } finally {
       provider.dispose();
     }
@@ -343,6 +406,11 @@ function createProvider(
   },
   folderSelected = true,
   courseSelected = true,
+  submissionRepository: SubmissionRepository = new MockSubmissionRepository(),
+  isDevelopmentCompleted: (
+    userId: number,
+    assignment: ProgrammingAssignment,
+  ) => boolean = () => false,
 ): {
   provider: CourseTreeProvider;
   sessionRepository: SessionRepository;
@@ -389,7 +457,10 @@ function createProvider(
       courseService,
       courseMaterialService,
       assignmentFolderRepository,
+      new AssignmentFileRepository(),
       courseSelectionRepository,
+      submissionRepository,
+      isDevelopmentCompleted,
     ),
     sessionRepository,
   };
