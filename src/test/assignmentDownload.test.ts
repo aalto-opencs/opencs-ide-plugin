@@ -187,6 +187,50 @@ suite('Assignment download', () => {
     }
   });
 
+  test('keeps student work in a backup when redownloading', async () => {
+    const root = await createTemporaryRoot();
+
+    try {
+      const fileRepository = new AssignmentFileRepository();
+      const service = new AssignmentDownloadService(
+        createAssignmentRepository(await createStarterArchive()),
+        fileRepository,
+      );
+      const downloaded = await service.download(
+        assignment,
+        vscode.Uri.file(root),
+      );
+      await writeFile(
+        join(downloaded.folder.fsPath, 'src', 'index.ts'),
+        'student work\n',
+      );
+
+      const backup = await service.backup(
+        assignment,
+        vscode.Uri.file(root),
+      );
+      const freshDownload = await service.download(
+        assignment,
+        vscode.Uri.file(root),
+      );
+
+      assert.strictEqual(
+        await readFile(join(backup.fsPath, 'src', 'index.ts'), 'utf8'),
+        'student work\n',
+      );
+      assert.strictEqual(
+        await readFile(
+          join(freshDownload.folder.fsPath, 'src', 'index.ts'),
+          'utf8',
+        ),
+        'export const answer = 42;\n',
+      );
+      assert.match(basename(backup.fsPath), /^hello-web-backup-/);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('rejects non-programming assignments before API access', async () => {
     let apiCalls = 0;
     const repository: AssignmentRepository = {

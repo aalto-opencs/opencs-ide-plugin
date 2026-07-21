@@ -49,4 +49,37 @@ export class AssignmentDownloadService {
       archive,
     );
   }
+
+  public getAssignmentFolder(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): vscode.Uri {
+    return this.fileRepository.getAssignmentFolder(root, assignment);
+  }
+
+  public isDownloaded(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): Promise<boolean> {
+    return this.fileRepository.isDownloadedAssignment(root, assignment);
+  }
+
+  public backup(
+    assignment: ProgrammingAssignment,
+    root: vscode.Uri,
+  ): Promise<vscode.Uri> {
+    return this.fileRepository.backupDownloadedAssignment(root, assignment);
+  }
+
+  public restoreBackup(
+    backup: vscode.Uri,
+    assignment: ProgrammingAssignment,
+    root: vscode.Uri,
+  ): Promise<void> {
+    return this.fileRepository.restoreAssignmentBackup(
+      backup,
+      root,
+      assignment,
+    );
+  }
 }

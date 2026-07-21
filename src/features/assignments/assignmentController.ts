@@ -5,13 +5,18 @@ import {
   AssignmentAlreadyExistsError,
 } from './assignmentFileRepository';
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
-import { ProgrammingAssignment } from './assignmentModels';
+import {
+  DownloadedAssignment,
+  ProgrammingAssignment,
+} from './assignmentModels';
+import { SubmissionRepository } from '../submissions/submissionRepository';
 
 export class AssignmentController {
   public constructor(
     private readonly downloadService: AssignmentDownloadService,
     private readonly folderRepository: AssignmentFolderRepository,
     private readonly authService: AuthService,
+    private readonly submissionRepository: SubmissionRepository,
   ) {}
 
   public async selectAssignmentFolder(): Promise<vscode.Uri | undefined> {
@@ -89,6 +94,7 @@ export class AssignmentController {
 
   public async downloadAssignment(
     assignment?: ProgrammingAssignment,
+    onDownloaded: () => void = () => undefined,
   ): Promise<void> {
     if (!assignment) {
       await vscode.window.showErrorMessage(
@@ -103,6 +109,24 @@ export class AssignmentController {
         'Sign in before downloading an assignment.',
       );
       return;
+    }
+
+    const alreadyPassed = await this.submissionRepository.hasPassed(
+      assignment.exerciseUuid,
+      assignment.courseInstanceId,
+    ).catch(() => false);
+    if (alreadyPassed) {
+      const action = await vscode.window.showWarningMessage(
+        'You have already completed this assignment.',
+        {
+          modal: true,
+          detail: 'All tests have already passed. Downloading it again creates a new local copy but does not improve your existing result.',
+        },
+        'Download Anyway',
+      );
+      if (action !== 'Download Anyway') {
+        return;
+      }
     }
 
     const root = this.folderRepository.getRoot(session.student.id) ??
@@ -120,6 +144,7 @@ export class AssignmentController {
         },
         () => this.downloadService.download(assignment, root),
       );
+      onDownloaded();
 
       const action = await vscode.window.showInformationMessage(
         `Downloaded ${assignment.name}.`,
@@ -149,6 +174,123 @@ export class AssignmentController {
           : 'Failed to download the assignment.',
       );
     }
+  }
+
+  public async showAssignmentFolder(
+    assignment?: ProgrammingAssignment,
+  ): Promise<void> {
+    const location = await this.getDownloadedAssignmentLocation(assignment);
+    if (location) {
+      await vscode.commands.executeCommand('revealFileInOS', location.folder);
+    }
+  }
+
+  public async redownloadAssignment(
+    assignment?: ProgrammingAssignment,
+    onDownloaded: () => void = () => undefined,
+  ): Promise<void> {
+    const location = await this.getDownloadedAssignmentLocation(assignment);
+    if (!location || !assignment) {
+      return;
+    }
+
+    const action = await vscode.window.showWarningMessage(
+      `Redownload ${assignment.name}?`,
+      {
+        modal: true,
+        detail: [
+          'A fresh starter copy will be downloaded.',
+          '',
+          'Your current assignment folder will be kept beside it as a backup.',
+        ].join('\n'),
+      },
+      'Redownload',
+    );
+    if (action !== 'Redownload') {
+      return;
+    }
+
+    let backup: vscode.Uri | undefined;
+    let downloaded: DownloadedAssignment | undefined;
+    try {
+      backup = await this.downloadService.backup(
+        assignment,
+        location.root,
+      );
+      downloaded = await vscode.window.withProgress(
+        {
+          location: vscode.ProgressLocation.Notification,
+          title: `Redownloading ${assignment.name}`,
+          cancellable: false,
+        },
+        () => this.downloadService.download(assignment, location.root),
+      );
+    } catch (error: unknown) {
+      if (backup) {
+        await this.downloadService.restoreBackup(
+          backup,
+          assignment,
+          location.root,
+        ).catch(() => undefined);
+      }
+      onDownloaded();
+      await vscode.window.showErrorMessage(
+        error instanceof Error
+          ? error.message
+          : 'Failed to redownload the assignment.',
+      );
+      return;
+    }
+
+    if (!backup || !downloaded) {
+      return;
+    }
+
+    onDownloaded();
+    const openAction = await vscode.window.showInformationMessage(
+      `Redownloaded ${assignment.name}. Your previous work was saved in ${backup.fsPath}.`,
+      'Show New Folder',
+      'Show Backup',
+    );
+    if (openAction === 'Show New Folder') {
+      await vscode.commands.executeCommand(
+        'revealFileInOS',
+        downloaded.folder,
+      );
+    } else if (openAction === 'Show Backup') {
+      await vscode.commands.executeCommand('revealFileInOS', backup);
+    }
+  }
+
+  private async getDownloadedAssignmentLocation(
+    assignment?: ProgrammingAssignment,
+  ): Promise<{
+    root: vscode.Uri;
+    folder: vscode.Uri;
+  } | undefined> {
+    if (!assignment) {
+      await vscode.window.showErrorMessage(
+        'Select a downloaded assignment from the Courses view.',
+      );
+      return undefined;
+    }
+
+    const session = await this.authService.getCurrentSession();
+    const root = session
+      ? this.folderRepository.getRoot(session.student.id)
+      : undefined;
+    if (!session || !root ||
+      !await this.downloadService.isDownloaded(root, assignment)) {
+      await vscode.window.showErrorMessage(
+        'This assignment has not been downloaded with the extension.',
+      );
+      return undefined;
+    }
+
+    return {
+      root,
+      folder: this.downloadService.getAssignmentFolder(root, assignment),
+    };
   }
 
   private async handleOpenAction(
