@@ -4,6 +4,7 @@ import * as vscode from 'vscode';
 import {
   AssignmentMetadata,
   DownloadedAssignment,
+  PROGRAMMING_EXERCISE_TYPE,
   ProgrammingAssignment,
   ProgrammingExerciseStarter,
 } from './assignmentModels';
@@ -21,6 +22,17 @@ export class AssignmentAlreadyExistsError extends Error {
 }
 
 export class AssignmentFileRepository {
+  public getAssignmentFolder(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): vscode.Uri {
+    return vscode.Uri.joinPath(
+      root,
+      sanitizeFolderName(assignment.courseSlug, 'course'),
+      sanitizeFolderName(assignment.name, assignment.exerciseUuid),
+    );
+  }
+
   public async writeAssignment(
     root: vscode.Uri,
     assignment: ProgrammingAssignment,
@@ -35,10 +47,7 @@ export class AssignmentFileRepository {
       root,
       sanitizeFolderName(assignment.courseSlug, 'course'),
     );
-    const assignmentFolder = vscode.Uri.joinPath(
-      courseFolder,
-      sanitizeFolderName(assignment.name, assignment.exerciseUuid),
-    );
+    const assignmentFolder = this.getAssignmentFolder(root, assignment);
 
     if (await this.exists(assignmentFolder)) {
       throw new AssignmentAlreadyExistsError(assignmentFolder);
@@ -145,6 +154,62 @@ export class AssignmentFileRepository {
     }
   }
 
+  public async isDownloadedAssignment(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): Promise<boolean> {
+    const folder = this.getAssignmentFolder(root, assignment);
+
+    try {
+      const bytes = await vscode.workspace.fs.readFile(
+        vscode.Uri.joinPath(folder, METADATA_FILENAME),
+      );
+      const metadata: unknown = JSON.parse(new TextDecoder().decode(bytes));
+
+      return isMatchingMetadata(metadata, assignment);
+    } catch (error: unknown) {
+      if (
+        error instanceof SyntaxError ||
+        (error instanceof vscode.FileSystemError &&
+          error.code === 'FileNotFound')
+      ) {
+        return false;
+      }
+      throw error;
+    }
+  }
+
+  public async backupDownloadedAssignment(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): Promise<vscode.Uri> {
+    const folder = this.getAssignmentFolder(root, assignment);
+    const folderName = folder.path.split('/').at(-1) ?? 'assignment';
+    const timestamp = new Date().toISOString()
+      .replace(/[-:]/g, '')
+      .replace(/\.\d{3}Z$/, 'Z');
+    const backup = vscode.Uri.joinPath(
+      folder,
+      '..',
+      `${folderName}-backup-${timestamp}-${randomUUID().slice(0, 8)}`,
+    );
+
+    await vscode.workspace.fs.rename(folder, backup, { overwrite: false });
+    return backup;
+  }
+
+  public async restoreAssignmentBackup(
+    backup: vscode.Uri,
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): Promise<void> {
+    await vscode.workspace.fs.rename(
+      backup,
+      this.getAssignmentFolder(root, assignment),
+      { overwrite: false },
+    );
+  }
+
   private async exists(uri: vscode.Uri): Promise<boolean> {
     try {
       await vscode.workspace.fs.stat(uri);
@@ -159,6 +224,22 @@ export class AssignmentFileRepository {
       throw error;
     }
   }
+}
+
+function isMatchingMetadata(
+  value: unknown,
+  assignment: ProgrammingAssignment,
+): value is AssignmentMetadata {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+
+  const metadata = value as Record<string, unknown>;
+  return metadata.schemaVersion === 1 &&
+    metadata.exerciseUuid === assignment.exerciseUuid &&
+    metadata.exerciseType === PROGRAMMING_EXERCISE_TYPE &&
+    metadata.courseSlug === assignment.courseSlug &&
+    metadata.courseInstanceId === assignment.courseInstanceId;
 }
 
 function sanitizeFolderName(value: string, fallback: string): string {
