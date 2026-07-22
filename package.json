@@ -1,13 +1,43 @@
 {
   "name": "aalto-fitech-code",
   "displayName": "Aalto Fitech Platform",
-  "description": "WIP",
+  "description": "Browse Aalto/FITech courses, download programming assignments, and view grader feedback in VS Code.",
   "version": "0.0.1",
+  "publisher": "manh-bui",
+  "author": {
+    "name": "Aalto Fitech Platform extension contributors"
+  },
+  "license": "UNLICENSED",
+  "preview": true,
+  "pricing": "Free",
+  "icon": "media/aalto-fitech-marketplace.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/manh-bui/aalto-fitech-code.git"
+  },
+  "homepage": "https://github.com/manh-bui/aalto-fitech-code#readme",
+  "bugs": {
+    "url": "https://github.com/manh-bui/aalto-fitech-code/issues"
+  },
+  "galleryBanner": {
+    "color": "#202124",
+    "theme": "dark"
+  },
   "engines": {
     "vscode": "^1.125.0"
   },
   "categories": [
+    "Education",
     "Other"
+  ],
+  "keywords": [
+    "Aalto",
+    "FITech",
+    "education",
+    "courses",
+    "assignments",
+    "learning platform",
+    "grader"
   ],
   "activationEvents": [
     "onCommand:aaltoFitechPlatform.checkPlatformStatus",
@@ -28,7 +58,7 @@
         {
           "id": "aaltoFitechPlatform",
           "title": "Aalto Fitech Platform",
-          "icon": "media/wsd-platform.svg"
+          "icon": "media/aalto-fitech-platform.svg"
         }
       ]
     },
@@ -226,12 +256,14 @@
         "aaltoFitechPlatform.apiBaseUrl": {
           "type": "string",
           "default": "http://localhost:8842/api",
-          "description": "Base URL of the Fitech platform API."
+          "scope": "machine",
+          "description": "Base URL of the Aalto/FITech platform API. Use the local URL only for development."
         },
         "aaltoFitechPlatform.useMockApi": {
           "type": "boolean",
           "default": true,
-          "description": "Use mock platform data instead of the real API."
+          "scope": "machine",
+          "description": "Use built-in demonstration data instead of contacting the configured platform API. Intended for extension development only."
         }
       }
     }
