@@ -1,6 +1,7 @@
 import { ApiClient } from '../../infrastructure/apiClient';
 import {
   AssignmentSubmission,
+  ExerciseSubmissionHistoryEntry,
   ExerciseSubmissionSummary,
   GRADING_STATUS_PROCESSED,
   SubmissionResponse,
@@ -10,6 +11,10 @@ import {
 export interface SubmissionRepository {
   submit(submission: AssignmentSubmission): Promise<SubmissionResponse>;
   getStatus(submissionUuid: string): Promise<SubmissionStatus>;
+  getHistory(
+    exerciseUuid: string,
+    courseInstanceId: number,
+  ): Promise<ExerciseSubmissionHistoryEntry[]>;
   hasPassed(
     exerciseUuid: string,
     courseInstanceId: number | null,
@@ -67,6 +72,33 @@ export class ApiSubmissionRepository implements SubmissionRepository {
 
     return submissions.some((submission) => submission.correct === true);
   }
+
+  public async getHistory(
+    exerciseUuid: string,
+    courseInstanceId: number,
+  ): Promise<ExerciseSubmissionHistoryEntry[]> {
+    const query = new URLSearchParams({
+      instanceId: String(courseInstanceId),
+    });
+    const submissions = await this.apiClient.get<unknown>(
+      `/submissions/${encodeURIComponent(exerciseUuid)}?${query.toString()}`,
+    );
+
+    if (!isExerciseSubmissionHistoryResponse(submissions)) {
+      throw new Error('The platform returned invalid submission history.');
+    }
+
+    return submissions.map((submission) => ({
+      submissionUuid: submission.uuid,
+      submittedAt: submission.created_at,
+      status: {
+        correct: submission.correct,
+        gradingStatus: submission.grading_status,
+        gradingData: submission.grading_data,
+      },
+    })).sort((first, second) =>
+      Date.parse(second.submittedAt) - Date.parse(first.submittedAt));
+  }
 }
 
 export class MockSubmissionRepository implements SubmissionRepository {
@@ -88,6 +120,13 @@ export class MockSubmissionRepository implements SubmissionRepository {
     };
   }
 
+  public async getHistory(
+    _exerciseUuid: string,
+    _courseInstanceId: number,
+  ): Promise<ExerciseSubmissionHistoryEntry[]> {
+    return [];
+  }
+
   public async hasPassed(
     _exerciseUuid: string,
     _courseInstanceId: number | null,
@@ -107,6 +146,34 @@ function isExerciseSubmissionSummaries(
     return typeof submission.uuid === 'string' &&
       typeof submission.created_at === 'string' &&
       (submission.correct === null || typeof submission.correct === 'boolean');
+  });
+}
+
+interface ExerciseSubmissionHistoryResponse {
+  uuid: string;
+  created_at: string;
+  correct: boolean | null;
+  grading_status: string;
+  grading_data: Record<string, unknown> | null;
+}
+
+function isExerciseSubmissionHistoryResponse(
+  value: unknown,
+): value is ExerciseSubmissionHistoryResponse[] {
+  return Array.isArray(value) && value.every((item) => {
+    if (typeof item !== 'object' || item === null || Array.isArray(item)) {
+      return false;
+    }
+    const submission = item as Record<string, unknown>;
+    return typeof submission.uuid === 'string' &&
+      typeof submission.created_at === 'string' &&
+      !Number.isNaN(Date.parse(submission.created_at)) &&
+      (submission.correct === null ||
+        typeof submission.correct === 'boolean') &&
+      typeof submission.grading_status === 'string' &&
+      (submission.grading_data === null ||
+        (typeof submission.grading_data === 'object' &&
+          !Array.isArray(submission.grading_data)));
   });
 }
 

@@ -25,6 +25,19 @@ export class SubmissionHistoryRepository {
     await this.state.update(STORAGE_KEY, entries);
   }
 
+  public async merge(entries: SubmissionHistoryEntry[]): Promise<void> {
+    const merged = new Map(
+      this.read().map((entry) => [entry.submissionUuid, entry]),
+    );
+    entries.forEach((entry) => merged.set(entry.submissionUuid, entry));
+
+    const sortedEntries = [...merged.values()]
+      .sort((first, second) =>
+        Date.parse(second.submittedAt) - Date.parse(first.submittedAt))
+      .slice(0, MAX_HISTORY_ENTRIES);
+    await this.state.update(STORAGE_KEY, sortedEntries);
+  }
+
   public async updateStatus(
     submissionUuid: string,
     status: SubmissionStatus,

@@ -313,6 +313,7 @@ suite('Courses', () => {
         gradingStatus: 'PROCESSED',
         gradingData: null,
       }),
+      getHistory: async () => [],
       hasPassed: async () => passed,
     };
     const { provider, sessionRepository } = createProvider(

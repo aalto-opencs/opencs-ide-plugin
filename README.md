@@ -23,7 +23,8 @@ Currently implemented:
 - safe ZIP extraction with path, size, and overwrite protection
 - generated `assignment-handout.md` and assignment metadata
 - authenticated source-file submission and grader-status polling
-- persistent per-user submission history
+- backend-synchronized submission history for the selected course and version
+- persistent per-user local submission cache for offline fallback
 - passed, failed, pending, and grader-error states
 - failed-test details in read-only VS Code documents
 - assignment, chapter, and part completion indicators
@@ -34,7 +35,7 @@ Currently implemented:
 Still planned:
 
 - production-grade authentication to replace direct UUID entry
-- backend-synchronized submission history across machines and installations
+- synchronization of submissions from courses other than the current selection
 - final submission file-selection rules for each supported language
 - permitted public-test support
 - backend-driven next-assignment and progression guidance
@@ -118,14 +119,15 @@ moved to a timestamped backup before a fresh starter copy is created.
 
 ### Submissions
 
-The Submissions view shows the two newest local extension submissions and groups
-older entries under **Past Submissions**. Rows start collapsed and display
-pending, passed, failed, or grader-error status.
+The Submissions view synchronizes the selected course/version from the backend,
+shows the two newest submissions, and groups older entries under **Past
+Submissions**. Rows start collapsed and display pending, passed, failed, or
+grader-error status.
 
 Failed tests are direct children of a submission. Selecting a failed test opens
 its complete error output in a read-only Markdown document. Submission history
-is currently local to this extension installation; backend synchronization is a
-planned feature.
+is cached per student so previously loaded results remain available if a later
+refresh cannot reach the backend.
 
 ## Commands
 

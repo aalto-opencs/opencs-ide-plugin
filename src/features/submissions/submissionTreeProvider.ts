@@ -6,6 +6,7 @@ import {
   SubmissionHistoryEntry,
 } from './submissionModels';
 import { SubmissionHistoryRepository } from './submissionHistoryRepository';
+import { SubmissionHistorySyncService } from './submissionHistorySyncService';
 import { SubmissionRepository } from './submissionRepository';
 import { SubmissionDetailsDocument } from './submissionDetailsProvider';
 import {
@@ -33,6 +34,7 @@ export class SubmissionTreeProvider implements
     private readonly historyRepository: SubmissionHistoryRepository,
     private readonly submissionRepository: SubmissionRepository,
     private readonly onAssignmentCompleted: () => void,
+    private readonly historySyncService?: SubmissionHistorySyncService,
   ) {}
 
   public refresh(): void {
@@ -55,7 +57,19 @@ export class SubmissionTreeProvider implements
       return [createMessageItem('Sign in to view submissions', 'sign-in')];
     }
 
+    const selection = this.historySyncService?.getSelectedCourse(
+      session.student.id,
+    );
+    await this.historySyncService
+      ?.synchronizeSelectedCourse(session.student.id)
+      .catch(() => undefined);
+
     let entries = this.historyRepository.getForUser(session.student.id);
+    if (selection) {
+      entries = entries.filter((entry) =>
+        entry.courseSlug === selection.courseSlug &&
+        entry.courseInstanceId === selection.courseInstanceId);
+    }
     await Promise.all(entries
       .filter((entry) =>
         entry.status.gradingStatus === GRADING_STATUS_PENDING)
@@ -74,6 +88,11 @@ export class SubmissionTreeProvider implements
         }
       }));
     entries = this.historyRepository.getForUser(session.student.id);
+    if (selection) {
+      entries = entries.filter((entry) =>
+        entry.courseSlug === selection.courseSlug &&
+        entry.courseInstanceId === selection.courseInstanceId);
+    }
     if (entries.length === 0) {
       return [createMessageItem('No assignments submitted yet', 'info')];
     }

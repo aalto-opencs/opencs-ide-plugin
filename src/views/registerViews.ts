@@ -14,6 +14,7 @@ import {
   SubmissionDetailsProvider,
 } from '../features/submissions/submissionDetailsProvider';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
+import { SubmissionHistorySyncService } from '../features/submissions/submissionHistorySyncService';
 
 export class AccountTreeProvider implements
   vscode.TreeDataProvider<vscode.TreeItem>,
@@ -116,6 +117,12 @@ export function registerViews(
     submissionHistoryRepository,
     submissionRepository,
     () => courseTreeProvider.refresh(),
+    new SubmissionHistorySyncService(
+      courseMaterialService,
+      courseSelectionRepository,
+      submissionRepository,
+      submissionHistoryRepository,
+    ),
   );
   const submissionDetailsProvider = new SubmissionDetailsProvider();
 

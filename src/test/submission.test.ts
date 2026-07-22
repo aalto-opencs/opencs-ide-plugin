@@ -10,8 +10,11 @@ import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
+import { CourseMaterialService } from '../features/courseMaterials/courseMaterialService';
+import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { SubmissionFileRepository } from '../features/submissions/submissionFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
+import { SubmissionHistorySyncService } from '../features/submissions/submissionHistorySyncService';
 import {
   GRADING_STATUS_ERROR,
   GRADING_STATUS_PENDING,
@@ -260,6 +263,123 @@ suite('Assignment submission', () => {
     } finally {
       await server.close();
     }
+  });
+
+  test('maps backend submission history and its grader details', async () => {
+    let requestedPath = '';
+    const server = await startTestHttpServer((request, response) => {
+      requestedPath = request.url ?? '';
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify([{
+        uuid: '22222222-2222-4222-8222-222222222222',
+        created_at: '2026-07-22T10:00:00.000Z',
+        correct: false,
+        grading_status: GRADING_STATUS_PROCESSED,
+        grading_data: {
+          testResults: [{
+            testName: 'Shows the heading',
+            passed: false,
+            error: 'Expected one heading',
+          }],
+        },
+      }]));
+    });
+
+    try {
+      const repository = new ApiSubmissionRepository(
+        new ApiClient(server.baseUrl),
+      );
+      const history = await repository.getHistory(
+        '11111111-1111-4111-8111-111111111111',
+        42,
+      );
+
+      assert.strictEqual(
+        requestedPath,
+        '/submissions/11111111-1111-4111-8111-111111111111?instanceId=42',
+      );
+      assert.strictEqual(history.length, 1);
+      assert.strictEqual(history[0].status.correct, false);
+      assert.deepStrictEqual(history[0].status.gradingData?.testResults, [{
+        testName: 'Shows the heading',
+        passed: false,
+        error: 'Expected one heading',
+      }]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('synchronizes programming submissions for the selected course', async () => {
+    const state = new InMemoryMemento();
+    const selections = new CourseSelectionRepository(state);
+    const history = new SubmissionHistoryRepository(state);
+    const requestedExercises: string[] = [];
+    await selections.saveSelection(7, {
+      courseSlug: 'web-software-development',
+      courseInstanceId: 42,
+    });
+    const repository = createStatusRepository(
+      async () => ({
+        correct: true,
+        gradingStatus: GRADING_STATUS_PROCESSED,
+        gradingData: null,
+      }),
+      async (exerciseUuid) => {
+        requestedExercises.push(exerciseUuid);
+        return [{
+          submissionUuid: '22222222-2222-4222-8222-222222222222',
+          submittedAt: '2026-07-22T10:00:00.000Z',
+          status: {
+            correct: true,
+            gradingStatus: GRADING_STATUS_PROCESSED,
+            gradingData: { testResults: [] },
+          },
+        }];
+      },
+    );
+    const service = new SubmissionHistorySyncService(
+      new CourseMaterialService({
+        getStructure: async () => [{
+          slug: 'part-1',
+          name: 'Part 1',
+          order: 1,
+          chapters: [{
+            name: 'Chapter 1',
+            order: 1,
+            exercises: [{
+              exerciseUuid: '11111111-1111-4111-8111-111111111111',
+              name: 'Hello platform',
+              type: 'programming-exercise',
+              maxPoints: 5,
+              order: 1,
+            }, {
+              exerciseUuid: '33333333-3333-4333-8333-333333333333',
+              name: 'Questionnaire',
+              type: 'quiz',
+              maxPoints: 1,
+              order: 2,
+            }],
+          }],
+        }],
+      }),
+      selections,
+      repository,
+      history,
+    );
+
+    await service.synchronizeSelectedCourse(7);
+
+    assert.deepStrictEqual(requestedExercises, [
+      '11111111-1111-4111-8111-111111111111',
+    ]);
+    assert.deepStrictEqual(
+      history.getForUser(7).map((entry) => ({
+        name: entry.assignmentName,
+        correct: entry.status.correct,
+      })),
+      [{ name: 'Hello platform', correct: true }],
+    );
   });
 
   test('persists submission results for the submissions view', async () => {
@@ -569,12 +689,14 @@ suite('Assignment submission', () => {
 
 function createStatusRepository(
   getStatus: (submissionUuid: string) => Promise<SubmissionStatus>,
+  getHistory: SubmissionRepository['getHistory'] = async () => [],
 ): SubmissionRepository {
   return {
     submit: async () => ({
       submissionUuid: '22222222-2222-4222-8222-222222222222',
     }),
     getStatus,
+    getHistory,
     hasPassed: async () => false,
   };
 }

@@ -31,6 +31,12 @@ export interface ExerciseSubmissionSummary {
   correct: boolean | null;
 }
 
+export interface ExerciseSubmissionHistoryEntry {
+  submissionUuid: string;
+  submittedAt: string;
+  status: SubmissionStatus;
+}
+
 export interface SubmissionHistoryEntry {
   schemaVersion: 1;
   userId: number;
