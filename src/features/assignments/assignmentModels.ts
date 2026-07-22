@@ -29,4 +29,5 @@ export interface AssignmentMetadata {
 export interface DownloadedAssignment {
   folder: vscode.Uri;
   handoutFilename: string;
+  mainFile: vscode.Uri;
 }

@@ -148,22 +148,25 @@ export class AssignmentController {
 
       const action = await vscode.window.showInformationMessage(
         `Downloaded ${assignment.name}.`,
-        'Add to Workspace',
-        'Open in New Window',
+        'Open Assignment Folder',
       );
 
-      await this.handleOpenAction(action, downloaded.folder, assignment.name);
+      await this.handleOpenAction(
+        action,
+        this.downloadService.getCourseFolder(root, assignment),
+        downloaded.folder,
+        downloaded.mainFile,
+      );
     } catch (error: unknown) {
       if (error instanceof AssignmentAlreadyExistsError) {
         const action = await vscode.window.showWarningMessage(
           'This assignment folder already exists. Existing files were not changed.',
-          'Add Existing to Workspace',
-          'Open in New Window',
+          'Open Assignment Folder',
         );
         await this.handleOpenAction(
           action,
+          this.downloadService.getCourseFolder(root, assignment),
           error.folder,
-          assignment.name,
         );
         return;
       }
@@ -295,29 +298,38 @@ export class AssignmentController {
 
   private async handleOpenAction(
     action: string | undefined,
+    courseFolder: vscode.Uri,
     folder: vscode.Uri,
-    name: string,
+    mainFile?: vscode.Uri,
   ): Promise<void> {
-    if (action === 'Add to Workspace' || action === 'Add Existing to Workspace') {
-      const folders = vscode.workspace.workspaceFolders ?? [];
-      const alreadyAdded = folders.some((workspaceFolder) =>
-        workspaceFolder.uri.toString() === folder.toString());
-
-      if (!alreadyAdded) {
-        vscode.workspace.updateWorkspaceFolders(
-          folders.length,
-          0,
-          { uri: folder, name },
-        );
-      }
+    if (action !== 'Open Assignment Folder') {
       return;
     }
 
-    if (action === 'Open in New Window') {
-      await vscode.commands.executeCommand(
-        'vscode.openFolder',
-        folder,
-        { forceNewWindow: true },
+    try {
+      const folders = vscode.workspace.workspaceFolders ?? [];
+      const alreadyAdded = folders.some((workspaceFolder) =>
+        workspaceFolder.uri.toString() === courseFolder.toString());
+      if (!alreadyAdded) {
+        const courseName = courseFolder.path.split('/')
+          .filter(Boolean)
+          .at(-1) ?? 'Aalto Fitech Course';
+        vscode.workspace.updateWorkspaceFolders(
+          folders.length,
+          0,
+          { uri: courseFolder, name: courseName },
+        );
+      }
+
+      const file = mainFile ??
+        await this.downloadService.getPreferredOpenFile(folder);
+      const document = await vscode.workspace.openTextDocument(file);
+      await vscode.window.showTextDocument(document, { preview: false });
+      await vscode.commands.executeCommand('workbench.view.explorer');
+      await vscode.commands.executeCommand('revealInExplorer', file);
+    } catch {
+      await vscode.window.showErrorMessage(
+        'The assignment was downloaded, but VS Code could not open it.',
       );
     }
   }

@@ -124,8 +124,19 @@ suite('Assignment download', () => {
         'web-software-development',
       );
       assert.strictEqual(
+        service.getCourseFolder(
+          vscode.Uri.file(root),
+          assignment,
+        ).fsPath,
+        dirname(downloaded.folder.fsPath),
+      );
+      assert.strictEqual(
         downloaded.handoutFilename,
         'assignment-handout.md',
+      );
+      assert.strictEqual(
+        downloaded.mainFile.fsPath,
+        join(downloaded.folder.fsPath, 'src', 'index.ts'),
       );
       assert.strictEqual(
         await readFile(

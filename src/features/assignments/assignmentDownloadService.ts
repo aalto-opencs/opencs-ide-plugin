@@ -57,11 +57,22 @@ export class AssignmentDownloadService {
     return this.fileRepository.getAssignmentFolder(root, assignment);
   }
 
+  public getCourseFolder(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): vscode.Uri {
+    return this.fileRepository.getCourseFolder(root, assignment);
+  }
+
   public isDownloaded(
     root: vscode.Uri,
     assignment: ProgrammingAssignment,
   ): Promise<boolean> {
     return this.fileRepository.isDownloadedAssignment(root, assignment);
+  }
+
+  public getPreferredOpenFile(folder: vscode.Uri): Promise<vscode.Uri> {
+    return this.fileRepository.getPreferredOpenFile(folder);
   }
 
   public backup(

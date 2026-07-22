@@ -11,3 +11,5 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added persistent per-student caches and visible offline fallback states.
 - Added screen-reader labels for tree rows whose state is represented visually.
 - Added Marketplace metadata, platform icon assets, and cross-platform CI.
+- Improved downloaded-assignment opening so Explorer shows its full hierarchy
+  and the likely starter entry file.

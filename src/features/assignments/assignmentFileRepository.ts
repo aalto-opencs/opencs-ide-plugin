@@ -14,6 +14,14 @@ const MAX_EXTRACTED_BYTES = 50 * 1024 * 1024;
 const MAX_ARCHIVE_FILES = 500;
 const METADATA_FILENAME = '.aalto-fitech-assignment.json';
 const HANDOUT_FILENAME = 'assignment-handout.md';
+const SOURCE_FILE_EXTENSIONS = new Set([
+  'c', 'cc', 'cpp', 'cs', 'css', 'dart', 'go', 'h', 'hpp', 'html', 'java',
+  'js', 'jsx', 'kt', 'kts', 'php', 'py', 'r', 'rb', 'rs', 'scala', 'scss',
+  'sh', 'sql', 'svelte', 'swift', 'ts', 'tsx', 'vue',
+]);
+const IGNORED_OPEN_FOLDERS = new Set([
+  'build', 'coverage', 'dist', 'node_modules', 'target',
+]);
 
 export class AssignmentAlreadyExistsError extends Error {
   public constructor(public readonly folder: vscode.Uri) {
@@ -27,9 +35,18 @@ export class AssignmentFileRepository {
     assignment: ProgrammingAssignment,
   ): vscode.Uri {
     return vscode.Uri.joinPath(
+      this.getCourseFolder(root, assignment),
+      sanitizeFolderName(assignment.name, assignment.exerciseUuid),
+    );
+  }
+
+  public getCourseFolder(
+    root: vscode.Uri,
+    assignment: ProgrammingAssignment,
+  ): vscode.Uri {
+    return vscode.Uri.joinPath(
       root,
       sanitizeFolderName(assignment.courseSlug, 'course'),
-      sanitizeFolderName(assignment.name, assignment.exerciseUuid),
     );
   }
 
@@ -43,10 +60,7 @@ export class AssignmentFileRepository {
       throw new Error('The starter archive is too large to download safely.');
     }
 
-    const courseFolder = vscode.Uri.joinPath(
-      root,
-      sanitizeFolderName(assignment.courseSlug, 'course'),
-    );
+    const courseFolder = this.getCourseFolder(root, assignment);
     const assignmentFolder = this.getAssignmentFolder(root, assignment);
 
     if (await this.exists(assignmentFolder)) {
@@ -142,6 +156,7 @@ export class AssignmentFileRepository {
       return {
         folder: assignmentFolder,
         handoutFilename: HANDOUT_FILENAME,
+        mainFile: await this.getPreferredOpenFile(assignmentFolder),
       };
     } catch (error: unknown) {
       if (temporaryFolderCreated) {
@@ -177,6 +192,15 @@ export class AssignmentFileRepository {
       }
       throw error;
     }
+  }
+
+  public async getPreferredOpenFile(folder: vscode.Uri): Promise<vscode.Uri> {
+    const paths: string[][] = [];
+    await this.collectFiles(folder, [], paths);
+    const preferredPath = selectPreferredSourcePath(paths) ?? [
+      HANDOUT_FILENAME,
+    ];
+    return vscode.Uri.joinPath(folder, ...preferredPath);
   }
 
   public async backupDownloadedAssignment(
@@ -224,6 +248,73 @@ export class AssignmentFileRepository {
       throw error;
     }
   }
+
+  private async collectFiles(
+    folder: vscode.Uri,
+    parentSegments: string[],
+    paths: string[][],
+  ): Promise<void> {
+    const entries = await vscode.workspace.fs.readDirectory(folder);
+    entries.sort(([first], [second]) => first.localeCompare(second));
+
+    for (const [name, type] of entries) {
+      if (name.startsWith('.')) {
+        continue;
+      }
+      const segments = [...parentSegments, name];
+      if (type === vscode.FileType.Directory) {
+        if (IGNORED_OPEN_FOLDERS.has(name.toLowerCase())) {
+          continue;
+        }
+        await this.collectFiles(
+          vscode.Uri.joinPath(folder, name),
+          segments,
+          paths,
+        );
+      } else if (type === vscode.FileType.File) {
+        paths.push(segments);
+      }
+    }
+  }
+}
+
+function selectPreferredSourcePath(paths: string[][]): string[] | undefined {
+  return paths
+    .filter((segments) => {
+      const filename = segments.at(-1)?.toLowerCase() ?? '';
+      const extension = filename.split('.').at(-1) ?? '';
+      return filename !== HANDOUT_FILENAME &&
+        SOURCE_FILE_EXTENSIONS.has(extension);
+    })
+    .sort((first, second) => {
+      const priorityDifference = getSourceFilePriority(first) -
+        getSourceFilePriority(second);
+      if (priorityDifference !== 0) {
+        return priorityDifference;
+      }
+      if (first.length !== second.length) {
+        return first.length - second.length;
+      }
+      return first.join('/').localeCompare(second.join('/'));
+    })[0];
+}
+
+function getSourceFilePriority(segments: string[]): number {
+  const filename = segments.at(-1)?.toLowerCase() ?? '';
+  const stem = filename.split('.')[0];
+  if (filename === 'index.html') {
+    return 0;
+  }
+  if (stem === 'main') {
+    return 1;
+  }
+  if (stem === 'index') {
+    return 2;
+  }
+  if (stem === 'app') {
+    return 3;
+  }
+  return 4;
 }
 
 function isMatchingMetadata(

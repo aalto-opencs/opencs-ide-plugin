@@ -118,6 +118,11 @@ Assignment actions depend on local and backend state:
 Redownload never silently overwrites student work. The existing assignment is
 moved to a timestamped backup before a fresh starter copy is created.
 
+After a download, **Open Assignment Folder** adds the course-slug folder inside
+the selected assignment root to the current workspace, opens the most likely
+starter entry file, and reveals that file in Explorer. The assignment folder
+therefore remains visible and expanded instead of becoming an isolated root.
+
 ### Submissions
 
 The Submissions view synchronizes the selected course/version from the backend,
