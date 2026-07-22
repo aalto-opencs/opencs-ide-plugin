@@ -6,4 +6,8 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 
 ## [Unreleased]
 
-- Initial release
+- Added native Account, Courses, and Submissions workflows.
+- Added programming-assignment download, submission, and grader feedback.
+- Added persistent per-student caches and visible offline fallback states.
+- Added screen-reader labels for tree rows whose state is represented visually.
+- Added Marketplace metadata, platform icon assets, and cross-platform CI.

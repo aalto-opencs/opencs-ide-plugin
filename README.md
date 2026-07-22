@@ -25,6 +25,7 @@ Currently implemented:
 - authenticated source-file submission and grader-status polling
 - backend-synchronized submission history for the selected course and version
 - persistent per-user local submission cache for offline fallback
+- persistent course, structure, and completion caches with visible offline state
 - passed, failed, pending, and grader-error states
 - failed-test details in read-only VS Code documents
 - assignment, chapter, and part completion indicators
@@ -129,6 +130,20 @@ its complete error output in a read-only Markdown document. Submission history
 is cached per student so previously loaded results remain available if a later
 refresh cannot reach the backend.
 
+## Reliability and offline behavior
+
+The Courses view caches the last successfully loaded enrolments, selected-course
+structure, and assignment completion states per student. If a later API request
+fails, the view keeps the cached course usable and labels its description as
+**Cached**. A visible offline message explains that Refresh retries the backend.
+
+The Submissions view follows the same pattern: cached results remain visible
+when history or pending-status refreshes fail, and Refresh Submissions retries
+the request. Invalid cached structures are ignored instead of being trusted.
+
+The activity-bar icon reuses the platform's official favicon mark and adapts to
+the active VS Code foreground color.
+
 ## Commands
 
 Primary commands are available from the Command Palette or contextual view
@@ -148,13 +163,96 @@ when they are relevant to the selected tree item.
 
 ## Configuration
 
-| Setting | Default | Description |
-| --- | --- | --- |
-| `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL of the platform API. |
-| `aaltoFitechPlatform.useMockApi` | `true` | Uses mock platform repositories instead of the real API. |
+Open **Settings**, search for `Aalto Fitech Platform`, and change these
+machine-specific settings. They can also be placed in VS Code's user
+`settings.json`.
 
-Set `aaltoFitechPlatform.useMockApi` to `false` in the Extension Development
-Host to test the real local backend.
+| Setting | Default | Development use |
+| --- | --- | --- |
+| `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL including the backend's `/api` path. |
+| `aaltoFitechPlatform.useMockApi` | `true` | Uses built-in Demo Student data and makes no platform API requests. |
+
+To use the local backend, set:
+
+```json
+{
+  "aaltoFitechPlatform.apiBaseUrl": "http://localhost:8842/api",
+  "aaltoFitechPlatform.useMockApi": false
+}
+```
+
+Reload the Extension Development Host after changing `useMockApi`, because the
+repository implementations are selected when the extension activates.
+
+Before a public release, the manifest defaults must be changed to the approved
+HTTPS production API URL and `useMockApi: false`. A production URL has not yet
+been approved, so the current defaults remain development-only.
+
+### Stored data and network use
+
+- The session is kept in VS Code `SecretStorage`.
+- The selected assignment folder, selected course/version, course cache, and
+  submission history are stored per platform student in VS Code global state.
+- Downloaded assignments remain in the folder selected by the student.
+- Student source files are sent to the configured platform only when the
+  student explicitly runs **Submit Assignment**.
+- Sign Out removes the session but intentionally keeps per-student selections
+  and caches. Development builds provide **Reset all extension test data** for
+  a completely clean test state.
+
+## Troubleshooting
+
+### Demo Student appears instead of the signed-in account
+
+Set `aaltoFitechPlatform.useMockApi` to `false`, then reload the Extension
+Development Host. The mock/real choice is made only during activation.
+
+### Platform offline - retry later
+
+The extension is showing the last successfully cached course or submission
+data. Check that `apiBaseUrl` includes `/api`, start the backend and grader if
+needed, then run **Refresh Courses** or **Refresh Submissions**. If no cache
+exists yet, the affected view remains unavailable until the API responds.
+
+### Invalid user identifier
+
+UUID sign-in is prototype-only. Use the UUID of a registered, non-anonymous
+platform user that has an email address, and make sure the real API is enabled.
+
+### A course or assignment is missing
+
+Confirm that the student is enrolled, an assignment folder is selected, and
+the intended course version is active. Only programming assignments are shown.
+Use **Change Course** or **Refresh Courses** after backend data changes.
+
+### The assignment folder was moved or deleted
+
+Run **Select Assignment Folder** again from the Account view toolbar. Existing
+downloads are recognized only when their extension metadata is still present.
+
+### A submission remains pending or grading fails
+
+The extension displays status reported by the backend; it does not run the
+grader itself. Verify the backend/grader services, then refresh Submissions.
+Previously synchronized results remain available from the local cache.
+
+### Resetting local extension data during development
+
+Use the **Aalto Fitech Test Tools** status-bar item and select **Reset all
+extension test data**. This signs out and clears extension storage, but does not
+delete downloaded assignment files or backend records.
+
+## Accessibility
+
+The extension uses native VS Code tree views, Quick Picks, notifications,
+folder pickers, and text editors so it inherits VS Code keyboard navigation,
+focus handling, zoom, high-contrast themes, and screen-reader support. Tree rows
+include explicit accessible names for account fields, download/completion
+states, submission states, and failed tests; information is not conveyed by
+color alone. Failed-test output opens as selectable text in a native editor.
+
+The code-level review and remaining manual release checks are documented in
+[`docs/accessibility-review.md`](docs/accessibility-review.md).
 
 ## Development
 
@@ -166,6 +264,7 @@ npm run check-types
 npm run lint
 npm run compile
 npm test
+npm run package
 ```
 
 Open the project in VS Code and press `F5` to start an Extension Development
@@ -176,11 +275,20 @@ simulate assignment completion or reset all extension test data. Overrides are
 kept in memory, and the production build compiles all development-test tools
 out of the bundle.
 
-Create a production bundle with:
+GitHub Actions runs the same checks on Linux, macOS, and Windows. Linux tests
+run under Xvfb because VS Code's Electron test host requires a display.
 
-```bash
-npm run package
-```
+## Release preparation
+
+The extension is marked **Preview**, uses the GitHub repository owner
+`manh-bui` as the provisional Marketplace publisher, and is currently
+`UNLICENSED`. Before publishing, confirm that the matching Visual Studio
+Marketplace publisher exists, obtain an approved project license, approve the
+production API URL, disable mock mode by default, and run the manual
+accessibility checks documented above.
+
+The Marketplace image is `media/aalto-fitech-marketplace.png` (256×256 PNG).
+The activity-bar version is a theme-aware SVG.
 
 ## Architecture
 
