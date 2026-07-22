@@ -115,13 +115,15 @@ Assignment actions depend on local and backend state:
 - completed: completed indicator plus local-folder and optional resubmission
   actions
 
-Redownload never silently overwrites student work. The existing assignment is
-moved to a timestamped backup before a fresh starter copy is created.
+Redownload requires an explicit destructive confirmation, then replaces the
+current assignment folder with a fresh starter copy. Student changes and added
+files in that folder are deleted, and no persistent backup is created.
 
-After a download, **Open Assignment Folder** adds the course-slug folder inside
-the selected assignment root to the current workspace, opens the most likely
-starter entry file, and reveals that file in Explorer. The assignment folder
-therefore remains visible and expanded instead of becoming an isolated root.
+After a download or redownload, **Open Assignment Folder** adds the course-slug
+folder inside the selected assignment root to the current workspace, opens the
+most likely starter entry file, and reveals that file in Explorer. The
+assignment folder therefore remains visible and expanded instead of becoming
+an isolated root.
 
 ### Submissions
 

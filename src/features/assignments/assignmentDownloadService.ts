@@ -16,6 +16,7 @@ export class AssignmentDownloadService {
   public async download(
     assignment: ProgrammingAssignment,
     root: vscode.Uri,
+    overwrite = false,
   ): Promise<DownloadedAssignment> {
     if (assignment.type !== PROGRAMMING_EXERCISE_TYPE) {
       throw new Error('Only programming assignments can be downloaded.');
@@ -47,6 +48,7 @@ export class AssignmentDownloadService {
       assignment,
       starter,
       archive,
+      overwrite,
     );
   }
 
@@ -75,22 +77,4 @@ export class AssignmentDownloadService {
     return this.fileRepository.getPreferredOpenFile(folder);
   }
 
-  public backup(
-    assignment: ProgrammingAssignment,
-    root: vscode.Uri,
-  ): Promise<vscode.Uri> {
-    return this.fileRepository.backupDownloadedAssignment(root, assignment);
-  }
-
-  public restoreBackup(
-    backup: vscode.Uri,
-    assignment: ProgrammingAssignment,
-    root: vscode.Uri,
-  ): Promise<void> {
-    return this.fileRepository.restoreAssignmentBackup(
-      backup,
-      root,
-      assignment,
-    );
-  }
 }

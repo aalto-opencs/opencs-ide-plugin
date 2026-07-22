@@ -202,40 +202,32 @@ export class AssignmentController {
       {
         modal: true,
         detail: [
-          'A fresh starter copy will be downloaded.',
+          'This will overwrite the current assignment folder with a fresh starter copy.',
           '',
-          'Your current assignment folder will be kept beside it as a backup.',
+          'All changes and additional files inside the current folder will be permanently deleted.',
         ].join('\n'),
       },
-      'Redownload',
+      'Overwrite and Redownload',
     );
-    if (action !== 'Redownload') {
+    if (action !== 'Overwrite and Redownload') {
       return;
     }
 
-    let backup: vscode.Uri | undefined;
-    let downloaded: DownloadedAssignment | undefined;
+    let downloaded: DownloadedAssignment;
     try {
-      backup = await this.downloadService.backup(
-        assignment,
-        location.root,
-      );
       downloaded = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: `Redownloading ${assignment.name}`,
           cancellable: false,
         },
-        () => this.downloadService.download(assignment, location.root),
-      );
-    } catch (error: unknown) {
-      if (backup) {
-        await this.downloadService.restoreBackup(
-          backup,
+        () => this.downloadService.download(
           assignment,
           location.root,
-        ).catch(() => undefined);
-      }
+          true,
+        ),
+      );
+    } catch (error: unknown) {
       onDownloaded();
       await vscode.window.showErrorMessage(
         error instanceof Error
@@ -245,24 +237,17 @@ export class AssignmentController {
       return;
     }
 
-    if (!backup || !downloaded) {
-      return;
-    }
-
     onDownloaded();
     const openAction = await vscode.window.showInformationMessage(
-      `Redownloaded ${assignment.name}. Your previous work was saved in ${backup.fsPath}.`,
-      'Show New Folder',
-      'Show Backup',
+      `Redownloaded ${assignment.name}.`,
+      'Open Assignment Folder',
     );
-    if (openAction === 'Show New Folder') {
-      await vscode.commands.executeCommand(
-        'revealFileInOS',
-        downloaded.folder,
-      );
-    } else if (openAction === 'Show Backup') {
-      await vscode.commands.executeCommand('revealFileInOS', backup);
-    }
+    await this.handleOpenAction(
+      openAction,
+      this.downloadService.getCourseFolder(location.root, assignment),
+      downloaded.folder,
+      downloaded.mainFile,
+    );
   }
 
   private async getDownloadedAssignmentLocation(

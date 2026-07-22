@@ -13,3 +13,5 @@ Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how 
 - Added Marketplace metadata, platform icon assets, and cross-platform CI.
 - Improved downloaded-assignment opening so Explorer shows its full hierarchy
   and the likely starter entry file.
+- Changed redownload to warn before replacing the current assignment without a
+  persistent backup.

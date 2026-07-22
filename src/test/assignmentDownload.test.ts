@@ -1,5 +1,5 @@
 import * as assert from 'assert';
-import { mkdtemp, readFile, rm, writeFile } from 'fs/promises';
+import { mkdtemp, readFile, readdir, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { basename, dirname, join } from 'path';
 import JSZip = require('jszip');
@@ -198,7 +198,7 @@ suite('Assignment download', () => {
     }
   });
 
-  test('keeps student work in a backup when redownloading', async () => {
+  test('overwrites student work when redownloading', async () => {
     const root = await createTemporaryRoot();
 
     try {
@@ -215,20 +215,17 @@ suite('Assignment download', () => {
         join(downloaded.folder.fsPath, 'src', 'index.ts'),
         'student work\n',
       );
-
-      const backup = await service.backup(
-        assignment,
-        vscode.Uri.file(root),
+      await writeFile(
+        join(downloaded.folder.fsPath, 'student-notes.txt'),
+        'remove me\n',
       );
+
       const freshDownload = await service.download(
         assignment,
         vscode.Uri.file(root),
+        true,
       );
 
-      assert.strictEqual(
-        await readFile(join(backup.fsPath, 'src', 'index.ts'), 'utf8'),
-        'student work\n',
-      );
       assert.strictEqual(
         await readFile(
           join(freshDownload.folder.fsPath, 'src', 'index.ts'),
@@ -236,7 +233,48 @@ suite('Assignment download', () => {
         ),
         'export const answer = 42;\n',
       );
-      assert.match(basename(backup.fsPath), /^hello-web-backup-/);
+      await assert.rejects(
+        readFile(join(freshDownload.folder.fsPath, 'student-notes.txt')),
+        { code: 'ENOENT' },
+      );
+      assert.deepStrictEqual(
+        await readdir(dirname(freshDownload.folder.fsPath)),
+        ['hello-web'],
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('preserves student work when a replacement cannot be prepared', async () => {
+    const root = await createTemporaryRoot();
+
+    try {
+      const fileRepository = new AssignmentFileRepository();
+      const initialService = new AssignmentDownloadService(
+        createAssignmentRepository(await createStarterArchive()),
+        fileRepository,
+      );
+      const downloaded = await initialService.download(
+        assignment,
+        vscode.Uri.file(root),
+      );
+      const studentFile = join(downloaded.folder.fsPath, 'src', 'index.ts');
+      await writeFile(studentFile, 'student work\n');
+
+      const brokenReplacementService = new AssignmentDownloadService(
+        createAssignmentRepository(new Uint8Array([1, 2, 3])),
+        fileRepository,
+      );
+      await assert.rejects(
+        brokenReplacementService.download(
+          assignment,
+          vscode.Uri.file(root),
+          true,
+        ),
+      );
+
+      assert.strictEqual(await readFile(studentFile, 'utf8'), 'student work\n');
     } finally {
       await rm(root, { recursive: true, force: true });
     }

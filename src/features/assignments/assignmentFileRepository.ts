@@ -55,6 +55,7 @@ export class AssignmentFileRepository {
     assignment: ProgrammingAssignment,
     starter: ProgrammingExerciseStarter,
     archiveBytes: Uint8Array,
+    overwrite = false,
   ): Promise<DownloadedAssignment> {
     if (archiveBytes.byteLength > MAX_ARCHIVE_BYTES) {
       throw new Error('The starter archive is too large to download safely.');
@@ -63,7 +64,8 @@ export class AssignmentFileRepository {
     const courseFolder = this.getCourseFolder(root, assignment);
     const assignmentFolder = this.getAssignmentFolder(root, assignment);
 
-    if (await this.exists(assignmentFolder)) {
+    const assignmentExists = await this.exists(assignmentFolder);
+    if (assignmentExists && !overwrite) {
       throw new AssignmentAlreadyExistsError(assignmentFolder);
     }
 
@@ -82,6 +84,7 @@ export class AssignmentFileRepository {
       `.${assignmentFolder.path.split('/').at(-1)}.download-${randomUUID()}`,
     );
     let temporaryFolderCreated = false;
+    let replacedFolder: vscode.Uri | undefined;
 
     try {
       await vscode.workspace.fs.createDirectory(temporaryFolder);
@@ -147,11 +150,44 @@ export class AssignmentFileRepository {
         encodeText(`${JSON.stringify(metadata, null, 2)}\n`),
       );
 
-      await vscode.workspace.fs.rename(
-        temporaryFolder,
-        assignmentFolder,
-        { overwrite: false },
-      );
+      if (assignmentExists) {
+        replacedFolder = vscode.Uri.joinPath(
+          courseFolder,
+          `.${assignmentFolder.path.split('/').at(-1)}.replace-${randomUUID()}`,
+        );
+        await vscode.workspace.fs.rename(
+          assignmentFolder,
+          replacedFolder,
+          { overwrite: false },
+        );
+      }
+
+      try {
+        await vscode.workspace.fs.rename(
+          temporaryFolder,
+          assignmentFolder,
+          { overwrite: false },
+        );
+        temporaryFolderCreated = false;
+      } catch (error: unknown) {
+        if (replacedFolder) {
+          await vscode.workspace.fs.rename(
+            replacedFolder,
+            assignmentFolder,
+            { overwrite: false },
+          );
+          replacedFolder = undefined;
+        }
+        throw error;
+      }
+
+      if (replacedFolder) {
+        await vscode.workspace.fs.delete(replacedFolder, {
+          recursive: true,
+          useTrash: false,
+        });
+        replacedFolder = undefined;
+      }
 
       return {
         folder: assignmentFolder,
@@ -201,37 +237,6 @@ export class AssignmentFileRepository {
       HANDOUT_FILENAME,
     ];
     return vscode.Uri.joinPath(folder, ...preferredPath);
-  }
-
-  public async backupDownloadedAssignment(
-    root: vscode.Uri,
-    assignment: ProgrammingAssignment,
-  ): Promise<vscode.Uri> {
-    const folder = this.getAssignmentFolder(root, assignment);
-    const folderName = folder.path.split('/').at(-1) ?? 'assignment';
-    const timestamp = new Date().toISOString()
-      .replace(/[-:]/g, '')
-      .replace(/\.\d{3}Z$/, 'Z');
-    const backup = vscode.Uri.joinPath(
-      folder,
-      '..',
-      `${folderName}-backup-${timestamp}-${randomUUID().slice(0, 8)}`,
-    );
-
-    await vscode.workspace.fs.rename(folder, backup, { overwrite: false });
-    return backup;
-  }
-
-  public async restoreAssignmentBackup(
-    backup: vscode.Uri,
-    root: vscode.Uri,
-    assignment: ProgrammingAssignment,
-  ): Promise<void> {
-    await vscode.workspace.fs.rename(
-      backup,
-      this.getAssignmentFolder(root, assignment),
-      { overwrite: false },
-    );
   }
 
   private async exists(uri: vscode.Uri): Promise<boolean> {
