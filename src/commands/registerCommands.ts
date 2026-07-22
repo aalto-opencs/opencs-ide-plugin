@@ -34,6 +34,7 @@ import {
   MockCourseRepository,
 } from '../features/courses/courseRepository';
 import { CourseService } from '../features/courses/courseService';
+import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { DevelopmentCompletionController } from '../features/development/developmentCompletionController';
 import { DevelopmentCompletionRepository } from '../features/development/developmentCompletionRepository';
@@ -98,10 +99,14 @@ export function registerCommands(
   const courseSelectionRepository = new CourseSelectionRepository(
     context.globalState,
   );
+  const courseCacheRepository = new CourseCacheRepository(
+    context.globalState,
+  );
   const courseController = new CourseController(
     authService,
     courseService,
     courseSelectionRepository,
+    courseCacheRepository,
   );
   const assignmentFileRepository = new AssignmentFileRepository();
   const submissionHistoryRepository = new SubmissionHistoryRepository(
@@ -134,6 +139,7 @@ export function registerCommands(
     assignmentFolderRepository,
     assignmentFileRepository,
     courseSelectionRepository,
+    courseCacheRepository,
     submissionRepository,
     submissionHistoryRepository,
     (userId, assignment) =>
@@ -202,6 +208,7 @@ export function registerCommands(
           sessionRepository.clear(),
           assignmentFolderRepository.clearAll(),
           courseSelectionRepository.clearAll(),
+          courseCacheRepository.clearAll(),
           submissionHistoryRepository.clearAll(),
         ]);
         await refreshUiState();

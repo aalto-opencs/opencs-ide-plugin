@@ -424,6 +424,60 @@ suite('Assignment submission', () => {
     );
   });
 
+  test('keeps cached submissions visible when status refresh is offline', async () => {
+    const state = new InMemoryMemento();
+    const history = new SubmissionHistoryRepository(state);
+    const sessionRepository = new SessionRepository(
+      new InMemorySecretStorage(),
+    );
+    const session: AuthSession = {
+      token: 'session-token',
+      student: {
+        id: 7,
+        email: 'student@example.com',
+        firstName: 'Demo',
+        lastName: 'Student',
+      },
+    };
+    await sessionRepository.save(session);
+    await history.add({
+      schemaVersion: 1,
+      userId: session.student.id,
+      submissionUuid: '22222222-2222-4222-8222-222222222222',
+      exerciseUuid: '11111111-1111-4111-8111-111111111111',
+      assignmentName: 'Hello platform',
+      courseSlug: 'web-software-development',
+      courseInstanceId: 42,
+      submittedAt: '2026-07-22T10:00:00.000Z',
+      status: {
+        correct: null,
+        gradingStatus: GRADING_STATUS_PENDING,
+        gradingData: null,
+      },
+    });
+    const provider = new SubmissionTreeProvider(
+      new AuthService({ loginWithUuid: async () => session }, sessionRepository),
+      history,
+      createStatusRepository(async () => {
+        throw new Error('Network unavailable');
+      }),
+      () => undefined,
+    );
+
+    try {
+      const items = await provider.getChildren();
+
+      assert.strictEqual(items[0].label, 'Hello platform');
+      assert.strictEqual(items[0].description, 'Pending');
+      assert.strictEqual(
+        provider.message,
+        'Platform offline - retry later',
+      );
+    } finally {
+      provider.dispose();
+    }
+  });
+
   test('groups submissions older than the two newest entries', async () => {
     const state = new InMemoryMemento();
     const history = new SubmissionHistoryRepository(state);

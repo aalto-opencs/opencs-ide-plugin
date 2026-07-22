@@ -4,6 +4,7 @@ import { AssignmentFolderRepository } from '../features/assignments/assignmentFo
 import { CourseMaterialService } from '../features/courseMaterials/courseMaterialService';
 import { CourseService } from '../features/courses/courseService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
+import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
@@ -86,6 +87,7 @@ export function registerViews(
   assignmentFolderRepository: AssignmentFolderRepository,
   assignmentFileRepository: AssignmentFileRepository,
   courseSelectionRepository: CourseSelectionRepository,
+  courseCacheRepository: CourseCacheRepository,
   submissionRepository: SubmissionRepository,
   submissionHistoryRepository: SubmissionHistoryRepository,
   isDevelopmentCompleted: (
@@ -111,6 +113,7 @@ export function registerViews(
     courseSelectionRepository,
     submissionRepository,
     isDevelopmentCompleted,
+    courseCacheRepository,
   );
   const submissionTreeProvider = new SubmissionTreeProvider(
     authService,
@@ -131,6 +134,11 @@ export function registerViews(
     { treeDataProvider: courseTreeProvider },
   );
   courseTreeProvider.attachTreeView(courseTreeView);
+  const submissionTreeView = vscode.window.createTreeView(
+    'aaltoFitechPlatform.submissions',
+    { treeDataProvider: submissionTreeProvider },
+  );
+  submissionTreeProvider.attachTreeView(submissionTreeView);
 
   context.subscriptions.push(
     accountTreeProvider,
@@ -146,10 +154,7 @@ export function registerViews(
       accountTreeProvider,
     ),
     courseTreeView,
-    vscode.window.registerTreeDataProvider(
-      'aaltoFitechPlatform.submissions',
-      submissionTreeProvider,
-    ),
+    submissionTreeView,
   );
 
   return {

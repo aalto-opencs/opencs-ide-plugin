@@ -15,6 +15,7 @@ import { CourseMaterialService } from '../courseMaterials/courseMaterialService'
 import {
   CourseEnrolment,
 } from './courseModels';
+import { CourseCacheRepository } from './courseCacheRepository';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
 import { SubmissionRepository } from '../submissions/submissionRepository';
@@ -42,6 +43,8 @@ export class CourseTreeProvider implements
   >();
   private treeView?: vscode.TreeView<CourseTreeItem>;
   private viewDescription?: string;
+  private viewMessage?: string;
+  private usedCachedProgress = false;
 
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
@@ -57,6 +60,7 @@ export class CourseTreeProvider implements
       userId: number,
       assignment: ProgrammingAssignment,
     ) => boolean = () => false,
+    private readonly cacheRepository?: CourseCacheRepository,
   ) {}
 
   public refresh(): void {
@@ -69,6 +73,10 @@ export class CourseTreeProvider implements
 
   public get description(): string | undefined {
     return this.viewDescription;
+  }
+
+  public get message(): string | undefined {
+    return this.viewMessage;
   }
 
   public getTreeItem(element: CourseTreeItem): vscode.TreeItem {
@@ -86,6 +94,7 @@ export class CourseTreeProvider implements
 
     if (!session) {
       this.setDescription(undefined);
+      this.setMessage(undefined);
       return [];
     }
 
@@ -94,6 +103,7 @@ export class CourseTreeProvider implements
     );
     if (!assignmentRoot) {
       this.setDescription(undefined);
+      this.setMessage(undefined);
       return [];
     }
 
@@ -102,14 +112,19 @@ export class CourseTreeProvider implements
     );
     if (!selection) {
       this.setDescription(undefined);
+      this.setMessage(undefined);
       return [];
     }
 
+    this.setMessage('Loading course data...');
+    this.usedCachedProgress = false;
     try {
-      const enrolments = await this.courseService.getEnrolments();
+      const enrolmentResult = await this.loadEnrolments(session.student.id);
+      const enrolments = enrolmentResult.value;
 
       if (!enrolments.length) {
         this.setDescription(undefined);
+        this.setMessage(undefined);
         return [this.createMessageItem(
           'No course enrolments found.',
           'info',
@@ -126,28 +141,42 @@ export class CourseTreeProvider implements
           session.student.id,
         );
         this.setDescription(undefined);
+        this.setMessage(undefined);
         return [this.createMessageItem(
           'Your previous course selection is no longer available.',
           'warning',
         )];
       }
 
-      this.setDescription(
-        `${enrolment.abbreviation || enrolment.courseName || enrolment.courseSlug} · ${instance.label}`,
-      );
-      return this.loadCourseContent(
+      const contentResult = await this.loadCourseContent(
         enrolment.courseSlug,
         instance.id,
         assignmentRoot,
         session.student.id,
       );
+      const usingCache = enrolmentResult.cached || contentResult.cached ||
+        this.usedCachedProgress;
+      this.setDescription([
+        enrolment.abbreviation || enrolment.courseName || enrolment.courseSlug,
+        instance.label,
+        usingCache ? 'Cached' : undefined,
+      ].filter(Boolean).join(' · '));
+      this.setMessage(usingCache
+        ? 'Platform offline - retry later'
+        : undefined);
+      return contentResult.items;
     } catch (error: unknown) {
       this.setDescription(undefined);
+      this.setMessage('Course data is unavailable. Refresh to retry.');
       const message = error instanceof Error
         ? error.message
         : 'Failed to load course enrolments.';
 
-      return [this.createMessageItem(message, 'error')];
+      return [this.createMessageItem(
+        message,
+        'error',
+        'aaltoFitechPlatform.refreshCourses',
+      )];
     }
   }
 
@@ -160,12 +189,9 @@ export class CourseTreeProvider implements
     courseInstanceId: number,
     root: vscode.Uri,
     userId: number,
-  ): Promise<CourseTreeItem[]> {
-    try {
-      const structure = await this.courseMaterialService.getStructure(
-        courseSlug,
-      );
-      const programmingParts = structure
+  ): Promise<{ items: CourseTreeItem[]; cached: boolean }> {
+    const structureResult = await this.loadStructure(userId, courseSlug);
+    const programmingParts = structureResult.value
         .map((part) => ({
           ...part,
           chapters: part.chapters
@@ -178,7 +204,7 @@ export class CourseTreeProvider implements
         }))
         .filter((part) => part.chapters.length > 0);
 
-      return programmingParts.length
+    const items = programmingParts.length
         ? await Promise.all(programmingParts.map((part) => this.createPartItem(
           part,
           courseSlug,
@@ -190,12 +216,7 @@ export class CourseTreeProvider implements
           'No programming assignments found.',
           'info',
         )];
-    } catch (error: unknown) {
-      const message = error instanceof Error
-        ? error.message
-        : 'Failed to load course content.';
-      return [this.createMessageItem(message, 'error')];
-    }
+    return { items, cached: structureResult.cached };
   }
 
   private async createPartItem(
@@ -302,10 +323,7 @@ export class CourseTreeProvider implements
             assignment,
           )
           : false,
-        this.submissionRepository.hasPassed(
-          assignment.exerciseUuid,
-          assignment.courseInstanceId,
-        ).catch(() => false),
+        this.loadPassedState(userId, assignment),
       ]);
       const passed = backendPassed ||
         (userId !== undefined &&
@@ -336,16 +354,92 @@ export class CourseTreeProvider implements
   private createMessageItem(
     message: string,
     icon: string,
+    command?: string,
   ): CourseTreeItem {
     const item = new CourseTreeItem(message);
     item.iconPath = new vscode.ThemeIcon(icon);
+    if (command) {
+      item.command = { command, title: 'Retry' };
+      item.tooltip = 'Select to retry loading course data.';
+    }
     return item;
+  }
+
+  private async loadEnrolments(
+    userId: number,
+  ): Promise<{ value: CourseEnrolment[]; cached: boolean }> {
+    try {
+      const value = await this.courseService.getEnrolments();
+      await this.cacheRepository?.saveEnrolments(userId, value)
+        .catch(() => undefined);
+      return { value, cached: false };
+    } catch (error: unknown) {
+      const cached = this.cacheRepository?.getEnrolments(userId);
+      if (cached) {
+        return { value: cached, cached: true };
+      }
+      throw error;
+    }
+  }
+
+  private async loadStructure(
+    userId: number,
+    courseSlug: string,
+  ): Promise<{ value: CoursePart[]; cached: boolean }> {
+    try {
+      const value = await this.courseMaterialService.getStructure(courseSlug);
+      await this.cacheRepository?.saveStructure(userId, courseSlug, value)
+        .catch(() => undefined);
+      return { value, cached: false };
+    } catch (error: unknown) {
+      const cached = this.cacheRepository?.getStructure(userId, courseSlug);
+      if (cached) {
+        return { value: cached, cached: true };
+      }
+      throw error;
+    }
+  }
+
+  private async loadPassedState(
+    userId: number | undefined,
+    assignment: ProgrammingAssignment,
+  ): Promise<boolean> {
+    if (userId === undefined || assignment.courseInstanceId === null) {
+      return false;
+    }
+    try {
+      const passed = await this.submissionRepository.hasPassed(
+        assignment.exerciseUuid,
+        assignment.courseInstanceId,
+      );
+      await this.cacheRepository?.savePassed(
+        userId,
+        assignment.courseInstanceId,
+        assignment.exerciseUuid,
+        passed,
+      ).catch(() => undefined);
+      return passed;
+    } catch {
+      this.usedCachedProgress = true;
+      return this.cacheRepository?.getPassed(
+        userId,
+        assignment.courseInstanceId,
+        assignment.exerciseUuid,
+      ) ?? false;
+    }
   }
 
   private setDescription(description: string | undefined): void {
     this.viewDescription = description;
     if (this.treeView) {
       this.treeView.description = description;
+    }
+  }
+
+  private setMessage(message: string | undefined): void {
+    this.viewMessage = message;
+    if (this.treeView) {
+      this.treeView.message = message;
     }
   }
 }

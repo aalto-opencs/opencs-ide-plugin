@@ -27,6 +27,8 @@ class SubmissionTreeItem extends vscode.TreeItem {
 export class SubmissionTreeProvider implements
   vscode.TreeDataProvider<SubmissionTreeItem>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
+  private treeView?: vscode.TreeView<SubmissionTreeItem>;
+  private viewMessage?: string;
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
   public constructor(
@@ -39,6 +41,14 @@ export class SubmissionTreeProvider implements
 
   public refresh(): void {
     this.changeEmitter.fire();
+  }
+
+  public attachTreeView(treeView: vscode.TreeView<SubmissionTreeItem>): void {
+    this.treeView = treeView;
+  }
+
+  public get message(): string | undefined {
+    return this.viewMessage;
   }
 
   public getTreeItem(element: SubmissionTreeItem): vscode.TreeItem {
@@ -54,15 +64,23 @@ export class SubmissionTreeProvider implements
 
     const session = await this.authService.getCurrentSession();
     if (!session) {
+      this.setMessage(undefined);
       return [createMessageItem('Sign in to view submissions', 'sign-in')];
     }
 
+    let offline = false;
     const selection = this.historySyncService?.getSelectedCourse(
       session.student.id,
     );
-    await this.historySyncService
-      ?.synchronizeSelectedCourse(session.student.id)
-      .catch(() => undefined);
+    if (this.historySyncService) {
+      try {
+        await this.historySyncService.synchronizeSelectedCourse(
+          session.student.id,
+        );
+      } catch {
+        offline = true;
+      }
+    }
 
     let entries = this.historyRepository.getForUser(session.student.id);
     if (selection) {
@@ -70,14 +88,14 @@ export class SubmissionTreeProvider implements
         entry.courseSlug === selection.courseSlug &&
         entry.courseInstanceId === selection.courseInstanceId);
     }
-    await Promise.all(entries
+    const statusRefreshes = await Promise.all(entries
       .filter((entry) =>
         entry.status.gradingStatus === GRADING_STATUS_PENDING)
       .map(async (entry) => {
-        const status = await this.submissionRepository.getStatus(
-          entry.submissionUuid,
-        ).catch(() => undefined);
-        if (status) {
+        try {
+          const status = await this.submissionRepository.getStatus(
+            entry.submissionUuid,
+          );
           await this.historyRepository.updateStatus(
             entry.submissionUuid,
             status,
@@ -85,8 +103,15 @@ export class SubmissionTreeProvider implements
           if (status.correct === true) {
             this.onAssignmentCompleted();
           }
+          return true;
+        } catch {
+          return false;
         }
       }));
+    offline ||= statusRefreshes.includes(false);
+    this.setMessage(offline
+      ? 'Platform offline - retry later'
+      : undefined);
     entries = this.historyRepository.getForUser(session.student.id);
     if (selection) {
       entries = entries.filter((entry) =>
@@ -108,6 +133,13 @@ export class SubmissionTreeProvider implements
 
   public dispose(): void {
     this.changeEmitter.dispose();
+  }
+
+  private setMessage(message: string | undefined): void {
+    this.viewMessage = message;
+    if (this.treeView) {
+      this.treeView.message = message;
+    }
   }
 }
 

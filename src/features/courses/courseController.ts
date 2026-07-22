@@ -6,6 +6,7 @@ import {
 } from './courseModels';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
+import { CourseCacheRepository } from './courseCacheRepository';
 
 interface CourseQuickPickItem extends vscode.QuickPickItem {
   enrolment: CourseEnrolment;
@@ -20,6 +21,7 @@ export class CourseController {
     private readonly authService: AuthService,
     private readonly courseService: CourseService,
     private readonly selectionRepository: CourseSelectionRepository,
+    private readonly cacheRepository?: CourseCacheRepository,
   ) {}
 
   public async selectCourseAndVersion(): Promise<boolean> {
@@ -32,12 +34,32 @@ export class CourseController {
     }
 
     try {
-      const enrolments = await this.courseService.getEnrolments();
+      let usingCache = false;
+      let enrolments: CourseEnrolment[];
+      try {
+        enrolments = await this.courseService.getEnrolments();
+        await this.cacheRepository?.saveEnrolments(
+          session.student.id,
+          enrolments,
+        ).catch(() => undefined);
+      } catch (error: unknown) {
+        const cached = this.cacheRepository?.getEnrolments(session.student.id);
+        if (!cached) {
+          throw error;
+        }
+        enrolments = cached;
+        usingCache = true;
+      }
       if (!enrolments.length) {
         await vscode.window.showInformationMessage(
           'No course enrolments were found for your account.',
         );
         return false;
+      }
+      if (usingCache) {
+        await vscode.window.showWarningMessage(
+          'The platform is unavailable. Showing cached course choices.',
+        );
       }
 
       const selectedCourse = await vscode.window.showQuickPick<

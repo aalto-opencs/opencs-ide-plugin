@@ -20,6 +20,7 @@ import {
 } from '../features/courses/courseRepository';
 import { CourseService } from '../features/courses/courseService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
+import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 import { ApiClient } from '../infrastructure/apiClient';
 import {
@@ -398,6 +399,70 @@ suite('Courses', () => {
       provider.dispose();
     }
   });
+
+  test('falls back to cached course data while offline', async () => {
+    let offline = false;
+    const { provider, sessionRepository } = createProvider(
+      {
+        getEnrolments: async () => {
+          if (offline) {
+            throw new Error('Network unavailable');
+          }
+          return enrolments;
+        },
+      },
+      {
+        getStructure: async () => {
+          if (offline) {
+            throw new Error('Network unavailable');
+          }
+          return structure;
+        },
+      },
+    );
+
+    try {
+      await sessionRepository.save(session);
+      const onlineParts = await provider.getChildren();
+      assert.strictEqual(onlineParts[0].label, 'Web Applications and HTTP');
+      assert.strictEqual(provider.message, undefined);
+
+      offline = true;
+      provider.refresh();
+      const cachedParts = await provider.getChildren();
+
+      assert.strictEqual(cachedParts[0].label, 'Web Applications and HTTP');
+      assert.match(provider.description ?? '', /Cached/);
+      assert.strictEqual(
+        provider.message,
+        'Platform offline - retry later',
+      );
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('shows a retry action when no cached course data exists', async () => {
+    const { provider, sessionRepository } = createProvider({
+      getEnrolments: async () => {
+        throw new Error('Network unavailable');
+      },
+    });
+
+    try {
+      await sessionRepository.save(session);
+      const children = await provider.getChildren();
+
+      assert.strictEqual(children[0].label, 'Network unavailable');
+      assert.strictEqual(
+        children[0].command?.command,
+        'aaltoFitechPlatform.refreshCourses',
+      );
+      assert.match(provider.message ?? '', /Refresh to retry/);
+    } finally {
+      provider.dispose();
+    }
+  });
 });
 
 function createProvider(
@@ -436,6 +501,9 @@ function createProvider(
   const courseSelectionRepository = new CourseSelectionRepository(
     new InMemoryMemento(),
   );
+  const courseCacheRepository = new CourseCacheRepository(
+    new InMemoryMemento(),
+  );
   if (folderSelected) {
     void assignmentFolderRepository.setRoot(
       session.student.id,
@@ -462,6 +530,7 @@ function createProvider(
       courseSelectionRepository,
       submissionRepository,
       isDevelopmentCompleted,
+      courseCacheRepository,
     ),
     sessionRepository,
   };
