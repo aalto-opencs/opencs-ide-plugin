@@ -345,6 +345,18 @@ suite('Courses', () => {
         'Completed • 2 pts',
       );
       assert.strictEqual(
+        completedParts[0].accessibilityInformation?.label,
+        'Course part: Web Applications and HTTP. Completed.',
+      );
+      assert.strictEqual(
+        completedChapters[0].accessibilityInformation?.label,
+        'Course chapter: Introduction. Completed.',
+      );
+      assert.strictEqual(
+        completedExercises[0].accessibilityInformation?.label,
+        'Programming assignment: Hello Web. Completed. 2 points.',
+      );
+      assert.strictEqual(
         (completedParts[0].iconPath as vscode.ThemeIcon).id,
         'pass',
       );

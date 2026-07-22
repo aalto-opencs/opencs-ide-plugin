@@ -546,6 +546,10 @@ suite('Assignment submission', () => {
       ]);
       assert.strictEqual(items[2].description, '2');
       assert.strictEqual(
+        items[2].accessibilityInformation?.label,
+        'Past submissions. 2 older submissions.',
+      );
+      assert.strictEqual(
         items[0].collapsibleState,
         vscode.TreeItemCollapsibleState.Collapsed,
       );
@@ -560,6 +564,10 @@ suite('Assignment submission', () => {
       assert.strictEqual(
         newestFailureItems[0].command?.command,
         'aaltoFitechPlatform.openSubmissionDetails',
+      );
+      assert.strictEqual(
+        newestFailureItems[0].accessibilityInformation?.label,
+        'Failed test: Newest failed test. Open details.',
       );
       assert.strictEqual(
         newestFailureItems[0].collapsibleState,

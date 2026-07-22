@@ -250,6 +250,9 @@ export class CourseTreeProvider implements
       item.description = 'Completed';
       item.tooltip = 'All programming assignments in this part are completed.';
     }
+    item.accessibilityInformation = {
+      label: `Course part: ${part.name}. ${item.completed ? 'Completed' : 'Not completed'}.`,
+    };
     return item;
   }
 
@@ -284,6 +287,9 @@ export class CourseTreeProvider implements
       item.description = 'Completed';
       item.tooltip = 'All programming assignments in this chapter are completed.';
     }
+    item.accessibilityInformation = {
+      label: `Course chapter: ${chapter.name}. ${item.completed ? 'Completed' : 'Not completed'}.`,
+    };
     return item;
   }
 
@@ -348,6 +354,15 @@ export class CourseTreeProvider implements
       }
     }
 
+    const assignmentState = item.completed
+      ? 'Completed'
+      : item.contextValue === 'downloadedProgrammingExercise'
+        ? 'Downloaded, not completed'
+        : 'Not downloaded, not completed';
+    item.accessibilityInformation = {
+      label: `Programming assignment: ${String(item.label)}. ${assignmentState}. ${exercise.maxPoints} points.`,
+    };
+
     return item;
   }
 
@@ -358,6 +373,7 @@ export class CourseTreeProvider implements
   ): CourseTreeItem {
     const item = new CourseTreeItem(message);
     item.iconPath = new vscode.ThemeIcon(icon);
+    item.accessibilityInformation = { label: message };
     if (command) {
       item.command = { command, title: 'Retry' };
       item.tooltip = 'Select to retry loading course data.';

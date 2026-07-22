@@ -55,9 +55,15 @@ export class AccountTreeProvider implements
       studentName || 'Student',
     );
     nameItem.iconPath = new vscode.ThemeIcon('account');
+    nameItem.accessibilityInformation = {
+      label: `Student name: ${studentName || 'Student'}`,
+    };
 
     const emailItem = new vscode.TreeItem(session.student.email);
     emailItem.iconPath = new vscode.ThemeIcon('mail');
+    emailItem.accessibilityInformation = {
+      label: `Email address: ${session.student.email}`,
+    };
 
     const assignmentRoot = this.assignmentFolderRepository.getRoot(
       session.student.id,
@@ -68,6 +74,9 @@ export class AccountTreeProvider implements
       assignmentFolderItem.iconPath = new vscode.ThemeIcon('folder');
       assignmentFolderItem.description = assignmentRoot.fsPath;
       assignmentFolderItem.tooltip = assignmentRoot.fsPath;
+      assignmentFolderItem.accessibilityInformation = {
+        label: `Assignment folder: ${assignmentRoot.fsPath}`,
+      };
       items.push(assignmentFolderItem);
     }
 

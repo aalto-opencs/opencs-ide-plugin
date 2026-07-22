@@ -78,6 +78,14 @@ suite('AccountTreeProvider', () => {
       );
       assert.ok(children[0].iconPath instanceof vscode.ThemeIcon);
       assert.ok(children[1].iconPath instanceof vscode.ThemeIcon);
+      assert.strictEqual(
+        children[0].accessibilityInformation?.label,
+        'Student name: Ada Lovelace',
+      );
+      assert.strictEqual(
+        children[1].accessibilityInformation?.label,
+        'Email address: ada@example.com',
+      );
     } finally {
       provider.dispose();
     }
@@ -102,6 +110,10 @@ suite('AccountTreeProvider', () => {
       assert.strictEqual(folderItem.description, root.fsPath);
       assert.strictEqual(folderItem.tooltip, root.fsPath);
       assert.strictEqual(folderItem.command, undefined);
+      assert.strictEqual(
+        folderItem.accessibilityInformation?.label,
+        `Assignment folder: ${root.fsPath}`,
+      );
     } finally {
       provider.dispose();
     }

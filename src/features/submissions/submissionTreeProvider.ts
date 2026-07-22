@@ -154,6 +154,9 @@ function createPastSubmissionsItem(
   item.description = `${entries.length}`;
   item.tooltip = `${entries.length} older submission${entries.length === 1 ? '' : 's'}`;
   item.iconPath = new vscode.ThemeIcon('history');
+  item.accessibilityInformation = {
+    label: `Past submissions. ${entries.length} older submission${entries.length === 1 ? '' : 's'}.`,
+  };
   return item;
 }
 
@@ -174,6 +177,9 @@ function createSubmissionItem(entry: SubmissionHistoryEntry): SubmissionTreeItem
     `Submitted: ${new Date(entry.submittedAt).toLocaleString()}`,
     `Status: ${item.description}`,
   ].join('\n');
+  item.accessibilityInformation = {
+    label: `${entry.assignmentName}. ${item.description}. Submitted ${new Date(entry.submittedAt).toLocaleString()}.`,
+  };
   return item;
 }
 
@@ -206,6 +212,9 @@ function createFailedTestItem(
   item.tooltip = test.details
     ? 'Open failed-test details'
     : 'No error details were returned by the grader.';
+  item.accessibilityInformation = {
+    label: `Failed test: ${test.name}. Open details.`,
+  };
   item.command = {
     command: 'aaltoFitechPlatform.openSubmissionDetails',
     title: 'Open Failed-Test Details',
@@ -222,6 +231,9 @@ function createGraderErrorItem(
   const item = new SubmissionTreeItem(label);
   item.iconPath = new vscode.ThemeIcon('warning');
   item.tooltip = 'Open grader-error details';
+  item.accessibilityInformation = {
+    label: `${label}. Open grader error details.`,
+  };
   item.command = {
     command: 'aaltoFitechPlatform.openSubmissionDetails',
     title: 'Open Grader-Error Details',
@@ -310,5 +322,6 @@ function getStatusIcon(entry: SubmissionHistoryEntry): string {
 function createMessageItem(label: string, icon: string): SubmissionTreeItem {
   const item = new SubmissionTreeItem(label);
   item.iconPath = new vscode.ThemeIcon(icon);
+  item.accessibilityInformation = { label };
   return item;
 }
