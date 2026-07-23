@@ -746,6 +746,25 @@ elimination removes the development UI and behavior from the production bundle.
 | Downloaded starter/work | Student-selected filesystem | Course/assignment | No |
 | Failure detail documents | Memory | Current extension host | N/A |
 
+Closing, reloading, updating, or disabling the extension preserves persistent
+state. Signing out removes only the authentication session.
+
+`ExtensionLifecycleService` stores an installation marker in the extension's
+VS Code `globalStorage` directory. VS Code removes that directory after the
+extension is completely uninstalled. If a later installation finds that the
+marker disappeared while the lifecycle marker in `SecretStorage` or
+`globalState` survived, activation clears all extension-owned secrets and
+global state before registering commands. This handles stores that VS Code may
+retain beyond uninstall without confusing an ordinary update with a reinstall.
+
+The first version containing this mechanism treats missing lifecycle markers as
+a migration and preserves existing data. It then creates the markers used by
+future reinstalls.
+
+Lifecycle cleanup never follows the path stored as the assignment root and
+never deletes downloaded assignment files. It also cannot delete backend
+accounts, submissions, or scores.
+
 All persisted JSON-like values must be validated when read. Follow the existing
 type-guard pattern when adding a schema.
 
