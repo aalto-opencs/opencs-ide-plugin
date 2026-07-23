@@ -53,15 +53,26 @@ import { SubmissionService } from '../features/submissions/submissionService';
 import { ApiClient } from '../infrastructure/apiClient';
 import { registerViews } from '../views/registerViews';
 
+/**
+ * Extension composition root.
+ *
+ * This is the only place that should decide which concrete repositories,
+ * services, controllers, and views are wired together. Feature code depends on
+ * interfaces so tests can replace API and persistence concerns independently.
+ */
 export function registerCommands(
   context: vscode.ExtensionContext,
 ): void {
   const apiBaseUrl = getApiBaseUrl();
+  // The session repository must exist before the authenticated client because
+  // the token provider reads SecretStorage again for every request.
   const sessionRepository = new SessionRepository(context.secrets);
   const apiClient = new ApiClient(
     apiBaseUrl,
     async () => (await sessionRepository.get())?.token,
   );
+  // Status is deliberately public: never attach a student's session token to
+  // the health-check endpoint or expose API failure details in its controller.
   const platformStatusController = new PlatformStatusController(
     new PlatformStatusService(
       new ApiPlatformStatusRepository(new ApiClient(apiBaseUrl)),
@@ -161,6 +172,9 @@ export function registerCommands(
 
   const authController = new AuthController(authService);
 
+  // package.json welcome views and menu visibility are driven by these context
+  // keys. Always call this after a command changes login, folder, or selection
+  // state, then refresh all providers so their rows cannot become stale.
   const refreshUiState = async (): Promise<void> => {
     const session = await authService.getCurrentSession();
     const folderSelected = session

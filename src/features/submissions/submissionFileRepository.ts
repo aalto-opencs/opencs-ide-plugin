@@ -17,6 +17,11 @@ const EXCLUDED_DIRECTORIES = new Set([
 ]);
 const SAFE_PATH_SEGMENT = /^[A-Za-z0-9._+@()[\] -]+$/;
 
+/**
+ * Defines the current submission file policy. It collects every safe UTF-8 text
+ * file except extension metadata and generated/dependency directories; changing
+ * that product policy belongs here, not in the submission controller.
+ */
 export class SubmissionFileRepository {
   public async collect(folder: vscode.Uri): Promise<Record<string, string>> {
     const files: Record<string, string> = {};

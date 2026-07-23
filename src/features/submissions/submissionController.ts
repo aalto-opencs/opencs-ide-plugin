@@ -11,6 +11,15 @@ import { SubmissionService } from './submissionService';
 import { SubmissionTreeProvider } from './submissionTreeProvider';
 
 const MAX_PREVIEW_FILES = 20;
+
+/**
+ * Owns the interactive submission transaction:
+ * validate downloaded metadata -> collect files -> confirm the exact file list
+ * -> submit -> persist PENDING -> poll -> persist each grader update -> refresh.
+ *
+ * The backend remains authoritative for grading and completion; this controller
+ * only presents progress and synchronizes local UI state.
+ */
 export class SubmissionController {
   public constructor(
     private readonly service: SubmissionService,

@@ -35,6 +35,13 @@ class CourseTreeItem extends vscode.TreeItem {
   public completed = false;
 }
 
+/**
+ * Projects authenticated application state into the Courses tree.
+ *
+ * Root loading is intentionally gated by session -> assignment root -> selected
+ * course/version. API results are cached per student; an API failure reuses
+ * validated cache data and marks the view as Cached instead of clearing it.
+ */
 export class CourseTreeProvider implements
   vscode.TreeDataProvider<CourseTreeItem>,
   vscode.Disposable {

@@ -3,6 +3,10 @@ import * as vscode from 'vscode';
 const ASSIGNMENT_ROOT_KEY_PREFIX =
   'aaltoFitechPlatform.assignmentDownloadRoot.v2';
 
+/**
+ * Stores only the student-selected root path. Keys include the platform user ID
+ * so switching accounts cannot expose another student's folder selection.
+ */
 export class AssignmentFolderRepository {
   public constructor(
     private readonly storage: vscode.Memento,

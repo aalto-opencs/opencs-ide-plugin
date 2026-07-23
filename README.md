@@ -263,6 +263,11 @@ The code-level review and remaining manual release checks are documented in
 
 ## Development
 
+New contributors should start with the
+[`docs/developer-guide.md`](docs/developer-guide.md) architecture and data-flow
+guide. It documents feature ownership, API endpoints, persisted schemas,
+filesystem safety, UI refresh rules, testing, and current limitations.
+
 Install dependencies and verify the project:
 
 ```bash

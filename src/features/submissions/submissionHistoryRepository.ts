@@ -7,6 +7,11 @@ import {
 const STORAGE_KEY = 'aaltoFitechPlatform.submissionHistory.v1';
 const MAX_HISTORY_ENTRIES = 50;
 
+/**
+ * Local cache of backend submission state. Records carry user and course
+ * identity, are deduplicated by submission UUID, validated on read, and capped
+ * so refreshes cannot grow extension globalState indefinitely.
+ */
 export class SubmissionHistoryRepository {
   public constructor(
     private readonly state: vscode.Memento,

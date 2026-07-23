@@ -29,6 +29,13 @@ export class AssignmentAlreadyExistsError extends Error {
   }
 }
 
+/**
+ * Owns the downloaded-assignment filesystem contract.
+ *
+ * Keep archive validation, generated metadata, path layout, and replacement
+ * safety here. Controllers may choose when to download, but must not reproduce
+ * these filesystem rules.
+ */
 export class AssignmentFileRepository {
   public getAssignmentFolder(
     root: vscode.Uri,
@@ -150,6 +157,9 @@ export class AssignmentFileRepository {
         encodeText(`${JSON.stringify(metadata, null, 2)}\n`),
       );
 
+      // Redownload is transactional from the student's perspective: prepare and
+      // validate the fresh tree first, then temporarily move the old tree aside.
+      // If installing the fresh tree fails, restore the old one immediately.
       if (assignmentExists) {
         replacedFolder = vscode.Uri.joinPath(
           courseFolder,
@@ -283,6 +293,9 @@ export class AssignmentFileRepository {
   }
 }
 
+// Opening a downloaded assignment is a convenience heuristic, not backend
+// metadata. Prefer conventional entry points, then a shallow source file, and
+// fall back to assignment-handout.md when the archive contains no source file.
 function selectPreferredSourcePath(paths: string[][]): string[] | undefined {
   return paths
     .filter((segments) => {

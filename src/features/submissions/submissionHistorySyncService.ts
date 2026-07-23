@@ -6,6 +6,11 @@ import { SubmissionHistoryRepository } from './submissionHistoryRepository';
 import { SubmissionHistoryEntry } from './submissionModels';
 import { SubmissionRepository } from './submissionRepository';
 
+/**
+ * Rebuilds local history for the currently selected course/version by joining
+ * course structure (assignment names) with per-exercise backend submissions.
+ * It intentionally does not synchronize courses that are not selected.
+ */
 export class SubmissionHistorySyncService {
   public constructor(
     private readonly courseMaterialService: CourseMaterialService,

@@ -4,6 +4,13 @@ export type AuthenticationTokenProvider = () => Promise<
   string | undefined
 >;
 
+/**
+ * Shared HTTP boundary for every API repository.
+ *
+ * The token provider is evaluated per request so sign-in and sign-out take
+ * effect without rebuilding the dependency graph. The platform middleware
+ * expects the raw session token in Authorization, not a Bearer token.
+ */
 export class ApiClient {
   constructor(
     private readonly baseUrl: string,

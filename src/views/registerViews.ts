@@ -88,6 +88,11 @@ export class AccountTreeProvider implements
   }
 }
 
+/**
+ * Creates and registers the three native tree views. Keep cross-feature view
+ * coordination here (for example, a passed submission refreshing Courses);
+ * individual providers should remain focused on rendering their own state.
+ */
 export function registerViews(
   context: vscode.ExtensionContext,
   authService: AuthService,

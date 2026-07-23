@@ -24,6 +24,11 @@ class SubmissionTreeItem extends vscode.TreeItem {
   }
 }
 
+/**
+ * Renders backend-synchronized history with a cache-first offline fallback.
+ * Pending cached entries are refreshed opportunistically; failures keep the
+ * last known rows visible and mark the view offline rather than losing history.
+ */
 export class SubmissionTreeProvider implements
   vscode.TreeDataProvider<SubmissionTreeItem>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();

@@ -8,6 +8,11 @@ import { CourseEnrolment, CourseInstance } from './courseModels';
 
 const CACHE_PREFIX = 'aaltoFitechPlatform.courseCache.v1';
 
+/**
+ * Persistent, per-student read cache used only when API reads fail.
+ * globalState values are untrusted, so every getter validates its complete
+ * nested structure before a tree provider may render it.
+ */
 export class CourseCacheRepository {
   public constructor(private readonly storage: vscode.Memento) {}
 
