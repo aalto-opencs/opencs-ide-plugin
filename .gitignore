@@ -4,3 +4,4 @@ node_modules
 .vscode-test/
 *.vsix
 DEVELOPMENT_DIARY.md
+.env.test.local
