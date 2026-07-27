@@ -281,7 +281,10 @@
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
     "test": "vscode-test",
-    "test:backend-auth": "npm run pretest && node --env-file=.env.test.local ./node_modules/@vscode/test-cli/out/bin.mjs"
+    "test:integration": "./scripts/run-integration-tests.sh",
+    "test:backend-auth": "./scripts/run-integration-tests.sh",
+    "mock-api:enable": "./scripts/set-mock-api.sh enable",
+    "mock-api:disable": "./scripts/set-mock-api.sh disable"
   },
   "devDependencies": {
     "@types/vscode": "^1.125.0",

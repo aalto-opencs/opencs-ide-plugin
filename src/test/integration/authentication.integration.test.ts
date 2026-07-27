@@ -7,9 +7,9 @@ import {
 } from '../../infrastructure/apiClient';
 
 suite('Authentication backend integration', () => {
-  test('logs in with a valid UUID to backend platform', async function(){
+  test('logs in with a valid UUID to backend platform', async function () {
     const userUuid = process.env.AALTO_FITECH_TEST_USER_UUID;
-    const baseUrl = process.env.AALTO_FITECH_TEST_API_URL
+    const baseUrl = process.env.AALTO_FITECH_TEST_API_URL;
 
     if (!userUuid || !baseUrl) {
       this.skip();
@@ -55,8 +55,12 @@ suite('Authentication backend integration', () => {
     );
 
     const expectedUserEmail = process.env.AALTO_FITECH_TEST_EXPECTED_USER_EMAIL;
-    if (expectedUserEmail){
-      assert.strictEqual(session.student.email, expectedUserEmail, 'Expected the UUID to authenticate the configured test user',)
+    if (expectedUserEmail) {
+      assert.strictEqual(
+        session.student.email,
+        expectedUserEmail,
+        'Expected the UUID to authenticate the configured test user',
+      );
     }
-  })
+  });
 });

@@ -3,8 +3,8 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
 export default defineConfig({
-	files: 'out/test/*.test.js',
+	files: 'out/test/integration/**/*.test.js',
 	launchArgs: [
-		`--user-data-dir=${join(tmpdir(), 'aalto-fitech-code-vscode-test')}`,
+		`--user-data-dir=${join(tmpdir(), 'aft-it')}`,
 	],
 });
