@@ -14,7 +14,7 @@ boundary.
 The extension currently lets a student:
 
 1. Check whether the platform API is available.
-2. Sign in with a platform user UUID.
+2. Sign in through the platform website using an available login method.
 3. Select a per-student root folder for downloaded assignments.
 4. Select one enrolled course and course version.
 5. Browse that course's programming assignments.
@@ -105,28 +105,34 @@ The public `/status` request must not receive a student session.
 | --- | --- |
 | `src/extension.ts` | VS Code activation entry point |
 | `src/commands/registerCommands.ts` | Composition root and command registration |
-| `src/config/configuration.ts` | Reads API URL and mock-mode settings |
+| `src/config/configuration.ts` | Reads API URL, platform website URL, and mock-mode settings |
 | `src/infrastructure/apiClient.ts` | Shared HTTP, authentication header, timeout, and error handling |
-| `src/features/auth` | UUID login and secure session persistence |
-| `src/features/courses` | Enrolments, course/version selection, course cache, and Courses tree |
+| `src/features/auth` | Browser login, PKCE code exchange, and secure session persistence |
+| `src/features/courses` | Enrolments, course/version selection, course cache, selection view, and Course Parts tree |
 | `src/features/courseMaterials` | Course structure and exercise models |
-| `src/features/assignments` | Folder selection, starter download, ZIP extraction, metadata, and local opening |
+| `src/features/assignments` | Folder/current-exercise persistence, starter download, ZIP extraction, and Exercise file tree |
+| `src/features/account` | Compact Account Quick Pick and actions |
+| `src/features/coursePoints` | Selected-course progress API mapping |
 | `src/features/submissions` | File collection, upload, polling, history, result parsing, and Submissions tree |
 | `src/features/platformStatus` | Public availability check |
 | `src/features/development` | Development-only completion simulation and reset |
-| `src/views/registerViews.ts` | Account, Courses, and Submissions view wiring |
+| `src/views/registerViews.ts` | Setup and four working-view wiring |
 | `src/test` | VS Code extension-host tests and local fakes |
 | `package.json` | Commands, views, menus, welcome states, settings, and Marketplace metadata |
 | `esbuild.js` | Development/production bundles and development-tool removal |
 
 ## 4. VS Code user interface
 
-The extension contributes one Activity Bar container with three native tree
-views:
+The extension contributes one Activity Bar container. Before setup it shows
+Authentication and Assignment Folder sequentially. After setup it shows four
+collapsible native views:
 
-- **Account**
-- **Courses**
+- **Course Selection**
+- **Course Parts**
+- **Exercise**
 - **Submissions**
+
+Account is a toolbar Quick Pick rather than a permanent view.
 
 Native views, Quick Picks, input boxes, folder pickers, notifications, and text
 editors are used instead of a Webview. This gives the extension standard VS
@@ -137,12 +143,15 @@ Code keyboard, theme, zoom, and screen-reader behavior.
 | Command ID | Owner and effect |
 | --- | --- |
 | `aaltoFitechPlatform.checkPlatformStatus` | Public platform-status check |
-| `aaltoFitechPlatform.signIn` | UUID login, session save, full UI refresh |
+| `aaltoFitechPlatform.signIn` | Browser login, code exchange, session save, and full UI refresh |
 | `aaltoFitechPlatform.showCurrentUser` | Shows current student identity |
 | `aaltoFitechPlatform.signOut` | Clears session and refreshes UI |
+| `aaltoFitechPlatform.showAccount` | Shows identity, optional points, folder change, and sign-out actions |
 | `aaltoFitechPlatform.selectAssignmentFolder` | Explains and selects per-student root |
 | `aaltoFitechPlatform.selectCourse` | Selects course and instance/version |
-| `aaltoFitechPlatform.refreshCourses` | Reloads Courses tree |
+| `aaltoFitechPlatform.refreshCourses` | Reloads selection and Course Parts |
+| `aaltoFitechPlatform.selectAssignment` | Sets the per-user current exercise |
+| `aaltoFitechPlatform.refreshExercise` | Reloads the current local file tree |
 | `aaltoFitechPlatform.downloadAssignment` | Downloads selected programming assignment |
 | `aaltoFitechPlatform.showAssignmentFolder` | Reveals local folder in the operating system |
 | `aaltoFitechPlatform.redownloadAssignment` | Confirms and replaces selected download |
@@ -162,14 +171,17 @@ Development builds additionally register
 | `aaltoFitechPlatform.signedIn` | A valid session exists in SecretStorage |
 | `aaltoFitechPlatform.assignmentFolderSelected` | Current student has a stored assignment root |
 | `aaltoFitechPlatform.courseSelected` | Current student has a stored course/version selection |
+| `aaltoFitechPlatform.setupComplete` | Session and assignment root both exist |
+| `aaltoFitechPlatform.currentAssignmentSelected` | Current student has selected an exercise |
+| `aaltoFitechPlatform.currentAssignmentDownloaded` | Current exercise has matching local metadata |
 
-`refreshUiState()` in the composition root updates all three keys and refreshes
+`refreshUiState()` in the composition root updates these keys and refreshes
 all tree providers. Call it after login, logout, assignment-root selection, or
-course selection.
+course/current-exercise selection.
 
 ### Tree-item action state
 
-The Courses tree sets `TreeItem.contextValue`, which controls commands declared
+The Course Parts tree sets `TreeItem.contextValue`, which controls commands declared
 under `view/item/context` in `package.json`:
 
 | Context value | Meaning | Main inline action |
@@ -187,8 +199,8 @@ because they require a tree item containing a `ProgrammingAssignment`.
 
 Tree rows have `accessibilityInformation` that announces:
 
-- Student name, email, and assignment root.
 - Part, chapter, and assignment completion.
+- Current-exercise and local-file state.
 - Assignment download state.
 - Submission result and submission time.
 - Failed tests, grader errors, and detail actions.
@@ -202,15 +214,17 @@ checks.
 | Setting | Current default | Read by |
 | --- | --- | --- |
 | `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | `getApiBaseUrl()` |
+| `aaltoFitechPlatform.platformBaseUrl` | `http://localhost:7799` | `getPlatformBaseUrl()` |
 | `aaltoFitechPlatform.useMockApi` | `true` | `useMockApi()` |
 
-Both settings use machine scope.
+All settings use machine scope.
 
 Local real-API development normally uses:
 
 ```json
 {
   "aaltoFitechPlatform.apiBaseUrl": "http://localhost:8842/api",
+  "aaltoFitechPlatform.platformBaseUrl": "http://localhost:7799",
   "aaltoFitechPlatform.useMockApi": false
 }
 ```
@@ -237,9 +251,11 @@ Current endpoints:
 | Method | Endpoint | Authentication | Used for |
 | --- | --- | --- | --- |
 | GET | `/status` | No | Platform availability |
-| POST | `/auth/vscode/uuid` | No existing token required | UUID login |
+| POST | `/auth/vscode/authorize` | Browser platform session | Create a one-time PKCE-bound code |
+| POST | `/auth/vscode/exchange` | One-time code + verifier | Create the extension session |
 | GET | `/users/all-enrolments` | Yes | All student course enrolments |
 | GET | `/course-materials/:courseSlug/structure` | Yes | Parts, chapters, and exercises |
+| GET | `/points/courses/:courseSlug/progress` | Yes | Optional Account points line for selected instance |
 | GET | `/exercises/:exerciseUuid/starter` | Yes | Starter metadata and handout |
 | GET | `/exercises/:exerciseUuid/starter/files` | Yes | ZIP starter archive |
 | POST | `/submissions` | Yes | Multipart source submission |
@@ -266,7 +282,8 @@ synchronization omits `light` so grader status and grader data are available.
 
 ### Current login contract
 
-The prototype asks for a platform user UUID in a password-style input:
+The extension opens the existing platform login page. Password and Haka login
+both return to the same authorization page:
 
 ```mermaid
 sequenceDiagram
@@ -277,11 +294,19 @@ sequenceDiagram
     participant API as Platform API
     participant Secrets as SecretStorage
 
-    Student->>Controller: Enter UUID
-    Controller->>Service: signIn(trimmed UUID)
-    Service->>Repo: loginWithUuid(UUID)
-    Repo->>API: POST /auth/vscode/uuid
-    API-->>Repo: Flat login response + token
+    participant Browser as Platform website
+    Student->>Controller: Select Sign In with Browser
+    Controller->>Browser: Open /en/auth/vscode with state + PKCE challenge
+    Browser->>Student: Existing platform login page
+    Student->>Browser: Password or Haka login
+    Browser->>API: POST /auth/vscode/authorize
+    API-->>Browser: Five-minute one-time code
+    Browser->>Controller: vscode:// callback with code + state
+    Controller->>Controller: Verify callback state
+    Controller->>Service: signIn(code, verifier)
+    Service->>Repo: exchangeAuthorizationCode(code, verifier)
+    Repo->>API: POST /auth/vscode/exchange
+    API-->>Repo: Flat login response + new session token
     Repo-->>Service: AuthSession
     Service->>Secrets: Save JSON session
     Service-->>Controller: AuthSession
@@ -336,24 +361,21 @@ invalid structure is treated as signed out and deleted.
 Sign-out deletes only the session. It intentionally keeps per-student folder
 selection, course selection, and cached data so returning students can resume.
 
-### Authentication limitation
-
-UUID-only login identifies a user but does not prove account ownership. It is a
-prototype mechanism and must be replaced before production. Do not redesign it
-inside unrelated feature work.
+The callback never contains a platform session token. The random state protects
+the callback request, PKCE binds the authorization code to its initiating VS
+Code instance, and the backend invalidates the code after one successful
+exchange or five minutes.
 
 ## 8. Account and assignment-root selection
 
-The Account view shows:
+Account is intentionally not a permanent view. The account icon in each working
+view toolbar opens a native Quick Pick containing identity, the current folder,
+optional selected-course points, Change Assignment Folder, and Sign Out.
 
-- Student name.
-- Student email.
-- Stored assignment root, when selected.
-
-Assignment-root selection is mandatory before Courses become available. When
+Assignment-root selection is mandatory before working views become available. When
 the selection command runs, the controller explains what the folder is, opens a
-folder picker, and lets the student defer the choice. The state-specific Courses
-welcome view continues to prompt for a folder until one is stored.
+folder picker, and lets the student defer the choice. The setup view continues
+to prompt for a folder until one is stored.
 
 The selected path is stored per student:
 
@@ -362,6 +384,10 @@ aaltoFitechPlatform.assignmentDownloadRoot.v2.<userId>
 ```
 
 This prevents one account from inheriting another account's chosen folder.
+
+When a course/version is selected, Account requests
+`GET /points/courses/:courseSlug/progress`, matches `instance_id`, and shows
+earned/max points and percentage. Failure or a missing row simply omits points.
 
 ## 9. Course and version selection
 
@@ -385,9 +411,9 @@ aaltoFitechPlatform.courseSelection.v1.<userId>
 Course instance IDs are part of completion, history, development overrides, and
 download metadata. Do not remove the instance from those identities.
 
-## 10. Courses tree and completion
+## 10. Course Parts, current exercise, and completion
 
-The Courses tree loads only after this state chain is satisfied:
+The Course Parts tree loads only after this state chain is satisfied:
 
 ```text
 valid session
@@ -422,6 +448,19 @@ are complete.
 After a submission passes, `SubmissionController` refreshes Courses
 immediately. This makes assignment, chapter, and part icons update without a
 manual reload.
+
+Selecting a programming assignment stores it under:
+
+```text
+aaltoFitechPlatform.currentAssignment.v1.<userId>
+```
+
+The selection is marked **Current** and drives both Exercise and Submissions.
+Exercise projects the downloaded folder as a native file tree, hides the
+internal `.aalto-fitech-assignment.json`, watches for changes, and opens files
+with `vscode.open`. A Submit Current Exercise action is rendered above the file
+tree only for a valid download. Selecting another exercise changes views but
+does not open a file automatically.
 
 ## 11. Course caching and offline behavior
 
@@ -655,16 +694,18 @@ validated on read, and limited to 50 total cached entries.
 
 When the Submissions view loads:
 
-1. Determine the current course/version selection.
+1. Determine the current user, course/version, and current exercise.
 2. Fetch current course structure.
 3. Find programming exercises.
 4. Fetch backend history for each exercise and selected instance.
 5. Join exercise names with submission records.
 6. Merge results into local history.
 7. Refresh any still-pending entries.
-8. Keep cached rows and show an offline message if synchronization fails.
+8. Filter visible rows to the current exercise.
+9. Keep cached rows and show an offline message if synchronization fails.
 
-Only the selected course/version is synchronized.
+Only the selected course/version is synchronized, and only the current
+exercise's submissions are rendered.
 
 The view shows:
 
@@ -698,14 +739,15 @@ When mock mode is enabled, the composition root substitutes:
 - `MockAuthRepository`
 - `MockCourseRepository`
 - `MockCourseMaterialRepository`
+- `MockCoursePointsRepository`
 - `MockAssignmentRepository`
 - `MockSubmissionRepository`
 
 The API URL is still used by the public platform-status client.
 
-Mock authentication accepts any non-empty UUID and returns Demo Student.
-Therefore, seeing Demo Student while testing a real UUID means mock mode was
-still enabled when the extension activated.
+Mock authentication signs in immediately as Demo Student without opening the
+platform website. Seeing Demo Student while testing browser login means mock
+mode was still enabled when the extension activated.
 
 ## 18. Development-only tools
 
@@ -723,6 +765,7 @@ Reset clears:
 - Session SecretStorage.
 - Every stored assignment root.
 - Every course selection.
+- Every current-exercise selection.
 - Course caches.
 - Submission history.
 - Development completion overrides.
@@ -739,6 +782,7 @@ elimination removes the development UI and behavior from the production bundle.
 | Authentication session/token | SecretStorage | Current installation | Yes |
 | Assignment root | globalState | Per student | No |
 | Course/version selection | globalState | Per student | No |
+| Current exercise | globalState | Per student | No |
 | Enrolments and course structure cache | globalState | Per student/course | No |
 | Completion cache | globalState | Per student/instance/exercise | No |
 | Submission history cache | globalState | Entries identify student | No |
@@ -779,10 +823,12 @@ Repositories and services throw ordinary errors without showing UI.
 Refresh behavior:
 
 - Authentication/folder/course changes call the shared full UI refresh.
-- Course refresh fires the Courses tree event.
+- Course refresh fires Course Selection and Course Parts events.
+- Current-exercise changes refresh Course Parts, Exercise, and Submissions.
+- Exercise watches its current local folder and also has a manual refresh.
 - Submission refresh fires the Submissions tree event.
-- Download/redownload refreshes Courses so the local icon changes immediately.
-- A passing grader update refreshes Courses so assignment/chapter/part
+- Download/redownload makes the assignment current and refreshes its file tree.
+- A passing grader update refreshes Course Parts so assignment/chapter/part
   completion changes immediately.
 - Submission status changes refresh Submissions during polling.
 
@@ -845,7 +891,7 @@ The current focused suites cover:
   transactional redownload.
 - Submission collection, multipart upload, history, polling, errors, caching,
   grouping, and result parsing.
-- Account view state.
+- Current-exercise persistence, file-tree projection, and submission scoping.
 - Platform availability.
 - Development completion scope.
 
@@ -894,7 +940,8 @@ When adding persisted data:
 
 ## 24. Current limitations and decisions still open
 
-- UUID authentication is not production-grade.
+- The browser authentication flow still requires full production deployment
+  and security review.
 - The production API URL is not approved.
 - Mock mode still defaults to `true`.
 - Marketplace publisher and project license require confirmation.

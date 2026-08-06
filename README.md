@@ -15,7 +15,7 @@ The extension is an active prototype and is not ready for production use.
 
 Currently implemented:
 
-- UUID-based prototype authentication against the platform API
+- browser-based platform authentication with a one-time PKCE code exchange
 - secure session persistence with VS Code `SecretStorage`
 - per-user assignment-folder and course-version selection
 - authenticated enrolment and course-structure retrieval
@@ -23,19 +23,20 @@ Currently implemented:
 - safe ZIP extraction with path, size, and overwrite protection
 - generated `assignment-handout.md` and assignment metadata
 - authenticated source-file submission and grader-status polling
-- backend-synchronized submission history for the selected course and version
+- backend-synchronized submission history scoped to the current exercise
 - persistent per-user local submission cache for offline fallback
 - persistent course, structure, and completion caches with visible offline state
 - passed, failed, pending, and grader-error states
 - failed-test details in read-only VS Code documents
 - assignment, chapter, and part completion indicators
-- native Account, Courses, and Submissions views
+- setup-gated Course Selection, Course Parts, Exercise, and Submissions views
+- a per-user current exercise with a native local-file tree
 - development-only completion and data-reset tools that are removed from
   production bundles
 
 Still planned:
 
-- production-grade authentication to replace direct UUID entry
+- final production authentication deployment and security review
 - synchronization of submissions from courses other than the current selection
 - final submission file-selection rules for each supported language
 - permitted public-test support
@@ -52,44 +53,46 @@ AuthController
         -> SessionRepository
 ```
 
-- `AuthController` owns VS Code prompts and messages.
+- `AuthController` opens the platform login page, validates the callback, and
+  owns VS Code messages.
 - `AuthService` coordinates sign-in, session lookup, and sign-out.
-- `ApiAuthRepository` exchanges `{ "userUuid": "..." }` for a normal platform
-  session.
+- `ApiAuthRepository` exchanges a short-lived browser authorization code and
+  PKCE verifier for a normal platform session.
 - `SessionRepository` stores the session in VS Code `SecretStorage`.
 
-The prototype endpoint is:
+The browser flow uses:
 
 ```text
-POST /api/auth/vscode/uuid
+POST /api/auth/vscode/authorize
+POST /api/auth/vscode/exchange
 ```
 
-Only registered users with an email address can use this endpoint. Anonymous
-database users are intentionally rejected.
-
-Direct UUID authentication is a temporary prototype decision. A UUID identifies
-an account but does not prove ownership, expire, or support per-installation
-revocation. Before production, it should be replaced by a short-lived activation
-flow that exchanges a one-time code for a normal platform session.
+The student authenticates on the existing platform login page using any method
+available there. The platform returns a five-minute, single-use code to VS Code;
+the session token is never placed in the callback URL. PKCE binds that code to
+the extension instance that started the request. Only the resulting session is
+stored in VS Code `SecretStorage`.
 
 ## Student workflow
 
-The Aalto Fitech activity-bar container has three native views.
-
-### Account
-
-The Account view shows the signed-in student's name, email, and assignment
-folder. Folder selection is available from the view toolbar and sign-out is in
-the view's overflow menu.
-
-### Courses
-
-The Courses view guides the student through the required setup states:
+The Aalto Fitech activity-bar container changes with setup state:
 
 1. Sign in.
 2. Choose an assignment folder.
-3. Select an enrolled course and version.
-4. Browse programming assignments by part and chapter.
+3. Use the four working views: **Course Selection**, **Course Parts**,
+   **Exercise**, and **Submissions**.
+
+Authentication and Assignment Folder are shown one at a time during setup. The
+four working views replace them only after both steps are complete. A compact
+Account toolbar action then shows identity, the assignment folder, optional
+selected-course points, Change Assignment Folder, and Sign Out.
+
+### Course Selection and Course Parts
+
+Course Selection chooses one enrolled course and instance/version. Course Parts
+then displays its programming assignments by part and chapter. Selecting an
+assignment makes it the current exercise and updates Course Parts, Exercise,
+and Submissions immediately. The current row is explicitly marked.
 
 The selected course and version appear in the view header. Non-programming
 exercise types are not displayed.
@@ -125,12 +128,18 @@ most likely starter entry file, and reveals that file in Explorer. The
 assignment folder therefore remains visible and expanded instead of becoming
 an isolated root.
 
-### Submissions
+### Exercise and Submissions
 
-The Submissions view synchronizes the selected course/version from the backend,
-shows the two newest submissions, and groups older entries under **Past
-Submissions**. Rows start collapsed and display pending, passed, failed, or
-grader-error status.
+Exercise acts like a focused file explorer for the current downloaded
+assignment. It shows student-created directories and files, hides only the
+extension's internal metadata file, watches for local changes, and opens a file
+in the editor only when the student selects that file. A prominent **Submit
+Current Exercise** action appears above the file tree.
+
+The Submissions view synchronizes the selected course/version but displays only
+history for the current exercise. It shows the two newest submissions and
+groups older entries under **Past Submissions**. Rows start collapsed and
+display pending, passed, failed, or grader-error status.
 
 Failed tests are direct children of a submission. Selecting a failed test opens
 its complete error output in a read-only Markdown document. Submission history
@@ -139,7 +148,7 @@ refresh cannot reach the backend.
 
 ## Reliability and offline behavior
 
-The Courses view caches the last successfully loaded enrolments, selected-course
+The Course Selection and Course Parts views cache the last successfully loaded enrolments, selected-course
 structure, and assignment completion states per student. If a later API request
 fails, the view keeps the cached course usable and labels its description as
 **Cached**. A visible offline message explains that Refresh retries the backend.
@@ -177,6 +186,7 @@ machine-specific settings. They can also be placed in VS Code's user
 | Setting | Default | Development use |
 | --- | --- | --- |
 | `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL including the backend's `/api` path. |
+| `aaltoFitechPlatform.platformBaseUrl` | `http://localhost:7799` | Website URL opened for browser sign-in. |
 | `aaltoFitechPlatform.useMockApi` | `true` | Uses built-in Demo Student data and makes no platform API requests. |
 
 To use the local backend, set:
@@ -184,6 +194,7 @@ To use the local backend, set:
 ```json
 {
   "aaltoFitechPlatform.apiBaseUrl": "http://localhost:8842/api",
+  "aaltoFitechPlatform.platformBaseUrl": "http://localhost:7799",
   "aaltoFitechPlatform.useMockApi": false
 }
 ```
@@ -191,9 +202,9 @@ To use the local backend, set:
 Reload the Extension Development Host after changing `useMockApi`, because the
 repository implementations are selected when the extension activates.
 
-Before a public release, the manifest defaults must be changed to the approved
-HTTPS production API URL and `useMockApi: false`. A production URL has not yet
-been approved, so the current defaults remain development-only.
+For production, configure both settings with the approved HTTPS platform and
+API URLs and set `useMockApi` to `false`. The defaults remain local-development
+values until those production URLs are approved.
 
 ### Stored data and network use
 
@@ -221,10 +232,12 @@ data. Check that `apiBaseUrl` includes `/api`, start the backend and grader if
 needed, then run **Refresh Courses** or **Refresh Submissions**. If no cache
 exists yet, the affected view remains unavailable until the API responds.
 
-### Invalid user identifier
+### Browser sign-in does not return to VS Code
 
-UUID sign-in is prototype-only. Use the UUID of a registered, non-anonymous
-platform user that has an email address, and make sure the real API is enabled.
+Keep VS Code running while signing in and accept the browser prompt to open the
+`vscode://` callback. If the prompt was dismissed, use the **open it manually**
+link on the platform confirmation page. Also confirm that `platformBaseUrl`
+points to the UI that corresponds to the configured API.
 
 ### A course or assignment is missing
 
@@ -234,7 +247,7 @@ Use **Change Course** or **Refresh Courses** after backend data changes.
 
 ### The assignment folder was moved or deleted
 
-Run **Select Assignment Folder** again from the Account view toolbar. Existing
+Open the Account toolbar action and choose **Change Assignment Folder**. Existing
 downloads are recognized only when their extension metadata is still present.
 
 ### A submission remains pending or grading fails
@@ -332,8 +345,8 @@ Feature code follows these boundaries:
 
 ## Security and scope rules
 
-- Do not use direct UUID authentication in production.
-- Do not log UUIDs, session tokens, or student source files.
+- Do not log authorization codes, PKCE verifiers, session tokens, or student
+  source files.
 - Store sessions only in VS Code `SecretStorage`.
 - Send the platform session token as the raw `Authorization` header value.
 - Do not run graders or calculate points in the extension.
