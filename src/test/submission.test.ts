@@ -10,6 +10,7 @@ import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
+import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
 import { CourseMaterialService } from '../features/courseMaterials/courseMaterialService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { SubmissionFileRepository } from '../features/submissions/submissionFileRepository';
@@ -456,7 +457,10 @@ suite('Assignment submission', () => {
       },
     });
     const provider = new SubmissionTreeProvider(
-      new AuthService({ loginWithUuid: async () => session }, sessionRepository),
+      new AuthService(
+        { exchangeAuthorizationCode: async () => session },
+        sessionRepository,
+      ),
       history,
       createStatusRepository(async () => {
         throw new Error('Network unavailable');
@@ -493,7 +497,7 @@ suite('Assignment submission', () => {
       },
     };
     const authRepository: AuthRepository = {
-      loginWithUuid: async () => session,
+      exchangeAuthorizationCode: async () => session,
     };
     await sessionRepository.save(session);
 
@@ -581,6 +585,75 @@ suite('Assignment submission', () => {
       assert.deepStrictEqual(pastItems.map((item) => item.label), [
         'Assignment 2',
         'Assignment 1',
+      ]);
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('shows submissions only for the current exercise', async () => {
+    const state = new InMemoryMemento();
+    const history = new SubmissionHistoryRepository(state);
+    const currentAssignments = new CurrentAssignmentRepository(state);
+    const sessionRepository = new SessionRepository(
+      new InMemorySecretStorage(),
+    );
+    const session: AuthSession = {
+      token: 'session-token',
+      student: {
+        id: 7,
+        email: 'student@example.com',
+        firstName: 'Demo',
+        lastName: 'Student',
+      },
+    };
+    await sessionRepository.save(session);
+    await currentAssignments.save(session.student.id, {
+      exerciseUuid: 'exercise-current',
+      name: 'Current exercise',
+      type: 'programming-exercise',
+      courseSlug: 'web-software-development',
+      courseInstanceId: 42,
+    });
+    for (const exerciseUuid of ['exercise-other', 'exercise-current']) {
+      await history.add({
+        schemaVersion: 1,
+        userId: session.student.id,
+        submissionUuid: `submission-${exerciseUuid}`,
+        exerciseUuid,
+        assignmentName: exerciseUuid,
+        courseSlug: 'web-software-development',
+        courseInstanceId: 42,
+        submittedAt: exerciseUuid === 'exercise-current'
+          ? '2026-07-22T10:00:00.000Z'
+          : '2026-07-21T10:00:00.000Z',
+        status: {
+          correct: true,
+          gradingStatus: GRADING_STATUS_PROCESSED,
+          gradingData: null,
+        },
+      });
+    }
+    const provider = new SubmissionTreeProvider(
+      new AuthService(
+        { exchangeAuthorizationCode: async () => session },
+        sessionRepository,
+      ),
+      history,
+      createStatusRepository(async () => ({
+        correct: true,
+        gradingStatus: GRADING_STATUS_PROCESSED,
+        gradingData: null,
+      })),
+      () => undefined,
+      undefined,
+      currentAssignments,
+    );
+
+    try {
+      const items = await provider.getChildren();
+      assert.deepStrictEqual(items.map((item) => item.label), [
+        'exercise-current',
       ]);
     } finally {
       provider.dispose();

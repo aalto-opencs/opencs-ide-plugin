@@ -497,7 +497,7 @@ function createProvider(
     new InMemorySecretStorage(),
   );
   const authRepository: AuthRepository = {
-    loginWithUuid: async () => session,
+    exchangeAuthorizationCode: async () => session,
   };
   const authService = new AuthService(
     authRepository,

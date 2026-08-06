@@ -20,8 +20,16 @@ const session: AuthSession = {
 };
 
 suite('Authentication', () => {
-  test('maps a successful flat API response into AuthSession', async () => {
-    const server = await startTestHttpServer((_request, response) => {
+  test('exchanges a browser authorization code for AuthSession', async () => {
+    let requestPath: string | undefined;
+    let requestBody: unknown;
+    const server = await startTestHttpServer(async (request, response) => {
+      requestPath = request.url;
+      const chunks: Buffer[] = [];
+      for await (const chunk of request) {
+        chunks.push(Buffer.from(chunk));
+      }
+      requestBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({
         auth: true,
@@ -41,7 +49,10 @@ suite('Authentication', () => {
         new ApiClient(server.baseUrl),
       );
 
-      const result = await repository.loginWithUuid('student-uuid');
+      const result = await repository.exchangeAuthorizationCode(
+        'authorization-code',
+        'code-verifier',
+      );
 
       assert.deepStrictEqual(result, {
         token: 'backend-token',
@@ -52,6 +63,11 @@ suite('Authentication', () => {
           email: 'student@example.com',
         },
       });
+      assert.strictEqual(requestPath, '/auth/vscode/exchange');
+      assert.deepStrictEqual(requestBody, {
+        code: 'authorization-code',
+        codeVerifier: 'code-verifier',
+      });
     } finally {
       await server.close();
     }
@@ -61,14 +77,17 @@ suite('Authentication', () => {
     const secrets = new InMemorySecretStorage();
     const sessionRepository = new SessionRepository(secrets);
     const authRepository: AuthRepository = {
-      loginWithUuid: async () => session,
+      exchangeAuthorizationCode: async () => session,
     };
     const authService = new AuthService(
       authRepository,
       sessionRepository,
     );
 
-    const result = await authService.signIn('student-uuid');
+    const result = await authService.signIn(
+      'authorization-code',
+      'code-verifier',
+    );
 
     assert.deepStrictEqual(result, session);
     assert.deepStrictEqual(await sessionRepository.get(), session);
@@ -106,7 +125,7 @@ suite('Authentication', () => {
     const secrets = new InMemorySecretStorage();
     const sessionRepository = new SessionRepository(secrets);
     const authRepository: AuthRepository = {
-      loginWithUuid: async () => session,
+      exchangeAuthorizationCode: async () => session,
     };
     const authService = new AuthService(
       authRepository,
