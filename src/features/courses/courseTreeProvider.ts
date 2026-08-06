@@ -19,6 +19,7 @@ import { CourseCacheRepository } from './courseCacheRepository';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
 import { SubmissionRepository } from '../submissions/submissionRepository';
+import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 
 class CourseTreeItem extends vscode.TreeItem {
   public constructor(
@@ -68,6 +69,7 @@ export class CourseTreeProvider implements
       assignment: ProgrammingAssignment,
     ) => boolean = () => false,
     private readonly cacheRepository?: CourseCacheRepository,
+    private readonly currentAssignmentRepository?: CurrentAssignmentRepository,
   ) {}
 
   public refresh(): void {
@@ -341,6 +343,9 @@ export class CourseTreeProvider implements
       const passed = backendPassed ||
         (userId !== undefined &&
           this.isDevelopmentCompleted(userId, assignment));
+      const current = userId !== undefined &&
+        this.currentAssignmentRepository?.get(userId)?.exerciseUuid ===
+          assignment.exerciseUuid;
       item.assignment = assignment;
       if (passed) {
         item.contextValue = downloaded
@@ -359,15 +364,29 @@ export class CourseTreeProvider implements
       } else {
         item.contextValue = 'programmingExercise';
       }
+      if (current) {
+        item.description = `Current • ${item.description}`;
+        item.iconPath = new vscode.ThemeIcon('target');
+      }
+      item.command = {
+        command: 'aaltoFitechPlatform.selectAssignment',
+        title: 'Select Exercise',
+        arguments: [item],
+      };
     }
 
+    const currentState = userId !== undefined && item.assignment &&
+        this.currentAssignmentRepository?.get(userId)?.exerciseUuid ===
+          item.assignment.exerciseUuid
+      ? 'Current exercise. '
+      : '';
     const assignmentState = item.completed
       ? 'Completed'
       : item.contextValue === 'downloadedProgrammingExercise'
         ? 'Downloaded, not completed'
         : 'Not downloaded, not completed';
     item.accessibilityInformation = {
-      label: `Programming assignment: ${String(item.label)}. ${assignmentState}. ${exercise.maxPoints} points.`,
+      label: `Programming assignment: ${String(item.label)}. ${currentState}${assignmentState}. ${exercise.maxPoints} points.`,
     };
 
     return item;

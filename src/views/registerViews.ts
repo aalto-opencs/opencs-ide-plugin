@@ -16,80 +16,12 @@ import {
 } from '../features/submissions/submissionDetailsProvider';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
 import { SubmissionHistorySyncService } from '../features/submissions/submissionHistorySyncService';
-
-export class AccountTreeProvider implements
-  vscode.TreeDataProvider<vscode.TreeItem>,
-  vscode.Disposable {
-  private readonly changeEmitter = new vscode.EventEmitter<
-    void
-  >();
-
-  public readonly onDidChangeTreeData = this.changeEmitter.event;
-
-  public constructor(
-    private readonly authService: AuthService,
-    private readonly assignmentFolderRepository: AssignmentFolderRepository,
-  ) {}
-
-  public refresh(): void {
-    this.changeEmitter.fire();
-  }
-
-  public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
-    return element;
-  }
-
-  public async getChildren(): Promise<vscode.TreeItem[]> {
-    const session = await this.authService.getCurrentSession();
-
-    if (!session) {
-      return [];
-    }
-
-    const studentName = [
-      session.student.firstName,
-      session.student.lastName,
-    ].filter(Boolean).join(' ');
-
-    const nameItem = new vscode.TreeItem(
-      studentName || 'Student',
-    );
-    nameItem.iconPath = new vscode.ThemeIcon('account');
-    nameItem.accessibilityInformation = {
-      label: `Student name: ${studentName || 'Student'}`,
-    };
-
-    const emailItem = new vscode.TreeItem(session.student.email);
-    emailItem.iconPath = new vscode.ThemeIcon('mail');
-    emailItem.accessibilityInformation = {
-      label: `Email address: ${session.student.email}`,
-    };
-
-    const assignmentRoot = this.assignmentFolderRepository.getRoot(
-      session.student.id,
-    );
-    const items = [nameItem, emailItem];
-    if (assignmentRoot) {
-      const assignmentFolderItem = new vscode.TreeItem('Assignments');
-      assignmentFolderItem.iconPath = new vscode.ThemeIcon('folder');
-      assignmentFolderItem.description = assignmentRoot.fsPath;
-      assignmentFolderItem.tooltip = assignmentRoot.fsPath;
-      assignmentFolderItem.accessibilityInformation = {
-        label: `Assignment folder: ${assignmentRoot.fsPath}`,
-      };
-      items.push(assignmentFolderItem);
-    }
-
-    return items;
-  }
-
-  public dispose(): void {
-    this.changeEmitter.dispose();
-  }
-}
+import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
+import { ExerciseTreeProvider } from '../features/assignments/exerciseTreeProvider';
+import { CourseSelectionTreeProvider } from '../features/courses/courseSelectionTreeProvider';
 
 /**
- * Creates and registers the three native tree views. Keep cross-feature view
+ * Creates and registers the native workflow tree views. Keep cross-feature view
  * coordination here (for example, a passed submission refreshing Courses);
  * individual providers should remain focused on rendering their own state.
  */
@@ -102,6 +34,7 @@ export function registerViews(
   assignmentFileRepository: AssignmentFileRepository,
   courseSelectionRepository: CourseSelectionRepository,
   courseCacheRepository: CourseCacheRepository,
+  currentAssignmentRepository: CurrentAssignmentRepository,
   submissionRepository: SubmissionRepository,
   submissionHistoryRepository: SubmissionHistoryRepository,
   isDevelopmentCompleted: (
@@ -109,14 +42,17 @@ export function registerViews(
     assignment: ProgrammingAssignment,
   ) => boolean = () => false,
 ): {
-  accountTreeProvider: AccountTreeProvider;
+  courseSelectionTreeProvider: CourseSelectionTreeProvider;
   courseTreeProvider: CourseTreeProvider;
+  exerciseTreeProvider: ExerciseTreeProvider;
   submissionTreeProvider: SubmissionTreeProvider;
   submissionDetailsProvider: SubmissionDetailsProvider;
 } {
-  const accountTreeProvider = new AccountTreeProvider(
+  const courseSelectionTreeProvider = new CourseSelectionTreeProvider(
     authService,
-    assignmentFolderRepository,
+    courseService,
+    courseSelectionRepository,
+    courseCacheRepository,
   );
   const courseTreeProvider = new CourseTreeProvider(
     authService,
@@ -128,6 +64,13 @@ export function registerViews(
     submissionRepository,
     isDevelopmentCompleted,
     courseCacheRepository,
+    currentAssignmentRepository,
+  );
+  const exerciseTreeProvider = new ExerciseTreeProvider(
+    authService,
+    assignmentFolderRepository,
+    assignmentFileRepository,
+    currentAssignmentRepository,
   );
   const submissionTreeProvider = new SubmissionTreeProvider(
     authService,
@@ -140,14 +83,24 @@ export function registerViews(
       submissionRepository,
       submissionHistoryRepository,
     ),
+    currentAssignmentRepository,
   );
   const submissionDetailsProvider = new SubmissionDetailsProvider();
 
+  const courseSelectionTreeView = vscode.window.createTreeView(
+    'aaltoFitechPlatform.courseSelection',
+    { treeDataProvider: courseSelectionTreeProvider },
+  );
   const courseTreeView = vscode.window.createTreeView(
-    'aaltoFitechPlatform.courses',
+    'aaltoFitechPlatform.courseParts',
     { treeDataProvider: courseTreeProvider },
   );
   courseTreeProvider.attachTreeView(courseTreeView);
+  const exerciseTreeView = vscode.window.createTreeView(
+    'aaltoFitechPlatform.exercise',
+    { treeDataProvider: exerciseTreeProvider },
+  );
+  exerciseTreeProvider.attachTreeView(exerciseTreeView);
   const submissionTreeView = vscode.window.createTreeView(
     'aaltoFitechPlatform.submissions',
     { treeDataProvider: submissionTreeProvider },
@@ -155,8 +108,9 @@ export function registerViews(
   submissionTreeProvider.attachTreeView(submissionTreeView);
 
   context.subscriptions.push(
-    accountTreeProvider,
+    courseSelectionTreeProvider,
     courseTreeProvider,
+    exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
     vscode.workspace.registerTextDocumentContentProvider(
@@ -164,17 +118,34 @@ export function registerViews(
       submissionDetailsProvider,
     ),
     vscode.window.registerTreeDataProvider(
-      'aaltoFitechPlatform.account',
-      accountTreeProvider,
+      'aaltoFitechPlatform.authenticationSetup',
+      new EmptyTreeProvider(),
     ),
+    vscode.window.registerTreeDataProvider(
+      'aaltoFitechPlatform.folderSetup',
+      new EmptyTreeProvider(),
+    ),
+    courseSelectionTreeView,
     courseTreeView,
+    exerciseTreeView,
     submissionTreeView,
   );
 
   return {
-    accountTreeProvider,
+    courseSelectionTreeProvider,
     courseTreeProvider,
+    exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
   };
+}
+
+class EmptyTreeProvider implements vscode.TreeDataProvider<vscode.TreeItem> {
+  public getTreeItem(element: vscode.TreeItem): vscode.TreeItem {
+    return element;
+  }
+
+  public getChildren(): vscode.TreeItem[] {
+    return [];
+  }
 }

@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import {
   getApiBaseUrl,
+  getPlatformBaseUrl,
   useMockApi,
 } from '../config/configuration';
 import { AuthController } from '../features/auth/authController';
@@ -16,6 +17,7 @@ import { AssignmentDownloadService } from '../features/assignments/assignmentDow
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
+import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
 import {
   ApiAssignmentRepository,
   AssignmentRepository,
@@ -52,6 +54,13 @@ import {
 import { SubmissionService } from '../features/submissions/submissionService';
 import { ApiClient } from '../infrastructure/apiClient';
 import { registerViews } from '../views/registerViews';
+import { AccountController } from '../features/account/accountController';
+import { CoursePointsService } from '../features/coursePoints/coursePointsService';
+import {
+  ApiCoursePointsRepository,
+  CoursePointsRepository,
+  MockCoursePointsRepository,
+} from '../features/coursePoints/coursePointsRepository';
 
 /**
  * Extension composition root.
@@ -95,6 +104,9 @@ export function registerCommands(
   const submissionRepository: SubmissionRepository = mockApiEnabled
     ? new MockSubmissionRepository()
     : new ApiSubmissionRepository(apiClient);
+  const coursePointsRepository: CoursePointsRepository = mockApiEnabled
+    ? new MockCoursePointsRepository()
+    : new ApiCoursePointsRepository(apiClient);
 
   const authService = new AuthService(
     authRepository,
@@ -111,6 +123,9 @@ export function registerCommands(
     context.globalState,
   );
   const courseCacheRepository = new CourseCacheRepository(
+    context.globalState,
+  );
+  const currentAssignmentRepository = new CurrentAssignmentRepository(
     context.globalState,
   );
   const courseController = new CourseController(
@@ -138,8 +153,9 @@ export function registerCommands(
   );
 
   const {
-    accountTreeProvider,
+    courseSelectionTreeProvider,
     courseTreeProvider,
+    exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
   } = registerViews(
@@ -151,6 +167,7 @@ export function registerCommands(
     assignmentFileRepository,
     courseSelectionRepository,
     courseCacheRepository,
+    currentAssignmentRepository,
     submissionRepository,
     submissionHistoryRepository,
     (userId, assignment) =>
@@ -170,7 +187,21 @@ export function registerCommands(
     () => courseTreeProvider.refresh(),
   );
 
-  const authController = new AuthController(authService);
+  const authController = new AuthController(
+    authService,
+    getPlatformBaseUrl(),
+    mockApiEnabled,
+    context.extension.id,
+  );
+  const authenticationUriHandler = vscode.window.registerUriHandler(
+    authController,
+  );
+  const accountController = new AccountController(
+    authService,
+    assignmentFolderRepository,
+    courseSelectionRepository,
+    new CoursePointsService(coursePointsRepository),
+  );
 
   // package.json welcome views and menu visibility are driven by these context
   // keys. Always call this after a command changes login, folder, or selection
@@ -182,6 +213,18 @@ export function registerCommands(
       : false;
     const courseSelected = session
       ? courseSelectionRepository.getSelection(session.student.id) !== undefined
+      : false;
+    const currentAssignment = session
+      ? currentAssignmentRepository.get(session.student.id)
+      : undefined;
+    const assignmentRoot = session
+      ? assignmentFolderRepository.getRoot(session.student.id)
+      : undefined;
+    const currentAssignmentDownloaded = currentAssignment && assignmentRoot
+      ? await assignmentFileRepository.isDownloadedAssignment(
+        assignmentRoot,
+        currentAssignment,
+      ).catch(() => false)
       : false;
     await Promise.all([
       vscode.commands.executeCommand(
@@ -199,12 +242,39 @@ export function registerCommands(
         'aaltoFitechPlatform.courseSelected',
         courseSelected,
       ),
+      vscode.commands.executeCommand(
+        'setContext',
+        'aaltoFitechPlatform.setupComplete',
+        session !== undefined && folderSelected,
+      ),
+      vscode.commands.executeCommand(
+        'setContext',
+        'aaltoFitechPlatform.currentAssignmentSelected',
+        currentAssignment !== undefined,
+      ),
+      vscode.commands.executeCommand(
+        'setContext',
+        'aaltoFitechPlatform.currentAssignmentDownloaded',
+        currentAssignmentDownloaded,
+      ),
     ]);
-    accountTreeProvider.refresh();
+    courseSelectionTreeProvider.refresh();
     courseTreeProvider.refresh();
+    exerciseTreeProvider.refresh();
     submissionTreeProvider.refresh();
   };
   void refreshUiState();
+
+  const makeCurrent = async (
+    assignment?: ProgrammingAssignment,
+  ): Promise<void> => {
+    const session = await authService.getCurrentSession();
+    if (!session || !assignment) {
+      return;
+    }
+    await currentAssignmentRepository.save(session.student.id, assignment);
+    await refreshUiState();
+  };
 
   if (
     __DEVELOPMENT_TOOLS__ &&
@@ -223,6 +293,7 @@ export function registerCommands(
           assignmentFolderRepository.clearAll(),
           courseSelectionRepository.clearAll(),
           courseCacheRepository.clearAll(),
+          currentAssignmentRepository.clearAll(),
           submissionHistoryRepository.clearAll(),
         ]);
         await refreshUiState();
@@ -268,6 +339,11 @@ export function registerCommands(
     () => authController.showCurrentUser(),
   );
 
+  const showAccountCommand = vscode.commands.registerCommand(
+    'aaltoFitechPlatform.showAccount',
+    () => accountController.show(),
+  );
+
   const signOutCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.signOut',
     async () => {
@@ -278,7 +354,15 @@ export function registerCommands(
 
   const refreshCoursesCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.refreshCourses',
-    () => courseTreeProvider.refresh(),
+    () => {
+      courseSelectionTreeProvider.refresh();
+      courseTreeProvider.refresh();
+    },
+  );
+
+  const refreshExerciseCommand = vscode.commands.registerCommand(
+    'aaltoFitechPlatform.refreshExercise',
+    () => exerciseTreeProvider.refresh(),
   );
 
   const refreshSubmissionsCommand = vscode.commands.registerCommand(
@@ -291,6 +375,10 @@ export function registerCommands(
     async () => {
       const selected = await courseController.selectCourseAndVersion();
       if (selected) {
+        const session = await authService.getCurrentSession();
+        if (session) {
+          await currentAssignmentRepository.clear(session.student.id);
+        }
         await refreshUiState();
       }
     },
@@ -302,6 +390,9 @@ export function registerCommands(
       const folder = await assignmentController.requireAssignmentFolder();
       if (folder) {
         await refreshUiState();
+        await vscode.commands.executeCommand(
+          'workbench.view.extension.aaltoFitechPlatform',
+        );
       }
     },
   );
@@ -309,32 +400,89 @@ export function registerCommands(
   const downloadAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.downloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
+      await makeCurrent(item?.assignment);
       await assignmentController.downloadAssignment(
         item?.assignment,
-        () => courseTreeProvider.refresh(),
+        async () => {
+          const session = await authService.getCurrentSession();
+          if (session && item?.assignment) {
+            await currentAssignmentRepository.save(
+              session.student.id,
+              item.assignment,
+            );
+          }
+          await refreshUiState();
+        },
+      );
+    },
+  );
+
+  const selectAssignmentCommand = vscode.commands.registerCommand(
+    'aaltoFitechPlatform.selectAssignment',
+    async (item?: { assignment?: ProgrammingAssignment }) => {
+      await makeCurrent(item?.assignment);
+    },
+  );
+
+  const downloadCurrentAssignmentCommand = vscode.commands.registerCommand(
+    'aaltoFitechPlatform.downloadCurrentAssignment',
+    async () => {
+      const session = await authService.getCurrentSession();
+      const assignment = session
+        ? currentAssignmentRepository.get(session.student.id)
+        : undefined;
+      await assignmentController.downloadAssignment(
+        assignment,
+        async () => refreshUiState(),
       );
     },
   );
 
   const showAssignmentFolderCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.showAssignmentFolder',
-    (item?: { assignment?: ProgrammingAssignment }) =>
-      assignmentController.showAssignmentFolder(item?.assignment),
+    async (item?: { assignment?: ProgrammingAssignment }) => {
+      await makeCurrent(item?.assignment);
+      await assignmentController.showAssignmentFolder(item?.assignment);
+    },
   );
 
   const redownloadAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.redownloadAssignment',
-    (item?: { assignment?: ProgrammingAssignment }) =>
-      assignmentController.redownloadAssignment(
+    async (item?: { assignment?: ProgrammingAssignment }) => {
+      await makeCurrent(item?.assignment);
+      await assignmentController.redownloadAssignment(
         item?.assignment,
-        () => courseTreeProvider.refresh(),
-      ),
+        async () => {
+          const session = await authService.getCurrentSession();
+          if (session && item?.assignment) {
+            await currentAssignmentRepository.save(
+              session.student.id,
+              item.assignment,
+            );
+          }
+          await refreshUiState();
+        },
+      );
+    },
   );
 
   const submitAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.submitAssignment',
-    (item?: { assignment?: ProgrammingAssignment }) =>
-      submissionController.submitAssignment(item?.assignment),
+    async (item?: { assignment?: ProgrammingAssignment }) => {
+      await makeCurrent(item?.assignment);
+      await submissionController.submitAssignment(item?.assignment);
+    },
+  );
+
+  const submitCurrentAssignmentCommand = vscode.commands.registerCommand(
+    'aaltoFitechPlatform.submitCurrentAssignment',
+    async () => {
+      const session = await authService.getCurrentSession();
+      const assignment = session
+        ? currentAssignmentRepository.get(session.student.id)
+        : undefined;
+      await submissionController.submitAssignment(assignment);
+    },
   );
 
   const openSubmissionDetailsCommand = vscode.commands.registerCommand(
@@ -343,18 +491,24 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
+    authenticationUriHandler,
     checkPlatformStatusCommand,
     signInCommand,
     showCurrentUserCommand,
+    showAccountCommand,
     signOutCommand,
     refreshCoursesCommand,
+    refreshExerciseCommand,
     refreshSubmissionsCommand,
     selectCourseCommand,
     selectAssignmentFolderCommand,
     downloadAssignmentCommand,
+    selectAssignmentCommand,
+    downloadCurrentAssignmentCommand,
     showAssignmentFolderCommand,
     redownloadAssignmentCommand,
     submitAssignmentCommand,
+    submitCurrentAssignmentCommand,
     openSubmissionDetailsCommand,
   );
 }

@@ -8,8 +8,14 @@ export class AuthService {
     private readonly sessionRepository: SessionRepository,
   ) {}
 
-  public async signIn(userUuid: string): Promise<AuthSession> {
-    const session = await this.authRepository.loginWithUuid(userUuid);
+  public async signIn(
+    code: string,
+    codeVerifier: string,
+  ): Promise<AuthSession> {
+    const session = await this.authRepository.exchangeAuthorizationCode(
+      code,
+      codeVerifier,
+    );
 
     await this.sessionRepository.save(session);
 

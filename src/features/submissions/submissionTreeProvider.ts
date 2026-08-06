@@ -13,6 +13,7 @@ import {
   SubmissionResultSummary,
   summarizeSubmissionResult,
 } from './submissionResult';
+import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 
 class SubmissionTreeItem extends vscode.TreeItem {
   public constructor(
@@ -42,6 +43,7 @@ export class SubmissionTreeProvider implements
     private readonly submissionRepository: SubmissionRepository,
     private readonly onAssignmentCompleted: () => void,
     private readonly historySyncService?: SubmissionHistorySyncService,
+    private readonly currentAssignmentRepository?: CurrentAssignmentRepository,
   ) {}
 
   public refresh(): void {
@@ -70,8 +72,18 @@ export class SubmissionTreeProvider implements
     const session = await this.authService.getCurrentSession();
     if (!session) {
       this.setMessage(undefined);
-      return [createMessageItem('Sign in to view submissions', 'sign-in')];
+      return [];
     }
+
+    const currentAssignment = this.currentAssignmentRepository?.get(
+      session.student.id,
+    );
+    if (this.currentAssignmentRepository && !currentAssignment) {
+      this.setDescription(undefined);
+      this.setMessage(undefined);
+      return [];
+    }
+    this.setDescription(currentAssignment?.name);
 
     let offline = false;
     const selection = this.historySyncService?.getSelectedCourse(
@@ -91,7 +103,12 @@ export class SubmissionTreeProvider implements
     if (selection) {
       entries = entries.filter((entry) =>
         entry.courseSlug === selection.courseSlug &&
-        entry.courseInstanceId === selection.courseInstanceId);
+        entry.courseInstanceId === selection.courseInstanceId &&
+        (!currentAssignment ||
+          entry.exerciseUuid === currentAssignment.exerciseUuid));
+    } else if (currentAssignment) {
+      entries = entries.filter((entry) =>
+        entry.exerciseUuid === currentAssignment.exerciseUuid);
     }
     const statusRefreshes = await Promise.all(entries
       .filter((entry) =>
@@ -121,10 +138,15 @@ export class SubmissionTreeProvider implements
     if (selection) {
       entries = entries.filter((entry) =>
         entry.courseSlug === selection.courseSlug &&
-        entry.courseInstanceId === selection.courseInstanceId);
+        entry.courseInstanceId === selection.courseInstanceId &&
+        (!currentAssignment ||
+          entry.exerciseUuid === currentAssignment.exerciseUuid));
+    } else if (currentAssignment) {
+      entries = entries.filter((entry) =>
+        entry.exerciseUuid === currentAssignment.exerciseUuid);
     }
     if (entries.length === 0) {
-      return [createMessageItem('No assignments submitted yet', 'info')];
+      return [createMessageItem('No submissions for this exercise', 'info')];
     }
 
     const currentSubmissions = entries.slice(0, 2).map(createSubmissionItem);
@@ -144,6 +166,12 @@ export class SubmissionTreeProvider implements
     this.viewMessage = message;
     if (this.treeView) {
       this.treeView.message = message;
+    }
+  }
+
+  private setDescription(description: string | undefined): void {
+    if (this.treeView) {
+      this.treeView.description = description;
     }
   }
 }

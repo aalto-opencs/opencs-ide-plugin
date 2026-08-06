@@ -10,7 +10,7 @@ export interface AuthSession {
   student: StudentProfile;
 }
 
-export interface VscodeUuidLoginResponse {
+export interface VscodeLoginResponse {
   auth: true;
   token: string;
   email: string;

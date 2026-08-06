@@ -1,11 +1,14 @@
 import { ApiClient } from '../../infrastructure/apiClient';
 import {
   AuthSession,
-  VscodeUuidLoginResponse,
+  VscodeLoginResponse,
 } from './authModels';
 
 export interface AuthRepository {
-  loginWithUuid(userUuid: string): Promise<AuthSession>;
+  exchangeAuthorizationCode(
+    code: string,
+    codeVerifier: string,
+  ): Promise<AuthSession>;
 }
 
 export class ApiAuthRepository implements AuthRepository {
@@ -13,13 +16,15 @@ export class ApiAuthRepository implements AuthRepository {
     private readonly apiClient: ApiClient,
   ) {}
 
-  public async loginWithUuid(
-    userUuid: string,
+  public async exchangeAuthorizationCode(
+    code: string,
+    codeVerifier: string,
   ): Promise<AuthSession> {
-    const response = await this.apiClient.post<VscodeUuidLoginResponse>(
-      '/auth/vscode/uuid',
+    const response = await this.apiClient.post<VscodeLoginResponse>(
+      '/auth/vscode/exchange',
       {
-        userUuid,
+        code,
+        codeVerifier,
       },
     );
 
@@ -33,16 +38,35 @@ export class ApiAuthRepository implements AuthRepository {
       },
     };
   }
+
+  /**
+   * Legacy helper retained only for real-backend integration fixtures while
+   * browser authentication replaces UUID entry in the extension UI.
+   */
+  public async loginWithUuid(userUuid: string): Promise<AuthSession> {
+    const response = await this.apiClient.post<VscodeLoginResponse>(
+      '/auth/vscode/uuid',
+      { userUuid },
+    );
+
+    return this.mapSession(response);
+  }
+
+  private mapSession(response: VscodeLoginResponse): AuthSession {
+    return {
+      token: response.token,
+      student: {
+        id: response.id,
+        firstName: response.firstName,
+        lastName: response.lastName,
+        email: response.email,
+      },
+    };
+  }
 }
 
 export class MockAuthRepository implements AuthRepository {
-  public async loginWithUuid(
-    userUuid: string,
-  ): Promise<AuthSession> {
-    if (!userUuid.trim()) {
-      throw new Error('User UUID is required.');
-    }
-
+  public async exchangeAuthorizationCode(): Promise<AuthSession> {
     return {
       token: `mock-session-token-${Date.now()}`,
       student: {

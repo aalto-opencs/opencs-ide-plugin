@@ -94,7 +94,7 @@ export class AssignmentController {
 
   public async downloadAssignment(
     assignment?: ProgrammingAssignment,
-    onDownloaded: () => void = () => undefined,
+    onDownloaded: () => void | Promise<void> = () => undefined,
   ): Promise<void> {
     if (!assignment) {
       await vscode.window.showErrorMessage(
@@ -144,7 +144,7 @@ export class AssignmentController {
         },
         () => this.downloadService.download(assignment, root),
       );
-      onDownloaded();
+      await onDownloaded();
 
       const action = await vscode.window.showInformationMessage(
         `Downloaded ${assignment.name}.`,
@@ -190,7 +190,7 @@ export class AssignmentController {
 
   public async redownloadAssignment(
     assignment?: ProgrammingAssignment,
-    onDownloaded: () => void = () => undefined,
+    onDownloaded: () => void | Promise<void> = () => undefined,
   ): Promise<void> {
     const location = await this.getDownloadedAssignmentLocation(assignment);
     if (!location || !assignment) {
@@ -228,7 +228,6 @@ export class AssignmentController {
         ),
       );
     } catch (error: unknown) {
-      onDownloaded();
       await vscode.window.showErrorMessage(
         error instanceof Error
           ? error.message
@@ -237,7 +236,7 @@ export class AssignmentController {
       return;
     }
 
-    onDownloaded();
+    await onDownloaded();
     const openAction = await vscode.window.showInformationMessage(
       `Redownloaded ${assignment.name}.`,
       'Open Assignment Folder',
