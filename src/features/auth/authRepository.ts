@@ -1,7 +1,7 @@
 import { ApiClient } from '../../infrastructure/apiClient';
 import {
   AuthSession,
-  VscodeLoginResponse,
+  IdeLoginResponse,
 } from './authModels';
 
 export interface AuthRepository {
@@ -20,8 +20,8 @@ export class ApiAuthRepository implements AuthRepository {
     code: string,
     codeVerifier: string,
   ): Promise<AuthSession> {
-    const response = await this.apiClient.post<VscodeLoginResponse>(
-      '/auth/vscode/exchange',
+    const response = await this.apiClient.post<IdeLoginResponse>(
+      '/auth/ide/exchange',
       {
         code,
         codeVerifier,
@@ -44,7 +44,7 @@ export class ApiAuthRepository implements AuthRepository {
    * browser authentication replaces UUID entry in the extension UI.
    */
   public async loginWithUuid(userUuid: string): Promise<AuthSession> {
-    const response = await this.apiClient.post<VscodeLoginResponse>(
+    const response = await this.apiClient.post<IdeLoginResponse>(
       '/auth/vscode/uuid',
       { userUuid },
     );
@@ -52,7 +52,7 @@ export class ApiAuthRepository implements AuthRepository {
     return this.mapSession(response);
   }
 
-  private mapSession(response: VscodeLoginResponse): AuthSession {
+  private mapSession(response: IdeLoginResponse): AuthSession {
     return {
       token: response.token,
       student: {

@@ -251,8 +251,8 @@ Current endpoints:
 | Method | Endpoint | Authentication | Used for |
 | --- | --- | --- | --- |
 | GET | `/status` | No | Platform availability |
-| POST | `/auth/vscode/authorize` | Browser platform session | Create a one-time PKCE-bound code |
-| POST | `/auth/vscode/exchange` | One-time code + verifier | Create the extension session |
+| POST | `/auth/ide/authorize` | Browser platform session | Create a one-time PKCE-bound code |
+| POST | `/auth/ide/exchange` | One-time code + verifier | Create the extension session |
 | GET | `/users/all-enrolments` | Yes | All student course enrolments |
 | GET | `/course-materials/:courseSlug/structure` | Yes | Parts, chapters, and exercises |
 | GET | `/points/courses/:courseSlug/progress` | Yes | Optional Account points line for selected instance |
@@ -296,16 +296,16 @@ sequenceDiagram
 
     participant Browser as Platform website
     Student->>Controller: Select Sign In with Browser
-    Controller->>Browser: Open /en/auth/vscode with state + PKCE challenge
+    Controller->>Browser: Open /en/auth/ide with state + PKCE challenge
     Browser->>Student: Existing platform login page
     Student->>Browser: Password or Haka login
-    Browser->>API: POST /auth/vscode/authorize
+    Browser->>API: POST /auth/ide/authorize
     API-->>Browser: Five-minute one-time code
-    Browser->>Controller: vscode:// callback with code + state
+    Browser->>Controller: IDE callback URI with code + state
     Controller->>Controller: Verify callback state
     Controller->>Service: signIn(code, verifier)
     Service->>Repo: exchangeAuthorizationCode(code, verifier)
-    Repo->>API: POST /auth/vscode/exchange
+    Repo->>API: POST /auth/ide/exchange
     API-->>Repo: Flat login response + new session token
     Repo-->>Service: AuthSession
     Service->>Secrets: Save JSON session

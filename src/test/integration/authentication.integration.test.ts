@@ -33,7 +33,7 @@ suite('Authentication backend integration', () => {
     const authorization = await browserApiClient.post<{
       code: string;
       expiresIn: number;
-    }>('/auth/vscode/authorize', { codeChallenge });
+    }>('/auth/ide/authorize', { codeChallenge });
 
     const session = await authRepository.exchangeAuthorizationCode(
       authorization.code,

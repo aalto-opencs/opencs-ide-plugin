@@ -63,8 +63,8 @@ AuthController
 The browser flow uses:
 
 ```text
-POST /api/auth/vscode/authorize
-POST /api/auth/vscode/exchange
+POST /api/auth/ide/authorize
+POST /api/auth/ide/exchange
 ```
 
 The student authenticates on the existing platform login page using any method

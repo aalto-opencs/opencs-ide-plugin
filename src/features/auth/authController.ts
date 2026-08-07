@@ -43,7 +43,7 @@ export class AuthController implements vscode.UriHandler {
       `${vscode.env.uriScheme}://${this.extensionId}/auth/callback`,
     );
     const authorizationUrl = new URL(
-      '/en/auth/vscode',
+      '/en/auth/ide',
       this.platformBaseUrl,
     );
     authorizationUrl.searchParams.set('state', state);

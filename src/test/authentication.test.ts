@@ -63,7 +63,7 @@ suite('Authentication', () => {
           email: 'student@example.com',
         },
       });
-      assert.strictEqual(requestPath, '/auth/vscode/exchange');
+      assert.strictEqual(requestPath, '/auth/ide/exchange');
       assert.deepStrictEqual(requestBody, {
         code: 'authorization-code',
         codeVerifier: 'code-verifier',
