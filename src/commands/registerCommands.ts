@@ -258,6 +258,11 @@ export function registerCommands(
         currentAssignmentDownloaded,
       ),
     ]);
+    await vscode.commands.executeCommand(
+      'setContext',
+      'aaltoOpenCsIde.initialized',
+      true,
+    );
     courseSelectionTreeProvider.refresh();
     courseTreeProvider.refresh();
     exerciseTreeProvider.refresh();

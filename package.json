@@ -32,6 +32,7 @@
     "grader"
   ],
   "activationEvents": [
+    "onStartupFinished",
     "onUri",
     "onCommand:aaltoOpenCsIde.checkPlatformStatus",
     "onCommand:aaltoOpenCsIde.selectCourse",
@@ -63,32 +64,32 @@
         {
           "id": "aaltoOpenCsIde.authenticationSetup",
           "name": "Authentication",
-          "when": "!aaltoOpenCsIde.signedIn"
+          "when": "aaltoOpenCsIde.initialized && !aaltoOpenCsIde.signedIn"
         },
         {
           "id": "aaltoOpenCsIde.folderSetup",
           "name": "Assignment Folder",
-          "when": "aaltoOpenCsIde.signedIn && !aaltoOpenCsIde.assignmentFolderSelected"
+          "when": "aaltoOpenCsIde.initialized && aaltoOpenCsIde.signedIn && !aaltoOpenCsIde.assignmentFolderSelected"
         },
         {
           "id": "aaltoOpenCsIde.courseSelection",
           "name": "Course Selection",
-          "when": "aaltoOpenCsIde.setupComplete"
+          "when": "aaltoOpenCsIde.initialized && aaltoOpenCsIde.setupComplete"
         },
         {
           "id": "aaltoOpenCsIde.courseParts",
           "name": "Course Parts",
-          "when": "aaltoOpenCsIde.setupComplete"
+          "when": "aaltoOpenCsIde.initialized && aaltoOpenCsIde.setupComplete"
         },
         {
           "id": "aaltoOpenCsIde.exercise",
           "name": "Exercise",
-          "when": "aaltoOpenCsIde.setupComplete"
+          "when": "aaltoOpenCsIde.initialized && aaltoOpenCsIde.setupComplete"
         },
         {
           "id": "aaltoOpenCsIde.submissions",
           "name": "Submissions",
-          "when": "aaltoOpenCsIde.setupComplete"
+          "when": "aaltoOpenCsIde.initialized && aaltoOpenCsIde.setupComplete"
         }
       ]
     },
