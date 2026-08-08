@@ -262,6 +262,7 @@ export function registerCommands(
     courseTreeProvider.refresh();
     exerciseTreeProvider.refresh();
     submissionTreeProvider.refresh();
+    await courseController.showSelectedInstanceEndWarning();
   };
   void refreshUiState();
 
@@ -287,6 +288,7 @@ export function registerCommands(
       courseSelectionRepository,
       developmentCompletionRepository,
       () => courseTreeProvider.refresh(),
+      refreshUiState,
       async () => {
         await Promise.all([
           sessionRepository.clear(),
@@ -310,7 +312,7 @@ export function registerCommands(
     developmentStatusBarItem.name = 'Aalto Fitech Development Tools';
     developmentStatusBarItem.text = '$(beaker) Aalto Fitech Test Tools';
     developmentStatusBarItem.tooltip =
-      'Development only: simulate completion or reset extension data';
+      'Development only: test instance warnings, simulate completion, or reset extension data';
     developmentStatusBarItem.command =
       'aaltoFitechPlatform.development.markAssignmentComplete';
     developmentStatusBarItem.show();
@@ -354,9 +356,10 @@ export function registerCommands(
 
   const refreshCoursesCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.refreshCourses',
-    () => {
+    async () => {
       courseSelectionTreeProvider.refresh();
       courseTreeProvider.refresh();
+      await courseController.showSelectedInstanceEndWarning();
     },
   );
 
@@ -400,6 +403,7 @@ export function registerCommands(
   const downloadAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.downloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
+      await courseController.showSelectedInstanceEndWarning();
       await makeCurrent(item?.assignment);
       await assignmentController.downloadAssignment(
         item?.assignment,
@@ -427,6 +431,7 @@ export function registerCommands(
   const downloadCurrentAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.downloadCurrentAssignment',
     async () => {
+      await courseController.showSelectedInstanceEndWarning();
       const session = await authService.getCurrentSession();
       const assignment = session
         ? currentAssignmentRepository.get(session.student.id)
@@ -449,6 +454,7 @@ export function registerCommands(
   const redownloadAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.redownloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
+      await courseController.showSelectedInstanceEndWarning();
       await makeCurrent(item?.assignment);
       await assignmentController.redownloadAssignment(
         item?.assignment,
@@ -469,6 +475,10 @@ export function registerCommands(
   const submitAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.submitAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
+      if (!await courseController.validateSelectionForSubmission()) {
+        return;
+      }
+      await courseController.showSelectedInstanceEndWarning();
       await makeCurrent(item?.assignment);
       await submissionController.submitAssignment(item?.assignment);
     },
@@ -477,6 +487,10 @@ export function registerCommands(
   const submitCurrentAssignmentCommand = vscode.commands.registerCommand(
     'aaltoFitechPlatform.submitCurrentAssignment',
     async () => {
+      if (!await courseController.validateSelectionForSubmission()) {
+        return;
+      }
+      await courseController.showSelectedInstanceEndWarning();
       const session = await authService.getCurrentSession();
       const assignment = session
         ? currentAssignmentRepository.get(session.student.id)

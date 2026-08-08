@@ -253,7 +253,10 @@ Current endpoints:
 | GET | `/status` | No | Platform availability |
 | POST | `/auth/ide/authorize` | Browser platform session | Create a one-time PKCE-bound code |
 | POST | `/auth/ide/exchange` | One-time code + verifier | Create the extension session |
-| GET | `/users/enrolments-by-course` | Yes | All student course enrolments |
+| GET | `/course-materials/ide/visible-courses` | Yes | Platform-visible courses for IDE clients |
+| GET | `/users/enrolments-by-course` | Yes | Active student enrolments by course |
+| GET | `/course-instances?courseSlug=<slug>` | Yes | All versions of a visible course |
+| POST | `/course-instances/:id/active` | Yes | Enrol and activate a selected version |
 | GET | `/course-materials/:courseSlug/structure` | Yes | Parts, chapters, and exercises |
 | GET | `/points/courses/:courseSlug/progress` | Yes | Optional Account points line for selected instance |
 | GET | `/exercises/:exerciseUuid/starter` | Yes | Starter metadata and handout |
@@ -387,13 +390,20 @@ earned/max points and percentage. Failure or a missing row simply omits points.
 The selection flow:
 
 1. Require a current session.
-2. Request `/users/enrolments-by-course`.
-3. Save successful enrolments to the per-student cache.
-4. If the API fails, offer validated cached enrolments when available.
+2. Request `/course-materials/ide/visible-courses` for the course picker
+   and `/users/enrolments-by-course` for active-instance synchronization.
+3. Save successful visible courses and active enrolments to their caches.
+4. If the API fails, offer validated cached course choices when available.
 5. Ask the student to choose a course.
-6. Ask for one instance/version of that course.
-7. Save `{ courseSlug, courseInstanceId }` per student.
-8. Refresh context keys and all views.
+6. Request every instance/version for that course from
+   `/course-instances?courseSlug=<slug>` and display the labels alphabetically,
+   matching the platform UI without date-based filtering.
+7. Ask for one instance/version and warn if it ends within 14 days.
+8. Activate the instance with `POST /course-instances/:id/active`; this existing
+   platform operation also enrols the student when needed.
+9. Refresh enrolments and save the selection only after the backend confirms it
+   as active.
+10. Refresh context keys and all views.
 
 The selection key is:
 
@@ -403,6 +413,12 @@ aaltoFitechPlatform.courseSelection.v1.<userId>
 
 Course instance IDs are part of completion, history, development overrides, and
 download metadata. Do not remove the instance from those identities.
+
+The stored selection also caches the instance label, end timestamp,
+validation timestamp, and one-time end-warning state. The extension warns once
+at 14 days remaining and once at 7 days remaining. Cached dates are suitable
+for notifications, but the backend remains authoritative: stale or ended
+selections are revalidated before submission.
 
 ## 10. Course Parts, current exercise, and completion
 
@@ -461,6 +477,7 @@ does not open a file automatically.
 
 ```text
 aaltoFitechPlatform.courseCache.v1.enrolments.<userId>
+aaltoFitechPlatform.courseCache.v1.visibleCourses
 aaltoFitechPlatform.courseCache.v1.structure.<userId>.<courseSlug>
 aaltoFitechPlatform.courseCache.v1.passed.<userId>.<instanceId>.<exerciseUuid>
 ```
@@ -746,6 +763,8 @@ login means mock mode was still enabled when the extension activated.
 
 Development builds show an **Aalto Fitech Test Tools** status-bar item. It can:
 
+- Change the selected instance's locally cached end date to exercise the
+  14-day, 7-day, and ended-instance warnings without changing backend data.
 - Mark a programming assignment complete in memory.
 - Clear in-memory completion overrides.
 - Reset all extension test data.

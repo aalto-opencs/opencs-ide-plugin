@@ -4,7 +4,11 @@ import {
   CourseExercise,
   CoursePart,
 } from '../courseMaterials/courseMaterialModels';
-import { CourseEnrolment, CourseInstance } from './courseModels';
+import {
+  CourseEnrolment,
+  CourseInstance,
+  StudentVisibleCourse,
+} from './courseModels';
 
 const CACHE_PREFIX = 'aaltoFitechPlatform.courseCache.v1';
 
@@ -31,6 +35,17 @@ export class CourseCacheRepository {
       `${CACHE_PREFIX}.enrolments.${userId}`,
       enrolments,
     );
+  }
+
+  public getStudentVisibleCourses(): StudentVisibleCourse[] | undefined {
+    const value = this.storage.get<unknown>(`${CACHE_PREFIX}.visibleCourses`);
+    return isStudentVisibleCourses(value) ? value : undefined;
+  }
+
+  public async saveStudentVisibleCourses(
+    courses: StudentVisibleCourse[],
+  ): Promise<void> {
+    await this.storage.update(`${CACHE_PREFIX}.visibleCourses`, courses);
   }
 
   public getStructure(
@@ -82,6 +97,16 @@ export class CourseCacheRepository {
       .filter((key) => key.startsWith(`${CACHE_PREFIX}.`))
       .map((key) => this.storage.update(key, undefined)));
   }
+}
+
+function isStudentVisibleCourses(
+  value: unknown,
+): value is StudentVisibleCourse[] {
+  return Array.isArray(value) && value.every((course) =>
+    isObject(course) &&
+    typeof course.courseSlug === 'string' &&
+    typeof course.courseName === 'string' &&
+    typeof course.abbreviation === 'string');
 }
 
 function isCourseEnrolments(value: unknown): value is CourseEnrolment[] {

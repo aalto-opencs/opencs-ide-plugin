@@ -13,7 +13,15 @@ import {
   CourseMaterialRepository,
 } from '../features/courseMaterials/courseMaterialRepository';
 import { CourseMaterialService } from '../features/courseMaterials/courseMaterialService';
-import { CourseEnrolment } from '../features/courses/courseModels';
+import {
+  CourseEnrolment,
+  CourseInstance,
+  CourseSelection,
+} from '../features/courses/courseModels';
+import {
+  getDueCachedWarning,
+  getSelectionEndWarning,
+} from '../features/courses/courseController';
 import {
   ApiCourseRepository,
   CourseRepository,
@@ -135,6 +143,160 @@ suite('Courses', () => {
     } finally {
       await server.close();
     }
+  });
+
+  test('requests student-visible courses with the stored token', async () => {
+    let requestedPath: string | undefined;
+    let authorization: string | undefined;
+    const server = await startTestHttpServer((request, response) => {
+      requestedPath = request.url;
+      authorization = request.headers.authorization;
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({
+        status: 'success',
+        courses: [{
+          slug: 'web-software-development-v1',
+          name: 'Web Software Development',
+          abbreviation: 'WSD',
+        }],
+      }));
+    });
+
+    try {
+      const repository = new ApiCourseRepository(
+        new ApiClient(server.baseUrl, async () => session.token),
+      );
+      const result = await repository.getStudentVisibleCourses();
+
+      assert.strictEqual(
+        requestedPath,
+        '/course-materials/ide/visible-courses',
+      );
+      assert.strictEqual(authorization, session.token);
+      assert.deepStrictEqual(result, [{
+        courseSlug: 'web-software-development-v1',
+        courseName: 'Web Software Development',
+        abbreviation: 'WSD',
+      }]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('requests and maps all instances for a selected course', async () => {
+    let requestedPath: string | undefined;
+    let authorization: string | undefined;
+    const server = await startTestHttpServer((request, response) => {
+      requestedPath = request.url;
+      authorization = request.headers.authorization;
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({
+        status: 'success',
+        courseInstances: [{
+          id: 12,
+          label: 'Spring 2026',
+          start_time: '2026-01-01T00:00:00.000Z',
+          end_time: '2026-05-31T00:00:00.000Z',
+          metadata: { pointsComparisonEnabled: false },
+        }],
+      }));
+    });
+
+    try {
+      const repository = new ApiCourseRepository(
+        new ApiClient(server.baseUrl, async () => session.token),
+      );
+      const result = await repository.getCourseInstances(
+        'web software',
+      );
+
+      assert.strictEqual(
+        requestedPath,
+        '/course-instances?courseSlug=web+software',
+      );
+      assert.strictEqual(authorization, session.token);
+      assert.deepStrictEqual(result, [{
+        id: 12,
+        label: 'Spring 2026',
+        startTime: '2026-01-01T00:00:00.000Z',
+        endTime: '2026-05-31T00:00:00.000Z',
+        pointsComparisonEnabled: false,
+      }]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('activates a selected course instance with the stored token', async () => {
+    let requestedPath: string | undefined;
+    let requestedMethod: string | undefined;
+    let authorization: string | undefined;
+    const server = await startTestHttpServer((request, response) => {
+      requestedPath = request.url;
+      requestedMethod = request.method;
+      authorization = request.headers.authorization;
+      response.writeHead(200, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({ status: 'success' }));
+    });
+
+    try {
+      const repository = new ApiCourseRepository(
+        new ApiClient(server.baseUrl, async () => session.token),
+      );
+      await repository.activateCourseInstance(12);
+
+      assert.strictEqual(requestedPath, '/course-instances/12/active');
+      assert.strictEqual(requestedMethod, 'POST');
+      assert.strictEqual(authorization, session.token);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('warns once at fourteen days and once at seven days', () => {
+    const instance: CourseInstance = {
+      id: 12,
+      label: 'Spring 2026',
+      startTime: null,
+      endTime: '2026-08-22T12:00:00.000Z',
+      pointsComparisonEnabled: false,
+    };
+    const selection: CourseSelection = {
+      courseSlug: 'web-software-development',
+      courseInstanceId: 12,
+      instanceLabel: instance.label,
+      instanceEndTime: instance.endTime,
+    };
+
+    assert.strictEqual(
+      getSelectionEndWarning(
+        instance,
+        new Date('2026-08-01T12:00:00.000Z'),
+      ),
+      undefined,
+    );
+    const fourteenDayWarning = getDueCachedWarning(
+      selection,
+      new Date('2026-08-09T12:00:00.000Z'),
+    );
+    assert.ok(fourteenDayWarning?.message.includes('14 days or less'));
+    assert.deepStrictEqual(fourteenDayWarning?.state, {
+      endTime: instance.endTime,
+      fourteenDays: true,
+      sevenDays: false,
+    });
+    const sevenDayWarning = getDueCachedWarning(
+      { ...selection, endWarningsShown: fourteenDayWarning?.state },
+      new Date('2026-08-16T12:00:00.000Z'),
+    );
+    assert.ok(sevenDayWarning?.message.includes('7 days or less'));
+    assert.strictEqual(
+      getDueCachedWarning(
+        { ...selection, endWarningsShown: sevenDayWarning?.state },
+        new Date('2026-08-17T12:00:00.000Z'),
+      ),
+      undefined,
+    );
   });
 
   test('requests a course structure with the stored token', async () => {

@@ -14,7 +14,24 @@ export interface CourseEnrolment {
   instances: CourseInstance[];
 }
 
+export interface StudentVisibleCourse {
+  courseSlug: string;
+  courseName: string;
+  abbreviation: string;
+}
+
 export interface CourseSelection {
   courseSlug: string;
   courseInstanceId: number;
+  schemaVersion?: 2;
+  instanceLabel?: string;
+  instanceEndTime?: string | null;
+  lastValidatedAt?: string;
+  endWarningsShown?: CourseInstanceEndWarnings;
+}
+
+export interface CourseInstanceEndWarnings {
+  endTime: string;
+  fourteenDays: boolean;
+  sevenDays: boolean;
 }

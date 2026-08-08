@@ -13,7 +13,51 @@ function isCourseSelection(value: unknown): value is CourseSelection {
     'courseInstanceId' in value &&
     typeof value.courseInstanceId === 'number' &&
     Number.isInteger(value.courseInstanceId) &&
-    value.courseInstanceId > 0;
+    value.courseInstanceId > 0 &&
+    isOptionalString(value, 'instanceLabel') &&
+    isOptionalTimestamp(value, 'instanceEndTime') &&
+    isOptionalIsoString(value, 'lastValidatedAt') &&
+    isOptionalEndWarnings(value);
+}
+
+function isOptionalIsoString(value: object, key: string): boolean {
+  if (!(key in value)) {
+    return true;
+  }
+  const timestamp = (value as Record<string, unknown>)[key];
+  return typeof timestamp === 'string' && Number.isFinite(Date.parse(timestamp));
+}
+
+function isOptionalString(
+  value: object,
+  key: string,
+): boolean {
+  return !(key in value) || typeof (value as Record<string, unknown>)[key] ===
+    'string';
+}
+
+function isOptionalTimestamp(
+  value: object,
+  key: string,
+): boolean {
+  if (!(key in value)) {
+    return true;
+  }
+  const timestamp = (value as Record<string, unknown>)[key];
+  return timestamp === null ||
+    (typeof timestamp === 'string' && Number.isFinite(Date.parse(timestamp)));
+}
+
+function isOptionalEndWarnings(value: object): boolean {
+  if (!('endWarningsShown' in value)) {
+    return true;
+  }
+  const warnings = (value as Record<string, unknown>).endWarningsShown;
+  return typeof warnings === 'object' && warnings !== null &&
+    'endTime' in warnings && typeof warnings.endTime === 'string' &&
+    Number.isFinite(Date.parse(warnings.endTime)) &&
+    'fourteenDays' in warnings && typeof warnings.fourteenDays === 'boolean' &&
+    'sevenDays' in warnings && typeof warnings.sevenDays === 'boolean';
 }
 
 export class CourseSelectionRepository {
