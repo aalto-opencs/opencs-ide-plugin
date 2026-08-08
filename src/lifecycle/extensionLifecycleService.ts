@@ -2,16 +2,16 @@ import * as vscode from 'vscode';
 
 const INSTALLATION_MARKER_FILE = 'installation-v1';
 const INSTALLATION_MARKER_SECRET =
-  'aaltoFitechPlatform.installationMarker.v1';
+  'aaltoOpenCsIde.installationMarker.v1';
 const INSTALLATION_MARKER_STATE =
-  'aaltoFitechPlatform.installationMarker.v1';
+  'aaltoOpenCsIde.installationMarker.v1';
 const INSTALLATION_MARKER_VALUE = 'initialized';
 const CLEANUP_PENDING_MARKER_VALUE = 'cleanup-pending';
 
 /**
  * Distinguishes an ordinary restart/update from a reinstall.
  *
- * VS Code removes an extension's globalStorage directory after a complete
+ * The IDE removes an extension's globalStorage directory after a complete
  * uninstall, but SecretStorage and globalState are separate stores. A marker
  * in globalStorage therefore lets the next installation identify and clear
  * any extension-owned state that survived the uninstall.

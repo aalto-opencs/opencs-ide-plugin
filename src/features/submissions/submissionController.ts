@@ -147,7 +147,7 @@ export class SubmissionController {
 
       if (!status) {
         await vscode.commands.executeCommand(
-          'aaltoFitechPlatform.submissions.focus',
+          'aaltoOpenCsIde.submissions.focus',
         );
         return;
       }
@@ -158,7 +158,7 @@ export class SubmissionController {
       );
       this.treeProvider.refresh();
       await vscode.commands.executeCommand(
-        'aaltoFitechPlatform.submissions.focus',
+        'aaltoOpenCsIde.submissions.focus',
       );
     } catch (error: unknown) {
       const message = error instanceof vscode.FileSystemError &&

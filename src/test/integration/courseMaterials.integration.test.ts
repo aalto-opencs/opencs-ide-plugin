@@ -18,7 +18,7 @@ import {
 suite('Course materials backend integration', () => {
   test('logs in and retrieves a course structure', async function () {
     const authentication = readIntegrationAuthenticationConfiguration();
-    const courseSlug = process.env.AALTO_FITECH_TEST_COURSE_SLUG;
+    const courseSlug = process.env.AALTO_OPENCS_IDE_TEST_COURSE_SLUG;
     const expectedStructure = readExpectedStructure();
 
     if (!authentication || !courseSlug || !expectedStructure) {
@@ -75,17 +75,17 @@ interface ExpectedStructure {
 
 function readExpectedStructure(): ExpectedStructure | undefined {
   const values = {
-    partSlug: process.env.AALTO_FITECH_TEST_EXPECTED_PART_SLUG,
-    partName: process.env.AALTO_FITECH_TEST_EXPECTED_PART_NAME,
-    partOrder: process.env.AALTO_FITECH_TEST_EXPECTED_PART_ORDER,
-    chapterName: process.env.AALTO_FITECH_TEST_EXPECTED_CHAPTER_NAME,
-    chapterOrder: process.env.AALTO_FITECH_TEST_EXPECTED_CHAPTER_ORDER,
-    exerciseUuid: process.env.AALTO_FITECH_TEST_EXPECTED_EXERCISE_UUID,
-    exerciseName: process.env.AALTO_FITECH_TEST_EXPECTED_EXERCISE_NAME,
-    exerciseType: process.env.AALTO_FITECH_TEST_EXPECTED_EXERCISE_TYPE,
+    partSlug: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_PART_SLUG,
+    partName: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_PART_NAME,
+    partOrder: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_PART_ORDER,
+    chapterName: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_CHAPTER_NAME,
+    chapterOrder: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_CHAPTER_ORDER,
+    exerciseUuid: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_EXERCISE_UUID,
+    exerciseName: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_EXERCISE_NAME,
+    exerciseType: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_EXERCISE_TYPE,
     exerciseMaxPoints:
-      process.env.AALTO_FITECH_TEST_EXPECTED_EXERCISE_MAX_POINTS,
-    exerciseOrder: process.env.AALTO_FITECH_TEST_EXPECTED_EXERCISE_ORDER,
+      process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_EXERCISE_MAX_POINTS,
+    exerciseOrder: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_EXERCISE_ORDER,
   };
 
   if (Object.values(values).some((value) => value === undefined)) {

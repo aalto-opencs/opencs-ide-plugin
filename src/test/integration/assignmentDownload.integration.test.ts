@@ -88,10 +88,10 @@ function readConfiguration():
   AssignmentDownloadTestConfiguration | undefined {
   const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
-    expectedName: process.env.AALTO_FITECH_TEST_EXPECTED_ASSIGNMENT_NAME,
+    exerciseUuid: process.env.AALTO_OPENCS_IDE_TEST_ASSIGNMENT_UUID,
+    expectedName: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_ASSIGNMENT_NAME,
     expectedStarterFile:
-      process.env.AALTO_FITECH_TEST_EXPECTED_STARTER_FILE,
+      process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_STARTER_FILE,
   };
 
   if (

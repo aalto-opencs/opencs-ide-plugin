@@ -43,7 +43,7 @@ suite('CurrentAssignmentRepository', () => {
 
   test('ignores corrupt persisted values and clears saved selections', async () => {
     const state = new InMemoryMemento();
-    await state.update('aaltoFitechPlatform.currentAssignment.v1.42', {
+    await state.update('aaltoOpenCsIde.currentAssignment.v1.42', {
       exerciseUuid: 123,
     });
     const repository = new CurrentAssignmentRepository(state);

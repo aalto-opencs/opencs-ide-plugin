@@ -249,7 +249,7 @@ function createFailedTestItem(
     label: `Failed test: ${test.name}. Open details.`,
   };
   item.command = {
-    command: 'aaltoFitechPlatform.openSubmissionDetails',
+    command: 'aaltoOpenCsIde.openSubmissionDetails',
     title: 'Open Failed-Test Details',
     arguments: [createTestDetailsDocument(entry, test, summary)],
   };
@@ -268,7 +268,7 @@ function createGraderErrorItem(
     label: `${label}. Open grader error details.`,
   };
   item.command = {
-    command: 'aaltoFitechPlatform.openSubmissionDetails',
+    command: 'aaltoOpenCsIde.openSubmissionDetails',
     title: 'Open Grader-Error Details',
     arguments: [{
       title: `${entry.assignmentName} — ${label}`,

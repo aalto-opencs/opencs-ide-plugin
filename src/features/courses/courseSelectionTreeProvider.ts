@@ -56,7 +56,7 @@ export class CourseSelectionTreeProvider implements
     item.tooltip = `${selection.courseSlug}\n${item.description}`;
     item.iconPath = new vscode.ThemeIcon('book');
     item.command = {
-      command: 'aaltoFitechPlatform.selectCourse',
+      command: 'aaltoOpenCsIde.selectCourse',
       title: 'Change Course and Version',
     };
     item.accessibilityInformation = {

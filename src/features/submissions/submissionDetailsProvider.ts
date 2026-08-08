@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 
-export const SUBMISSION_DETAILS_SCHEME = 'aalto-fitech-submission';
+export const SUBMISSION_DETAILS_SCHEME = 'aalto-opencs-submission';
 
 export interface SubmissionDetailsDocument {
   title: string;

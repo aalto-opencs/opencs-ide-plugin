@@ -12,7 +12,7 @@ import {
 const MAX_ARCHIVE_BYTES = 20 * 1024 * 1024;
 const MAX_EXTRACTED_BYTES = 50 * 1024 * 1024;
 const MAX_ARCHIVE_FILES = 500;
-const METADATA_FILENAME = '.aalto-fitech-assignment.json';
+const METADATA_FILENAME = '.aalto-opencs-assignment.json';
 const HANDOUT_FILENAME = 'assignment-handout.md';
 const SOURCE_FILE_EXTENSIONS = new Set([
   'c', 'cc', 'cpp', 'cs', 'css', 'dart', 'go', 'h', 'hpp', 'html', 'java',

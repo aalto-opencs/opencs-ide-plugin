@@ -4,7 +4,7 @@ import {
   SubmissionStatus,
 } from './submissionModels';
 
-const STORAGE_KEY = 'aaltoFitechPlatform.submissionHistory.v1';
+const STORAGE_KEY = 'aaltoOpenCsIde.submissionHistory.v1';
 const MAX_HISTORY_ENTRIES = 50;
 
 /**

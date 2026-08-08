@@ -20,7 +20,7 @@ export class AccountController {
   public async show(): Promise<void> {
     const session = await this.authService.getCurrentSession();
     if (!session) {
-      await vscode.commands.executeCommand('aaltoFitechPlatform.signIn');
+      await vscode.commands.executeCommand('aaltoOpenCsIde.signIn');
       return;
     }
 
@@ -54,17 +54,17 @@ export class AccountController {
         action: 'signOut',
       },
     ], {
-      title: 'Aalto Fitech Account',
+      title: 'Aalto OpenCS Account',
       placeHolder: 'Choose an account action',
       matchOnDescription: true,
     });
 
     if (selected?.action === 'folder') {
       await vscode.commands.executeCommand(
-        'aaltoFitechPlatform.selectAssignmentFolder',
+        'aaltoOpenCsIde.selectAssignmentFolder',
       );
     } else if (selected?.action === 'signOut') {
-      await vscode.commands.executeCommand('aaltoFitechPlatform.signOut');
+      await vscode.commands.executeCommand('aaltoOpenCsIde.signOut');
     }
   }
 }

@@ -12,7 +12,7 @@ import {
 suite('Platform status backend integration', () => {
   test('reports the real public platform endpoint as available',
     async function () {
-      const baseUrl = process.env.AALTO_FITECH_TEST_API_URL;
+      const baseUrl = process.env.AALTO_OPENCS_IDE_TEST_API_URL;
 
       if (!baseUrl) {
         this.skip();

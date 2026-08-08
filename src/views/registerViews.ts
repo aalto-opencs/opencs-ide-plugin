@@ -88,21 +88,21 @@ export function registerViews(
   const submissionDetailsProvider = new SubmissionDetailsProvider();
 
   const courseSelectionTreeView = vscode.window.createTreeView(
-    'aaltoFitechPlatform.courseSelection',
+    'aaltoOpenCsIde.courseSelection',
     { treeDataProvider: courseSelectionTreeProvider },
   );
   const courseTreeView = vscode.window.createTreeView(
-    'aaltoFitechPlatform.courseParts',
+    'aaltoOpenCsIde.courseParts',
     { treeDataProvider: courseTreeProvider },
   );
   courseTreeProvider.attachTreeView(courseTreeView);
   const exerciseTreeView = vscode.window.createTreeView(
-    'aaltoFitechPlatform.exercise',
+    'aaltoOpenCsIde.exercise',
     { treeDataProvider: exerciseTreeProvider },
   );
   exerciseTreeProvider.attachTreeView(exerciseTreeView);
   const submissionTreeView = vscode.window.createTreeView(
-    'aaltoFitechPlatform.submissions',
+    'aaltoOpenCsIde.submissions',
     { treeDataProvider: submissionTreeProvider },
   );
   submissionTreeProvider.attachTreeView(submissionTreeView);
@@ -118,11 +118,11 @@ export function registerViews(
       submissionDetailsProvider,
     ),
     vscode.window.registerTreeDataProvider(
-      'aaltoFitechPlatform.authenticationSetup',
+      'aaltoOpenCsIde.authenticationSetup',
       new EmptyTreeProvider(),
     ),
     vscode.window.registerTreeDataProvider(
-      'aaltoFitechPlatform.folderSetup',
+      'aaltoOpenCsIde.folderSetup',
       new EmptyTreeProvider(),
     ),
     courseSelectionTreeView,

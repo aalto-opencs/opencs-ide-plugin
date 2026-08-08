@@ -10,7 +10,7 @@ import {
   StudentVisibleCourse,
 } from './courseModels';
 
-const CACHE_PREFIX = 'aaltoFitechPlatform.courseCache.v1';
+const CACHE_PREFIX = 'aaltoOpenCsIde.courseCache.v1';
 
 /**
  * Persistent, per-student read cache used only when API reads fail.

@@ -128,17 +128,17 @@ interface SubmissionGraderTestConfiguration
 }
 
 function readConfiguration(): SubmissionGraderTestConfiguration | undefined {
-  if (process.env.AALTO_FITECH_TEST_ENABLE_GRADER_SUBMISSION !== 'true') {
+  if (process.env.AALTO_OPENCS_IDE_TEST_ENABLE_GRADER_SUBMISSION !== 'true') {
     return undefined;
   }
 
   const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    courseSlug: process.env.AALTO_FITECH_TEST_COURSE_SLUG,
-    exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
+    courseSlug: process.env.AALTO_OPENCS_IDE_TEST_COURSE_SLUG,
+    exerciseUuid: process.env.AALTO_OPENCS_IDE_TEST_ASSIGNMENT_UUID,
     assignmentName:
-      process.env.AALTO_FITECH_TEST_EXPECTED_ASSIGNMENT_NAME,
-    starterFile: process.env.AALTO_FITECH_TEST_EXPECTED_STARTER_FILE,
+      process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_ASSIGNMENT_NAME,
+    starterFile: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_STARTER_FILE,
   };
 
   if (

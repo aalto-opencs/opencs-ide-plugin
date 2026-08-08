@@ -184,7 +184,7 @@ export class CourseTreeProvider implements
       return [this.createMessageItem(
         message,
         'error',
-        'aaltoFitechPlatform.refreshCourses',
+        'aaltoOpenCsIde.refreshCourses',
       )];
     }
   }
@@ -369,7 +369,7 @@ export class CourseTreeProvider implements
         item.iconPath = new vscode.ThemeIcon('target');
       }
       item.command = {
-        command: 'aaltoFitechPlatform.selectAssignment',
+        command: 'aaltoOpenCsIde.selectAssignment',
         title: 'Select Exercise',
         arguments: [item],
       };

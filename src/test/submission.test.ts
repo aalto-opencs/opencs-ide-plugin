@@ -58,7 +58,7 @@ suite('Assignment submission', () => {
       );
       await mkdir(folder.fsPath, { recursive: true });
       await writeFile(
-        join(folder.fsPath, '.aalto-fitech-assignment.json'),
+        join(folder.fsPath, '.aalto-opencs-assignment.json'),
         JSON.stringify({
           schemaVersion: 1,
           exerciseUuid: assignment.exerciseUuid,
@@ -103,7 +103,7 @@ suite('Assignment submission', () => {
       );
       await writeFile(join(root, 'assignment-handout.md'), '# Handout\n');
       await writeFile(
-        join(root, '.aalto-fitech-assignment.json'),
+        join(root, '.aalto-opencs-assignment.json'),
         '{}\n',
       );
       await writeFile(
@@ -563,7 +563,7 @@ suite('Assignment submission', () => {
       );
       assert.strictEqual(
         newestFailureItems[0].command?.command,
-        'aaltoFitechPlatform.openSubmissionDetails',
+        'aaltoOpenCsIde.openSubmissionDetails',
       );
       assert.strictEqual(
         newestFailureItems[0].accessibilityInformation?.label,
@@ -845,5 +845,5 @@ async function readFormData(request: IncomingMessage): Promise<FormData> {
 }
 
 function createTemporaryRoot(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'aalto-fitech-submission-'));
+  return mkdtemp(join(tmpdir(), 'aalto-opencs-submission-'));
 }

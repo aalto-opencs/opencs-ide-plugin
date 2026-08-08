@@ -5,7 +5,7 @@ import {
 } from './assignmentModels';
 
 const CURRENT_ASSIGNMENT_KEY_PREFIX =
-  'aaltoFitechPlatform.currentAssignment.v1';
+  'aaltoOpenCsIde.currentAssignment.v1';
 
 /** Persists the exercise driving the Exercise and Submissions views per user. */
 export class CurrentAssignmentRepository {

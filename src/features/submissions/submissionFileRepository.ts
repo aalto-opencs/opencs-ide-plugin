@@ -3,7 +3,7 @@ import * as vscode from 'vscode';
 const MAX_SUBMISSION_FILES = 500;
 const MAX_SUBMISSION_BYTES = 1024 * 1024;
 const EXCLUDED_FILES = new Set([
-  '.aalto-fitech-assignment.json',
+  '.aalto-opencs-assignment.json',
   'assignment-handout.md',
   '.DS_Store',
 ]);

@@ -156,7 +156,7 @@ suite('Assignment download', () => {
         JSON.parse(await readFile(
           join(
             downloaded.folder.fsPath,
-            '.aalto-fitech-assignment.json',
+            '.aalto-opencs-assignment.json',
           ),
           'utf8',
         )),
@@ -351,5 +351,5 @@ async function createStarterArchive(): Promise<Uint8Array> {
 }
 
 function createTemporaryRoot(): Promise<string> {
-  return mkdtemp(join(tmpdir(), 'aalto-fitech-assignments-'));
+  return mkdtemp(join(tmpdir(), 'aalto-opencs-assignments-'));
 }

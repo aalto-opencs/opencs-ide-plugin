@@ -70,7 +70,7 @@ suite('Assignment workflow backend integration', () => {
       };
       const root = await mkdtemp(join(
         tmpdir(),
-        'aalto-fitech-workflow-integration-',
+        'aalto-opencs-workflow-integration-',
       ));
 
       try {
@@ -115,7 +115,7 @@ suite('Assignment workflow backend integration', () => {
         const metadata = JSON.parse(await readFile(
           join(
             downloaded.folder.fsPath,
-            '.aalto-fitech-assignment.json',
+            '.aalto-opencs-assignment.json',
           ),
           'utf8',
         ));
@@ -152,11 +152,11 @@ interface AssignmentWorkflowTestConfiguration
 function readConfiguration(): AssignmentWorkflowTestConfiguration | undefined {
   const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    courseSlug: process.env.AALTO_FITECH_TEST_COURSE_SLUG,
-    exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
+    courseSlug: process.env.AALTO_OPENCS_IDE_TEST_COURSE_SLUG,
+    exerciseUuid: process.env.AALTO_OPENCS_IDE_TEST_ASSIGNMENT_UUID,
     assignmentName:
-      process.env.AALTO_FITECH_TEST_EXPECTED_ASSIGNMENT_NAME,
-    starterFile: process.env.AALTO_FITECH_TEST_EXPECTED_STARTER_FILE,
+      process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_ASSIGNMENT_NAME,
+    starterFile: process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_STARTER_FILE,
   };
 
   if (

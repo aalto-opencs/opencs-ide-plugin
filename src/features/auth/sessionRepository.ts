@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { AuthSession } from './authModels';
 
-const SESSION_KEY = 'aaltoFitechPlatform.authSession.v2';
+const SESSION_KEY = 'aaltoOpenCsIde.authSession.v2';
 
 // SecretStorage protects confidentiality but does not make serialized data
 // structurally trustworthy. Validate every field before exposing a session.

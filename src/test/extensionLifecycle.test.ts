@@ -24,7 +24,7 @@ suite('Extension lifecycle', () => {
   let temporaryRoot: string;
 
   setup(async () => {
-    temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-fitech-lifecycle-'));
+    temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-opencs-lifecycle-'));
   });
 
   teardown(async () => {
@@ -37,7 +37,7 @@ suite('Extension lifecycle', () => {
     const sessions = new SessionRepository(secrets);
     const storageUri = vscode.Uri.file(join(temporaryRoot, 'global-storage'));
     await sessions.save(SESSION);
-    await state.update('aaltoFitechPlatform.courseCache.v1.test', {
+    await state.update('aaltoOpenCsIde.courseCache.v1.test', {
       cached: true,
     });
 
@@ -51,7 +51,7 @@ suite('Extension lifecycle', () => {
 
     assert.deepStrictEqual(await sessions.get(), SESSION);
     assert.deepStrictEqual(
-      state.get('aaltoFitechPlatform.courseCache.v1.test'),
+      state.get('aaltoOpenCsIde.courseCache.v1.test'),
       { cached: true },
     );
   });
@@ -69,7 +69,7 @@ suite('Extension lifecycle', () => {
     await writeFile(studentFile, 'student work\n');
     await sessions.save(SESSION);
     await state.update(
-      'aaltoFitechPlatform.assignmentDownloadRoot.v2.42',
+      'aaltoOpenCsIde.assignmentDownloadRoot.v2.42',
       assignmentsRoot,
     );
 
@@ -90,7 +90,7 @@ suite('Extension lifecycle', () => {
 
     assert.strictEqual(await sessions.get(), undefined);
     assert.strictEqual(
-      state.get('aaltoFitechPlatform.assignmentDownloadRoot.v2.42'),
+      state.get('aaltoOpenCsIde.assignmentDownloadRoot.v2.42'),
       undefined,
     );
     assert.strictEqual(await readFile(studentFile, 'utf8'), 'student work\n');

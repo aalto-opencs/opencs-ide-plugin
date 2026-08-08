@@ -25,9 +25,9 @@ export interface IdeAuthorizationFixture {
 export function readIntegrationAuthenticationConfiguration():
   IntegrationAuthenticationConfiguration | undefined {
   const configuration = {
-    baseUrl: process.env.AALTO_FITECH_TEST_API_URL,
-    email: process.env.AALTO_FITECH_TEST_USER_EMAIL,
-    password: process.env.AALTO_FITECH_TEST_USER_PASSWORD,
+    baseUrl: process.env.AALTO_OPENCS_IDE_TEST_API_URL,
+    email: process.env.AALTO_OPENCS_IDE_TEST_USER_EMAIL,
+    password: process.env.AALTO_OPENCS_IDE_TEST_USER_PASSWORD,
   };
 
   if (Object.values(configuration).some((value) => !value)) {

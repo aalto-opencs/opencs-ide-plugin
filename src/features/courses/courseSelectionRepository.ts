@@ -2,7 +2,7 @@ import * as vscode from 'vscode';
 import { CourseSelection } from './courseModels';
 
 const COURSE_SELECTION_KEY_PREFIX =
-  'aaltoFitechPlatform.courseSelection.v1';
+  'aaltoOpenCsIde.courseSelection.v1';
 
 function isCourseSelection(value: unknown): value is CourseSelection {
   return typeof value === 'object' &&

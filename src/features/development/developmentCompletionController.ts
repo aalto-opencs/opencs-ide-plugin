@@ -105,7 +105,7 @@ export class DevelopmentCompletionController {
         ...assignmentItems]
       : actionItems;
     const selected = await vscode.window.showQuickPick(items, {
-      title: 'Aalto Fitech Development Tools',
+      title: 'Aalto OpenCS Development Tools',
       placeHolder: assignmentItems.length > 0
         ? 'Choose a development action or programming assignment'
         : 'Choose a development action',
@@ -200,7 +200,7 @@ export class DevelopmentCompletionController {
         resetAll: true,
       }],
       {
-        title: 'Aalto Fitech Development Tools',
+        title: 'Aalto OpenCS Development Tools',
         placeHolder: 'Choose a development action',
       },
     );
@@ -211,7 +211,7 @@ export class DevelopmentCompletionController {
 
   private async confirmResetAllData(): Promise<void> {
     const action = await vscode.window.showWarningMessage(
-      'Reset all Aalto Fitech extension test data?',
+      'Reset all Aalto OpenCS extension test data?',
       {
         modal: true,
         detail: 'This signs out and clears every cached assignment folder, course selection, submission result, and development completion. Downloaded assignment files and backend data are not deleted.',

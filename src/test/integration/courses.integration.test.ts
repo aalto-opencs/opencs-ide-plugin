@@ -45,7 +45,7 @@ suite('Course enrolments backend integration', () => {
       }
 
       const expectedCourseSlug =
-        process.env.AALTO_FITECH_TEST_EXPECTED_COURSE_SLUG;
+        process.env.AALTO_OPENCS_IDE_TEST_EXPECTED_COURSE_SLUG;
 
       if (expectedCourseSlug) {
         assert.ok(

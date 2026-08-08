@@ -4,7 +4,7 @@ import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
 import { CurrentAssignmentRepository } from './currentAssignmentRepository';
 
-const METADATA_FILENAME = '.aalto-fitech-assignment.json';
+const METADATA_FILENAME = '.aalto-opencs-assignment.json';
 
 class ExerciseFileTreeItem extends vscode.TreeItem {
   public constructor(
@@ -158,7 +158,7 @@ function createSubmitItem(assignmentName: string): vscode.TreeItem {
   item.description = assignmentName;
   item.iconPath = new vscode.ThemeIcon('cloud-upload');
   item.command = {
-    command: 'aaltoFitechPlatform.submitCurrentAssignment',
+    command: 'aaltoOpenCsIde.submitCurrentAssignment',
     title: 'Submit Current Exercise',
   };
   item.tooltip = 'Review and submit the files in the current exercise.';

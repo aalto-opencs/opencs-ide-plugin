@@ -229,32 +229,32 @@ export function registerCommands(
     await Promise.all([
       vscode.commands.executeCommand(
         'setContext',
-        'aaltoFitechPlatform.signedIn',
+        'aaltoOpenCsIde.signedIn',
         session !== undefined,
       ),
       vscode.commands.executeCommand(
         'setContext',
-        'aaltoFitechPlatform.assignmentFolderSelected',
+        'aaltoOpenCsIde.assignmentFolderSelected',
         folderSelected,
       ),
       vscode.commands.executeCommand(
         'setContext',
-        'aaltoFitechPlatform.courseSelected',
+        'aaltoOpenCsIde.courseSelected',
         courseSelected,
       ),
       vscode.commands.executeCommand(
         'setContext',
-        'aaltoFitechPlatform.setupComplete',
+        'aaltoOpenCsIde.setupComplete',
         session !== undefined && folderSelected,
       ),
       vscode.commands.executeCommand(
         'setContext',
-        'aaltoFitechPlatform.currentAssignmentSelected',
+        'aaltoOpenCsIde.currentAssignmentSelected',
         currentAssignment !== undefined,
       ),
       vscode.commands.executeCommand(
         'setContext',
-        'aaltoFitechPlatform.currentAssignmentDownloaded',
+        'aaltoOpenCsIde.currentAssignmentDownloaded',
         currentAssignmentDownloaded,
       ),
     ]);
@@ -302,19 +302,19 @@ export function registerCommands(
       },
     );
     const developmentCommand = vscode.commands.registerCommand(
-      'aaltoFitechPlatform.development.markAssignmentComplete',
+      'aaltoOpenCsIde.development.markAssignmentComplete',
       () => developmentController.chooseCompletionAction(),
     );
     const developmentStatusBarItem = vscode.window.createStatusBarItem(
       vscode.StatusBarAlignment.Left,
       10,
     );
-    developmentStatusBarItem.name = 'Aalto Fitech Development Tools';
-    developmentStatusBarItem.text = '$(beaker) Aalto Fitech Test Tools';
+    developmentStatusBarItem.name = 'Aalto OpenCS Development Tools';
+    developmentStatusBarItem.text = '$(beaker) Aalto OpenCS Test Tools';
     developmentStatusBarItem.tooltip =
       'Development only: test instance warnings, simulate completion, or reset extension data';
     developmentStatusBarItem.command =
-      'aaltoFitechPlatform.development.markAssignmentComplete';
+      'aaltoOpenCsIde.development.markAssignmentComplete';
     developmentStatusBarItem.show();
     context.subscriptions.push(
       developmentCommand,
@@ -323,12 +323,12 @@ export function registerCommands(
   }
 
   const checkPlatformStatusCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.checkPlatformStatus',
+    'aaltoOpenCsIde.checkPlatformStatus',
     () => platformStatusController.checkStatus(),
   );
 
   const signInCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.signIn',
+    'aaltoOpenCsIde.signIn',
     async () => {
       if (await authController.signIn()) {
         await refreshUiState();
@@ -337,17 +337,17 @@ export function registerCommands(
   );
 
   const showCurrentUserCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.showCurrentUser',
+    'aaltoOpenCsIde.showCurrentUser',
     () => authController.showCurrentUser(),
   );
 
   const showAccountCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.showAccount',
+    'aaltoOpenCsIde.showAccount',
     () => accountController.show(),
   );
 
   const signOutCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.signOut',
+    'aaltoOpenCsIde.signOut',
     async () => {
       await authController.signOut();
       await refreshUiState();
@@ -355,7 +355,7 @@ export function registerCommands(
   );
 
   const refreshCoursesCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.refreshCourses',
+    'aaltoOpenCsIde.refreshCourses',
     async () => {
       courseSelectionTreeProvider.refresh();
       courseTreeProvider.refresh();
@@ -364,17 +364,17 @@ export function registerCommands(
   );
 
   const refreshExerciseCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.refreshExercise',
+    'aaltoOpenCsIde.refreshExercise',
     () => exerciseTreeProvider.refresh(),
   );
 
   const refreshSubmissionsCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.refreshSubmissions',
+    'aaltoOpenCsIde.refreshSubmissions',
     () => submissionTreeProvider.refresh(),
   );
 
   const selectCourseCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.selectCourse',
+    'aaltoOpenCsIde.selectCourse',
     async () => {
       const selected = await courseController.selectCourseAndVersion();
       if (selected) {
@@ -388,20 +388,20 @@ export function registerCommands(
   );
 
   const selectAssignmentFolderCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.selectAssignmentFolder',
+    'aaltoOpenCsIde.selectAssignmentFolder',
     async () => {
       const folder = await assignmentController.requireAssignmentFolder();
       if (folder) {
         await refreshUiState();
         await vscode.commands.executeCommand(
-          'workbench.view.extension.aaltoFitechPlatform',
+          'workbench.view.extension.aaltoOpenCsIde',
         );
       }
     },
   );
 
   const downloadAssignmentCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.downloadAssignment',
+    'aaltoOpenCsIde.downloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       await courseController.showSelectedInstanceEndWarning();
       await makeCurrent(item?.assignment);
@@ -422,14 +422,14 @@ export function registerCommands(
   );
 
   const selectAssignmentCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.selectAssignment',
+    'aaltoOpenCsIde.selectAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       await makeCurrent(item?.assignment);
     },
   );
 
   const downloadCurrentAssignmentCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.downloadCurrentAssignment',
+    'aaltoOpenCsIde.downloadCurrentAssignment',
     async () => {
       await courseController.showSelectedInstanceEndWarning();
       const session = await authService.getCurrentSession();
@@ -444,7 +444,7 @@ export function registerCommands(
   );
 
   const showAssignmentFolderCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.showAssignmentFolder',
+    'aaltoOpenCsIde.showAssignmentFolder',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       await makeCurrent(item?.assignment);
       await assignmentController.showAssignmentFolder(item?.assignment);
@@ -452,7 +452,7 @@ export function registerCommands(
   );
 
   const redownloadAssignmentCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.redownloadAssignment',
+    'aaltoOpenCsIde.redownloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       await courseController.showSelectedInstanceEndWarning();
       await makeCurrent(item?.assignment);
@@ -473,7 +473,7 @@ export function registerCommands(
   );
 
   const submitAssignmentCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.submitAssignment',
+    'aaltoOpenCsIde.submitAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       if (!await courseController.validateSelectionForSubmission()) {
         return;
@@ -485,7 +485,7 @@ export function registerCommands(
   );
 
   const submitCurrentAssignmentCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.submitCurrentAssignment',
+    'aaltoOpenCsIde.submitCurrentAssignment',
     async () => {
       if (!await courseController.validateSelectionForSubmission()) {
         return;
@@ -500,7 +500,7 @@ export function registerCommands(
   );
 
   const openSubmissionDetailsCommand = vscode.commands.registerCommand(
-    'aaltoFitechPlatform.openSubmissionDetails',
+    'aaltoOpenCsIde.openSubmissionDetails',
     (details) => submissionDetailsProvider.open(details),
   );
 

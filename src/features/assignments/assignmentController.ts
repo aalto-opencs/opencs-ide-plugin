@@ -29,7 +29,7 @@ export class AssignmentController {
     }
 
     const selected = await vscode.window.showOpenDialog({
-      title: 'Select the folder for Aalto Fitech assignments',
+      title: 'Select the folder for Aalto OpenCS assignments',
       canSelectFiles: false,
       canSelectFolders: true,
       canSelectMany: false,
@@ -297,7 +297,7 @@ export class AssignmentController {
       if (!alreadyAdded) {
         const courseName = courseFolder.path.split('/')
           .filter(Boolean)
-          .at(-1) ?? 'Aalto Fitech Course';
+          .at(-1) ?? 'Aalto OpenCS Course';
         vscode.workspace.updateWorkspaceFolders(
           folders.length,
           0,

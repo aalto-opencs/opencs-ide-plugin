@@ -44,7 +44,7 @@ suite('ExerciseTreeProvider', () => {
     const sourceFolder = vscode.Uri.joinPath(assignmentFolder, 'src');
     await mkdir(sourceFolder.fsPath, { recursive: true });
     await writeFile(
-      vscode.Uri.joinPath(assignmentFolder, '.aalto-fitech-assignment.json').fsPath,
+      vscode.Uri.joinPath(assignmentFolder, '.aalto-opencs-assignment.json').fsPath,
       JSON.stringify({
         schemaVersion: 1,
         exerciseUuid: assignment.exerciseUuid,
@@ -81,7 +81,7 @@ suite('ExerciseTreeProvider', () => {
       ]);
       assert.strictEqual(
         children[0].command?.command,
-        'aaltoFitechPlatform.submitCurrentAssignment',
+        'aaltoOpenCsIde.submitCurrentAssignment',
       );
       const sourceChildren = await provider.getChildren(children[1]);
       assert.strictEqual(String(sourceChildren[0].label), 'main.ts');

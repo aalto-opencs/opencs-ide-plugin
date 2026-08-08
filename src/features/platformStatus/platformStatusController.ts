@@ -11,13 +11,13 @@ export class PlatformStatusController {
 
     if (isAvailable) {
       await vscode.window.showInformationMessage(
-        'Aalto Fitech Platform is available.',
+        'Aalto OpenCS platform is available.',
       );
       return;
     }
 
     await vscode.window.showWarningMessage(
-      'Aalto Fitech Platform is unavailable.',
+      'Aalto OpenCS platform is unavailable.',
     );
   }
 }

@@ -91,8 +91,8 @@ interface SubmissionHistoryTestConfiguration
 function readConfiguration(): SubmissionHistoryTestConfiguration | undefined {
   const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    courseSlug: process.env.AALTO_FITECH_TEST_COURSE_SLUG,
-    exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
+    courseSlug: process.env.AALTO_OPENCS_IDE_TEST_COURSE_SLUG,
+    exerciseUuid: process.env.AALTO_OPENCS_IDE_TEST_ASSIGNMENT_UUID,
   };
 
   if (

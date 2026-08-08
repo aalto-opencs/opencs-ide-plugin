@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 
 const ASSIGNMENT_ROOT_KEY_PREFIX =
-  'aaltoFitechPlatform.assignmentDownloadRoot.v2';
+  'aaltoOpenCsIde.assignmentDownloadRoot.v2';
 
 /**
  * Stores only the student-selected root path. Keys include the platform user ID

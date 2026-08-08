@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 
-const CONFIGURATION_SECTION = 'aaltoFitechPlatform';
+const CONFIGURATION_SECTION = 'aaltoOpenCsIde';
 
 export function getApiBaseUrl(): string {
   return vscode.workspace

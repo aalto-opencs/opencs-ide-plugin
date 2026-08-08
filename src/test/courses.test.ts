@@ -628,7 +628,7 @@ suite('Courses', () => {
       assert.strictEqual(children[0].label, 'Network unavailable');
       assert.strictEqual(
         children[0].command?.command,
-        'aaltoFitechPlatform.refreshCourses',
+        'aaltoOpenCsIde.refreshCourses',
       );
       assert.match(provider.message ?? '', /Refresh to retry/);
     } finally {
@@ -679,7 +679,7 @@ function createProvider(
   if (folderSelected) {
     void assignmentFolderRepository.setRoot(
       session.student.id,
-      vscode.Uri.file('/tmp/aalto-fitech-assignments'),
+      vscode.Uri.file('/tmp/aalto-opencs-assignments'),
     );
   }
   if (courseSelected) {
