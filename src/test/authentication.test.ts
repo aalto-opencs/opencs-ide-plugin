@@ -1,6 +1,8 @@
 import * as assert from 'assert';
+import * as vscode from 'vscode';
 import { ApiAuthRepository, AuthRepository } from '../features/auth/authRepository';
 import { AuthSession } from '../features/auth/authModels';
+import { AuthController } from '../features/auth/authController';
 import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
 import { ApiClient } from '../infrastructure/apiClient';
@@ -81,6 +83,59 @@ suite('Authentication', () => {
 
     assert.deepStrictEqual(result, session);
     assert.deepStrictEqual(await sessionRepository.get(), session);
+  });
+
+  test('browser sign-in locks double-clicks and retries after three seconds', async () => {
+    const secrets = new InMemorySecretStorage();
+    const sessionRepository = new SessionRepository(secrets);
+    const exchangedCodes: string[] = [];
+    const authService = new AuthService(
+      {
+        exchangeAuthorizationCode: async (code) => {
+          exchangedCodes.push(code);
+          return session;
+        },
+      },
+      sessionRepository,
+    );
+    const openedUris: vscode.Uri[] = [];
+    let now = 0;
+    const controller = new AuthController(
+      authService,
+      'http://localhost:7799',
+      false,
+      'aalto-opencs.aalto-opencs-ide',
+      () => now,
+      async (uri) => {
+        openedUris.push(uri);
+        return true;
+      },
+    );
+
+    const firstAttempt = controller.signIn();
+    now = 1000;
+    assert.strictEqual(await controller.signIn(), false);
+    assert.strictEqual(openedUris.length, 1);
+
+    now = 3000;
+    const retryAttempt = controller.signIn();
+    assert.strictEqual(await firstAttempt, false);
+    assert.strictEqual(openedUris.length, 2);
+
+    const firstState = new URLSearchParams(openedUris[0].query)
+      .get('state');
+    const retryState = new URLSearchParams(openedUris[1].query)
+      .get('state');
+    await controller.handleUri(vscode.Uri.parse(
+      `vscode://aalto-opencs.aalto-opencs-ide/auth/callback?code=old-code&state=${firstState}`,
+    ));
+    assert.deepStrictEqual(exchangedCodes, []);
+
+    await controller.handleUri(vscode.Uri.parse(
+      `vscode://aalto-opencs.aalto-opencs-ide/auth/callback?code=new-code&state=${retryState}`,
+    ));
+    assert.strictEqual(await retryAttempt, true);
+    assert.deepStrictEqual(exchangedCodes, ['new-code']);
   });
 
   test('restores a session using a new repository instance', async () => {

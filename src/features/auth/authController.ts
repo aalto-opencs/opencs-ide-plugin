@@ -3,10 +3,12 @@ import * as vscode from 'vscode';
 import { AuthService } from './authService';
 
 const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
+const SIGN_IN_RETRY_LOCK_MS = 3 * 1000;
 
 interface PendingSignIn {
   state: string;
   codeVerifier: string;
+  startedAt: number;
   resolve: (signedIn: boolean) => void;
   timeout: NodeJS.Timeout;
 }
@@ -19,6 +21,10 @@ export class AuthController implements vscode.UriHandler {
     private readonly platformBaseUrl: string,
     private readonly mockApiEnabled: boolean,
     private readonly extensionId: string,
+    private readonly now: () => number = Date.now,
+    private readonly openExternal: (
+      uri: vscode.Uri,
+    ) => Thenable<boolean> = (uri) => vscode.env.openExternal(uri),
   ) {}
 
   public async signIn(): Promise<boolean> {
@@ -27,10 +33,15 @@ export class AuthController implements vscode.UriHandler {
     }
 
     if (this.pendingSignIn) {
-      vscode.window.showInformationMessage(
-        'Browser sign-in is already in progress.',
-      );
-      return false;
+      if (
+        this.now() - this.pendingSignIn.startedAt < SIGN_IN_RETRY_LOCK_MS
+      ) {
+        vscode.window.showInformationMessage(
+          'Browser sign-in is already opening.',
+        );
+        return false;
+      }
+      this.finishPendingSignIn(false);
     }
 
     const state = this.createRandomValue();
@@ -64,12 +75,13 @@ export class AuthController implements vscode.UriHandler {
       this.pendingSignIn = {
         state,
         codeVerifier,
+        startedAt: this.now(),
         resolve,
         timeout,
       };
     });
 
-    const opened = await vscode.env.openExternal(
+    const opened = await this.openExternal(
       vscode.Uri.parse(authorizationUrl.toString()),
     );
     if (!opened) {
@@ -95,7 +107,11 @@ export class AuthController implements vscode.UriHandler {
     const code = parameters.get('code');
     const state = parameters.get('state');
 
-    if (!code || state !== this.pendingSignIn.state) {
+    if (state !== this.pendingSignIn.state) {
+      return;
+    }
+
+    if (!code) {
       this.finishPendingSignIn(false);
       vscode.window.showErrorMessage(
         'The browser sign-in response was invalid. Please try again.',
