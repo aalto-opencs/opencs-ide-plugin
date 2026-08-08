@@ -1,43 +1,36 @@
 import * as assert from 'assert';
-import { createHash, randomBytes } from 'node:crypto';
 import {
   ApiAuthRepository,
 } from '../../features/auth/authRepository';
 import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  loginToPlatform,
+  readIntegrationAuthenticationConfiguration,
+  requestIdeAuthorization,
+} from './integrationAuthentication';
 
 suite('Authentication backend integration', () => {
   test('exchanges a browser authorization code for a session', async function () {
-    const userUuid = process.env.AALTO_FITECH_TEST_USER_UUID;
-    const baseUrl = process.env.AALTO_FITECH_TEST_API_URL;
+    const configuration = readIntegrationAuthenticationConfiguration();
 
-    if (!userUuid || !baseUrl) {
+    if (!configuration) {
       this.skip();
       return;
     }
 
-    const publicApiClient = new ApiClient(baseUrl);
+    const publicApiClient = new ApiClient(configuration.baseUrl);
     const authRepository = new ApiAuthRepository(publicApiClient);
-    // This creates the platform-browser session for an automated test. The
-    // extension-facing portion below uses the new PKCE code exchange.
-    const browserSession = await authRepository.loginWithUuid(userUuid);
-    const codeVerifier = randomBytes(32).toString('base64url');
-    const codeChallenge = createHash('sha256')
-      .update(codeVerifier)
-      .digest('base64url');
-    const browserApiClient = new ApiClient(
-      baseUrl,
-      async () => browserSession.token,
+    const browserSession = await loginToPlatform(configuration);
+    const authorization = await requestIdeAuthorization(
+      configuration,
+      browserSession,
     );
-    const authorization = await browserApiClient.post<{
-      code: string;
-      expiresIn: number;
-    }>('/auth/ide/authorize', { codeChallenge });
 
     const session = await authRepository.exchangeAuthorizationCode(
       authorization.code,
-      codeVerifier,
+      authorization.codeVerifier,
     );
 
     assert.strictEqual(typeof session.token, 'string');
@@ -57,14 +50,6 @@ suite('Authentication backend integration', () => {
     );
 
     assert.strictEqual(
-      typeof session.student.firstName,
-      'string',
-    );
-    assert.strictEqual(
-      typeof session.student.lastName,
-      'string',
-    );
-    assert.strictEqual(
       typeof session.student.email,
       'string',
     );
@@ -74,22 +59,37 @@ suite('Authentication backend integration', () => {
       'Expected the student email to be non-empty',
     );
 
-    const expectedUserEmail = process.env.AALTO_FITECH_TEST_EXPECTED_USER_EMAIL;
-    if (expectedUserEmail) {
-      assert.strictEqual(
-        session.student.email,
-        expectedUserEmail,
-        'Expected the UUID to authenticate the configured test user',
-      );
-    }
+    assert.strictEqual(
+      session.student.email,
+      configuration.email,
+      'Expected the IDE session to belong to the platform login user',
+    );
 
     await assert.rejects(
       authRepository.exchangeAuthorizationCode(
         authorization.code,
-        codeVerifier,
+        authorization.codeVerifier,
       ),
       /invalid or expired/i,
       'Expected the authorization code to work only once',
+    );
+
+    const contractAuthorization = await requestIdeAuthorization(
+      configuration,
+      browserSession,
+    );
+    const contractResponse = await publicApiClient.post<Record<string, unknown>>(
+      '/auth/ide/exchange',
+      {
+        code: contractAuthorization.code,
+        codeVerifier: contractAuthorization.codeVerifier,
+      },
+    );
+
+    assert.deepStrictEqual(
+      Object.keys(contractResponse).sort(),
+      ['email', 'id', 'token'],
+      'Expected the IDE exchange response to contain only required fields',
     );
   });
 });

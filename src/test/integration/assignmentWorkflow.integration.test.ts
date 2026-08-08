@@ -16,14 +16,16 @@ import {
   ApiAssignmentRepository,
 } from '../../features/assignments/assignmentRepository';
 import {
-  ApiAuthRepository,
-} from '../../features/auth/authRepository';
-import {
   ApiCourseRepository,
 } from '../../features/courses/courseRepository';
 import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  IntegrationAuthenticationConfiguration,
+  readIntegrationAuthenticationConfiguration,
+  signInThroughIde,
+} from './integrationAuthentication';
 
 suite('Assignment workflow backend integration', () => {
   test('downloads a real assignment into the local filesystem',
@@ -35,11 +37,7 @@ suite('Assignment workflow backend integration', () => {
         return;
       }
 
-      const publicApiClient = new ApiClient(configuration.baseUrl);
-      const authRepository = new ApiAuthRepository(publicApiClient);
-      const session = await authRepository.loginWithUuid(
-        configuration.userUuid,
-      );
+      const session = await signInThroughIde(configuration);
       const authenticatedApiClient = new ApiClient(
         configuration.baseUrl,
         async () => session.token,
@@ -143,9 +141,8 @@ suite('Assignment workflow backend integration', () => {
     });
 });
 
-interface AssignmentWorkflowTestConfiguration {
-  baseUrl: string;
-  userUuid: string;
+interface AssignmentWorkflowTestConfiguration
+  extends IntegrationAuthenticationConfiguration {
   courseSlug: string;
   exerciseUuid: string;
   assignmentName: string;
@@ -153,9 +150,8 @@ interface AssignmentWorkflowTestConfiguration {
 }
 
 function readConfiguration(): AssignmentWorkflowTestConfiguration | undefined {
+  const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    baseUrl: process.env.AALTO_FITECH_TEST_API_URL,
-    userUuid: process.env.AALTO_FITECH_TEST_USER_UUID,
     courseSlug: process.env.AALTO_FITECH_TEST_COURSE_SLUG,
     exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
     assignmentName:
@@ -163,9 +159,15 @@ function readConfiguration(): AssignmentWorkflowTestConfiguration | undefined {
     starterFile: process.env.AALTO_FITECH_TEST_EXPECTED_STARTER_FILE,
   };
 
-  if (Object.values(configuration).some((value) => !value)) {
+  if (
+    !authentication ||
+    Object.values(configuration).some((value) => !value)
+  ) {
     return undefined;
   }
 
-  return configuration as AssignmentWorkflowTestConfiguration;
+  return {
+    ...authentication,
+    ...configuration,
+  } as AssignmentWorkflowTestConfiguration;
 }

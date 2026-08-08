@@ -16,8 +16,6 @@ const SESSION = {
   token: 'raw-session-token',
   student: {
     id: 42,
-    firstName: 'Ada',
-    lastName: 'Student',
     email: 'ada@example.com',
   },
 };

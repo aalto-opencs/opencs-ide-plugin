@@ -12,7 +12,7 @@ export class ApiCourseRepository implements CourseRepository {
 
   public async getEnrolments(): Promise<CourseEnrolment[]> {
     return this.apiClient.get<CourseEnrolment[]>(
-      '/users/all-enrolments',
+      '/users/enrolments-by-course',
     );
   }
 }

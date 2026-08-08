@@ -10,7 +10,7 @@ cd "$repository_root"
 
 if [ ! -f ".env.test.local" ]; then
   echo "Missing .env.test.local."
-  echo "Create it from .env.test.example and provide a valid backend user UUID."
+  echo "Create it from .env.test.example and provide valid test-user credentials."
   exit 1
 fi
 

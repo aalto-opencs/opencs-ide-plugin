@@ -7,11 +7,13 @@ import {
   PROGRAMMING_EXERCISE_TYPE,
 } from '../../features/assignments/assignmentModels';
 import {
-  ApiAuthRepository,
-} from '../../features/auth/authRepository';
-import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  IntegrationAuthenticationConfiguration,
+  readIntegrationAuthenticationConfiguration,
+  signInThroughIde,
+} from './integrationAuthentication';
 
 suite('Assignment download backend integration', () => {
   test('downloads starter metadata and files for a programming assignment',
@@ -23,11 +25,7 @@ suite('Assignment download backend integration', () => {
         return;
       }
 
-      const publicApiClient = new ApiClient(configuration.baseUrl);
-      const authRepository = new ApiAuthRepository(publicApiClient);
-      const session = await authRepository.loginWithUuid(
-        configuration.userUuid,
-      );
+      const session = await signInThroughIde(configuration);
       const authenticatedApiClient = new ApiClient(
         configuration.baseUrl,
         async () => session.token,
@@ -79,9 +77,8 @@ suite('Assignment download backend integration', () => {
     });
 });
 
-interface AssignmentDownloadTestConfiguration {
-  baseUrl: string;
-  userUuid: string;
+interface AssignmentDownloadTestConfiguration
+  extends IntegrationAuthenticationConfiguration {
   exerciseUuid: string;
   expectedName: string;
   expectedStarterFile: string;
@@ -89,18 +86,23 @@ interface AssignmentDownloadTestConfiguration {
 
 function readConfiguration():
   AssignmentDownloadTestConfiguration | undefined {
+  const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    baseUrl: process.env.AALTO_FITECH_TEST_API_URL,
-    userUuid: process.env.AALTO_FITECH_TEST_USER_UUID,
     exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
     expectedName: process.env.AALTO_FITECH_TEST_EXPECTED_ASSIGNMENT_NAME,
     expectedStarterFile:
       process.env.AALTO_FITECH_TEST_EXPECTED_STARTER_FILE,
   };
 
-  if (Object.values(configuration).some((value) => !value)) {
+  if (
+    !authentication ||
+    Object.values(configuration).some((value) => !value)
+  ) {
     return undefined;
   }
 
-  return configuration as AssignmentDownloadTestConfiguration;
+  return {
+    ...authentication,
+    ...configuration,
+  } as AssignmentDownloadTestConfiguration;
 }

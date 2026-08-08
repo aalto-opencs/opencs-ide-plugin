@@ -253,7 +253,7 @@ Current endpoints:
 | GET | `/status` | No | Platform availability |
 | POST | `/auth/ide/authorize` | Browser platform session | Create a one-time PKCE-bound code |
 | POST | `/auth/ide/exchange` | One-time code + verifier | Create the extension session |
-| GET | `/users/all-enrolments` | Yes | All student course enrolments |
+| GET | `/users/enrolments-by-course` | Yes | All student course enrolments |
 | GET | `/course-materials/:courseSlug/structure` | Yes | Parts, chapters, and exercises |
 | GET | `/points/courses/:courseSlug/progress` | Yes | Optional Account points line for selected instance |
 | GET | `/exercises/:exerciseUuid/starter` | Yes | Starter metadata and handout |
@@ -306,7 +306,7 @@ sequenceDiagram
     Controller->>Service: signIn(code, verifier)
     Service->>Repo: exchangeAuthorizationCode(code, verifier)
     Repo->>API: POST /auth/ide/exchange
-    API-->>Repo: Flat login response + new session token
+    API-->>Repo: Token, user ID, and email
     Repo-->>Service: AuthSession
     Service->>Secrets: Save JSON session
     Service-->>Controller: AuthSession
@@ -320,8 +320,6 @@ sequenceDiagram
   token: string;
   student: {
     id: number;
-    firstName: string;
-    lastName: string;
     email: string;
   };
 }
@@ -331,19 +329,14 @@ The successful backend response contract is:
 
 ```ts
 {
-  auth: true;
   token: string;
-  email: string;
   id: number;
-  firstName: string;
-  lastName: string;
-  verified: string | null;
-  isAnon: false;
-  admin?: boolean;
+  email: string;
 }
 ```
 
-The extension currently keeps only the token and student profile fields.
+The extension displays the email as the account identity. It keeps the numeric
+user ID for per-user assignment folders, course selections, and caches.
 Backend failures commonly use `{ "auth": false, "message": "..." }`; the
 shared API client presents a non-empty `message` to the controller.
 
@@ -394,7 +387,7 @@ earned/max points and percentage. Failure or a missing row simply omits points.
 The selection flow:
 
 1. Require a current session.
-2. Request `/users/all-enrolments`.
+2. Request `/users/enrolments-by-course`.
 3. Save successful enrolments to the per-student cache.
 4. If the API fails, offer validated cached enrolments when available.
 5. Ask the student to choose a course.
@@ -745,9 +738,9 @@ When mock mode is enabled, the composition root substitutes:
 
 The API URL is still used by the public platform-status client.
 
-Mock authentication signs in immediately as Demo Student without opening the
-platform website. Seeing Demo Student while testing browser login means mock
-mode was still enabled when the extension activated.
+Mock authentication signs in immediately with the demo account email without
+opening the platform website. Seeing the demo account while testing browser
+login means mock mode was still enabled when the extension activated.
 
 ## 18. Development-only tools
 

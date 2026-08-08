@@ -1,7 +1,7 @@
 import { ApiClient } from '../../infrastructure/apiClient';
 import {
   AuthSession,
-  IdeLoginResponse,
+  PlatformLoginResponse,
 } from './authModels';
 
 export interface AuthRepository {
@@ -20,7 +20,7 @@ export class ApiAuthRepository implements AuthRepository {
     code: string,
     codeVerifier: string,
   ): Promise<AuthSession> {
-    const response = await this.apiClient.post<IdeLoginResponse>(
+    const response = await this.apiClient.post<PlatformLoginResponse>(
       '/auth/ide/exchange',
       {
         code,
@@ -32,33 +32,6 @@ export class ApiAuthRepository implements AuthRepository {
       token: response.token,
       student: {
         id: response.id,
-        firstName: response.firstName,
-        lastName: response.lastName,
-        email: response.email,
-      },
-    };
-  }
-
-  /**
-   * Legacy helper retained only for real-backend integration fixtures while
-   * browser authentication replaces UUID entry in the extension UI.
-   */
-  public async loginWithUuid(userUuid: string): Promise<AuthSession> {
-    const response = await this.apiClient.post<IdeLoginResponse>(
-      '/auth/vscode/uuid',
-      { userUuid },
-    );
-
-    return this.mapSession(response);
-  }
-
-  private mapSession(response: IdeLoginResponse): AuthSession {
-    return {
-      token: response.token,
-      student: {
-        id: response.id,
-        firstName: response.firstName,
-        lastName: response.lastName,
         email: response.email,
       },
     };
@@ -71,8 +44,6 @@ export class MockAuthRepository implements AuthRepository {
       token: `mock-session-token-${Date.now()}`,
       student: {
         id: 0,
-        firstName: 'Demo',
-        lastName: 'Student',
         email: 'demo.student@example.com',
       },
     };

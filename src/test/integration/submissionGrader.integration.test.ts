@@ -4,9 +4,6 @@ import {
   PROGRAMMING_EXERCISE_TYPE,
 } from '../../features/assignments/assignmentModels';
 import {
-  ApiAuthRepository,
-} from '../../features/auth/authRepository';
-import {
   GRADING_STATUS_PROCESSED,
 } from '../../features/submissions/submissionModels';
 import {
@@ -25,6 +22,11 @@ import {
 import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  IntegrationAuthenticationConfiguration,
+  readIntegrationAuthenticationConfiguration,
+  signInThroughIde,
+} from './integrationAuthentication';
 
 const GRADER_TIMEOUT_MS = 180_000;
 const POLLING_INTERVAL_MS = 1_000;
@@ -54,11 +56,7 @@ suite('Submission grader backend integration', () => {
         return;
       }
 
-      const publicApiClient = new ApiClient(configuration.baseUrl);
-      const authRepository = new ApiAuthRepository(publicApiClient);
-      const session = await authRepository.loginWithUuid(
-        configuration.userUuid,
-      );
+      const session = await signInThroughIde(configuration);
       const authenticatedApiClient = new ApiClient(
         configuration.baseUrl,
         async () => session.token,
@@ -121,9 +119,8 @@ suite('Submission grader backend integration', () => {
     });
 });
 
-interface SubmissionGraderTestConfiguration {
-  baseUrl: string;
-  userUuid: string;
+interface SubmissionGraderTestConfiguration
+  extends IntegrationAuthenticationConfiguration {
   courseSlug: string;
   exerciseUuid: string;
   assignmentName: string;
@@ -135,9 +132,8 @@ function readConfiguration(): SubmissionGraderTestConfiguration | undefined {
     return undefined;
   }
 
+  const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    baseUrl: process.env.AALTO_FITECH_TEST_API_URL,
-    userUuid: process.env.AALTO_FITECH_TEST_USER_UUID,
     courseSlug: process.env.AALTO_FITECH_TEST_COURSE_SLUG,
     exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
     assignmentName:
@@ -145,9 +141,15 @@ function readConfiguration(): SubmissionGraderTestConfiguration | undefined {
     starterFile: process.env.AALTO_FITECH_TEST_EXPECTED_STARTER_FILE,
   };
 
-  if (Object.values(configuration).some((value) => !value)) {
+  if (
+    !authentication ||
+    Object.values(configuration).some((value) => !value)
+  ) {
     return undefined;
   }
 
-  return configuration as SubmissionGraderTestConfiguration;
+  return {
+    ...authentication,
+    ...configuration,
+  } as SubmissionGraderTestConfiguration;
 }

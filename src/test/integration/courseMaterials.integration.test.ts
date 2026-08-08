@@ -1,8 +1,5 @@
 import * as assert from 'assert';
 import {
-  ApiAuthRepository,
-} from '../../features/auth/authRepository';
-import {
   CourseChapter,
   CourseExercise,
   CoursePart,
@@ -13,24 +10,25 @@ import {
 import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  readIntegrationAuthenticationConfiguration,
+  signInThroughIde,
+} from './integrationAuthentication';
 
 suite('Course materials backend integration', () => {
   test('logs in and retrieves a course structure', async function () {
-    const userUuid = process.env.AALTO_FITECH_TEST_USER_UUID;
-    const baseUrl = process.env.AALTO_FITECH_TEST_API_URL;
+    const authentication = readIntegrationAuthenticationConfiguration();
     const courseSlug = process.env.AALTO_FITECH_TEST_COURSE_SLUG;
     const expectedStructure = readExpectedStructure();
 
-    if (!userUuid || !baseUrl || !courseSlug || !expectedStructure) {
+    if (!authentication || !courseSlug || !expectedStructure) {
       this.skip();
       return;
     }
 
-    const publicApiClient = new ApiClient(baseUrl);
-    const authRepository = new ApiAuthRepository(publicApiClient);
-    const session = await authRepository.loginWithUuid(userUuid);
+    const session = await signInThroughIde(authentication);
     const authenticatedApiClient = new ApiClient(
-      baseUrl,
+      authentication.baseUrl,
       async () => session.token,
     );
     const courseMaterialRepository = new ApiCourseMaterialRepository(

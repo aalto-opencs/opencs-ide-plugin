@@ -24,8 +24,6 @@ export class AccountController {
       return;
     }
 
-    const name = [session.student.firstName, session.student.lastName]
-      .filter(Boolean).join(' ') || 'Student';
     const root = this.folderRepository.getRoot(session.student.id);
     const selection = this.selectionRepository.getSelection(session.student.id);
     const points = selection
@@ -36,7 +34,7 @@ export class AccountController {
       : undefined;
     const information = [
       {
-        label: `${name} · ${session.student.email}`,
+        label: session.student.email,
         kind: vscode.QuickPickItemKind.Separator,
       },
       ...(points ? [{

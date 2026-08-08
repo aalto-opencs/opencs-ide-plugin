@@ -37,8 +37,6 @@ const session: AuthSession = {
   token: 'session-token',
   student: {
     id: 42,
-    firstName: 'Ada',
-    lastName: 'Lovelace',
     email: 'ada@example.com',
   },
 };
@@ -131,7 +129,7 @@ suite('Courses', () => {
 
       const result = await repository.getEnrolments();
 
-      assert.strictEqual(requestedPath, '/users/all-enrolments');
+      assert.strictEqual(requestedPath, '/users/enrolments-by-course');
       assert.strictEqual(authorization, session.token);
       assert.deepStrictEqual(result, enrolments);
     } finally {

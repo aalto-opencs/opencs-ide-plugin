@@ -1,8 +1,5 @@
 import * as assert from 'assert';
 import {
-  ApiAuthRepository,
-} from '../../features/auth/authRepository';
-import {
   CourseEnrolment,
 } from '../../features/courses/courseModels';
 import {
@@ -11,24 +8,25 @@ import {
 import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  readIntegrationAuthenticationConfiguration,
+  signInThroughIde,
+} from './integrationAuthentication';
 
 suite('Course enrolments backend integration', () => {
   test('logs in and retrieves the authenticated student enrolments',
     async function () {
-      const userUuid = process.env.AALTO_FITECH_TEST_USER_UUID;
-      const baseUrl = process.env.AALTO_FITECH_TEST_API_URL;
+      const configuration = readIntegrationAuthenticationConfiguration();
 
-      if (!userUuid || !baseUrl) {
+      if (!configuration) {
         this.skip();
         return;
       }
 
-      const publicApiClient = new ApiClient(baseUrl);
-      const authRepository = new ApiAuthRepository(publicApiClient);
-      const session = await authRepository.loginWithUuid(userUuid);
+      const session = await signInThroughIde(configuration);
 
       const authenticatedApiClient = new ApiClient(
-        baseUrl,
+        configuration.baseUrl,
         async () => session.token,
       );
       const courseRepository = new ApiCourseRepository(

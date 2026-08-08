@@ -1,7 +1,5 @@
 export interface StudentProfile {
   id: number;
-  firstName: string;
-  lastName: string;
   email: string;
 }
 
@@ -10,14 +8,8 @@ export interface AuthSession {
   student: StudentProfile;
 }
 
-export interface IdeLoginResponse {
-  auth: true;
+export interface PlatformLoginResponse {
   token: string;
-  email: string;
   id: number;
-  firstName: string;
-  lastName: string;
-  verified: string | null;
-  isAnon: false;
-  admin?: boolean;
+  email: string;
 }

@@ -13,8 +13,6 @@ const session: AuthSession = {
   token: 'session-token',
   student: {
     id: 42,
-    firstName: 'Ada',
-    lastName: 'Lovelace',
     email: 'ada@example.com',
   },
 };
@@ -32,15 +30,9 @@ suite('Authentication', () => {
       requestBody = JSON.parse(Buffer.concat(chunks).toString('utf8'));
       response.writeHead(200, { 'Content-Type': 'application/json' });
       response.end(JSON.stringify({
-        auth: true,
         token: 'backend-token',
         email: 'student@example.com',
         id: 7,
-        firstName: 'Test',
-        lastName: 'Student',
-        verified: '2026-07-19T10:00:00.000Z',
-        isAnon: false,
-        admin: true,
       }));
     });
 
@@ -58,8 +50,6 @@ suite('Authentication', () => {
         token: 'backend-token',
         student: {
           id: 7,
-          firstName: 'Test',
-          lastName: 'Student',
           email: 'student@example.com',
         },
       });

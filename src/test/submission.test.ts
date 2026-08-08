@@ -436,8 +436,6 @@ suite('Assignment submission', () => {
       student: {
         id: 7,
         email: 'student@example.com',
-        firstName: 'Demo',
-        lastName: 'Student',
       },
     };
     await sessionRepository.save(session);
@@ -492,8 +490,6 @@ suite('Assignment submission', () => {
       student: {
         id: 7,
         email: 'student@example.com',
-        firstName: 'Demo',
-        lastName: 'Student',
       },
     };
     const authRepository: AuthRepository = {
@@ -603,8 +599,6 @@ suite('Assignment submission', () => {
       student: {
         id: 7,
         email: 'student@example.com',
-        firstName: 'Demo',
-        lastName: 'Student',
       },
     };
     await sessionRepository.save(session);

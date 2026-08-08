@@ -30,8 +30,6 @@ suite('ExerciseTreeProvider', () => {
       token: 'session-token',
       student: {
         id: 42,
-        firstName: 'Ada',
-        lastName: 'Lovelace',
         email: 'ada@example.com',
       },
     };

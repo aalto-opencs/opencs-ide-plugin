@@ -1,8 +1,5 @@
 import * as assert from 'assert';
 import {
-  ApiAuthRepository,
-} from '../../features/auth/authRepository';
-import {
   ApiCourseRepository,
 } from '../../features/courses/courseRepository';
 import {
@@ -14,6 +11,11 @@ import {
 import {
   ApiClient,
 } from '../../infrastructure/apiClient';
+import {
+  IntegrationAuthenticationConfiguration,
+  readIntegrationAuthenticationConfiguration,
+  signInThroughIde,
+} from './integrationAuthentication';
 
 suite('Submission history backend integration', () => {
   test('retrieves history and completion for an enrolled course instance',
@@ -25,11 +27,7 @@ suite('Submission history backend integration', () => {
         return;
       }
 
-      const publicApiClient = new ApiClient(configuration.baseUrl);
-      const authRepository = new ApiAuthRepository(publicApiClient);
-      const session = await authRepository.loginWithUuid(
-        configuration.userUuid,
-      );
+      const session = await signInThroughIde(configuration);
       const authenticatedApiClient = new ApiClient(
         configuration.baseUrl,
         async () => session.token,
@@ -84,26 +82,30 @@ suite('Submission history backend integration', () => {
     });
 });
 
-interface SubmissionHistoryTestConfiguration {
-  baseUrl: string;
-  userUuid: string;
+interface SubmissionHistoryTestConfiguration
+  extends IntegrationAuthenticationConfiguration {
   courseSlug: string;
   exerciseUuid: string;
 }
 
 function readConfiguration(): SubmissionHistoryTestConfiguration | undefined {
+  const authentication = readIntegrationAuthenticationConfiguration();
   const configuration = {
-    baseUrl: process.env.AALTO_FITECH_TEST_API_URL,
-    userUuid: process.env.AALTO_FITECH_TEST_USER_UUID,
     courseSlug: process.env.AALTO_FITECH_TEST_COURSE_SLUG,
     exerciseUuid: process.env.AALTO_FITECH_TEST_ASSIGNMENT_UUID,
   };
 
-  if (Object.values(configuration).some((value) => !value)) {
+  if (
+    !authentication ||
+    Object.values(configuration).some((value) => !value)
+  ) {
     return undefined;
   }
 
-  return configuration as SubmissionHistoryTestConfiguration;
+  return {
+    ...authentication,
+    ...configuration,
+  } as SubmissionHistoryTestConfiguration;
 }
 
 function assertValidHistoryEntry(

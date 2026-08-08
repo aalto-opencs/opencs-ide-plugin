@@ -1,6 +1,5 @@
 import { createHash, randomBytes } from 'node:crypto';
 import * as vscode from 'vscode';
-import { StudentProfile } from './authModels';
 import { AuthService } from './authService';
 
 const SIGN_IN_TIMEOUT_MS = 5 * 60 * 1000;
@@ -120,7 +119,7 @@ export class AuthController implements vscode.UriHandler {
     }
 
     vscode.window.showInformationMessage(
-      `Currently signed in as ${this.getStudentName(session.student)}.`,
+      `Currently signed in as ${session.student.email}.`,
     );
   }
 
@@ -145,7 +144,7 @@ export class AuthController implements vscode.UriHandler {
     try {
       const session = await this.authService.signIn(code, codeVerifier);
       vscode.window.showInformationMessage(
-        `Signed in as ${this.getStudentName(session.student)}.`,
+        `Signed in as ${session.student.email}.`,
       );
       return true;
     } catch (error: unknown) {
@@ -169,9 +168,5 @@ export class AuthController implements vscode.UriHandler {
 
   private createRandomValue(): string {
     return randomBytes(32).toString('base64url');
-  }
-
-  private getStudentName(student: StudentProfile): string {
-    return `${student.firstName} ${student.lastName}`.trim() || student.email;
   }
 }

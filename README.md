@@ -187,7 +187,7 @@ machine-specific settings. They can also be placed in VS Code's user
 | --- | --- | --- |
 | `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL including the backend's `/api` path. |
 | `aaltoFitechPlatform.platformBaseUrl` | `http://localhost:7799` | Website URL opened for browser sign-in. |
-| `aaltoFitechPlatform.useMockApi` | `true` | Uses built-in Demo Student data and makes no platform API requests. |
+| `aaltoFitechPlatform.useMockApi` | `true` | Uses a built-in demo account and makes no platform API requests. |
 
 To use the local backend, set:
 
@@ -220,7 +220,7 @@ values until those production URLs are approved.
 
 ## Troubleshooting
 
-### Demo Student appears instead of the signed-in account
+### The demo account appears instead of the signed-in account
 
 Set `aaltoFitechPlatform.useMockApi` to `false`, then reload the Extension
 Development Host. The mock/real choice is made only during activation.
@@ -290,6 +290,14 @@ npm run lint
 npm run compile
 npm test
 npm run package
+```
+
+Real-backend integration tests use the normal platform login and IDE PKCE
+exchange. Copy `.env.test.example` to the gitignored `.env.test.local`, provide
+credentials for a disposable backend test account, and run:
+
+```bash
+./scripts/run-integration-tests.sh
 ```
 
 Open the project in VS Code and press `F5` to start an Extension Development

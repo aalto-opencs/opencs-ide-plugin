@@ -25,12 +25,9 @@ function isAuthSession(value: unknown): value is AuthSession {
     'id' in student &&
     typeof student.id === 'number' &&
     Number.isFinite(student.id) &&
-    'firstName' in student &&
-    typeof student.firstName === 'string' &&
-    'lastName' in student &&
-    typeof student.lastName === 'string' &&
     'email' in student &&
-    typeof student.email === 'string'
+    typeof student.email === 'string' &&
+    student.email.trim().length > 0
   );
 }
 
