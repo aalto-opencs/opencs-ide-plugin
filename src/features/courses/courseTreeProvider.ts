@@ -34,6 +34,7 @@ class CourseTreeItem extends vscode.TreeItem {
 
   public assignment?: ProgrammingAssignment;
   public completed = false;
+  public parent?: CourseTreeItem;
 }
 
 /**
@@ -90,6 +91,27 @@ export class CourseTreeProvider implements
 
   public getTreeItem(element: CourseTreeItem): vscode.TreeItem {
     return element;
+  }
+
+  public getParent(element: CourseTreeItem): CourseTreeItem | undefined {
+    return element.parent;
+  }
+
+  public async revealAssignment(exerciseUuid: string): Promise<boolean> {
+    if (!this.treeView) {
+      return false;
+    }
+    const roots = await this.getChildren();
+    const assignment = findAssignmentItem(roots, exerciseUuid);
+    if (!assignment) {
+      return false;
+    }
+    await this.treeView.reveal(assignment, {
+      select: true,
+      focus: true,
+      expand: false,
+    });
+    return true;
   }
 
   public async getChildren(
@@ -250,6 +272,9 @@ export class CourseTreeProvider implements
         : vscode.TreeItemCollapsibleState.None,
       chapters,
     );
+    for (const chapter of chapters) {
+      chapter.parent = item;
+    }
     item.completed = chapters.length > 0 &&
       chapters.every((chapter) => chapter.completed);
     item.iconPath = new vscode.ThemeIcon(
@@ -287,6 +312,9 @@ export class CourseTreeProvider implements
         : vscode.TreeItemCollapsibleState.None,
       exercises,
     );
+    for (const exercise of exercises) {
+      exercise.parent = item;
+    }
     item.completed = exercises.length > 0 &&
       exercises.every((exercise) => exercise.completed);
     item.iconPath = new vscode.ThemeIcon(
@@ -484,4 +512,22 @@ export class CourseTreeProvider implements
       this.treeView.message = message;
     }
   }
+}
+
+function findAssignmentItem(
+  items: CourseTreeItem[],
+  exerciseUuid: string,
+): CourseTreeItem | undefined {
+  for (const item of items) {
+    if (item.assignment?.exerciseUuid === exerciseUuid) {
+      return item;
+    }
+    const nested = item.children
+      ? findAssignmentItem(item.children, exerciseUuid)
+      : undefined;
+    if (nested) {
+      return nested;
+    }
+  }
+  return undefined;
 }

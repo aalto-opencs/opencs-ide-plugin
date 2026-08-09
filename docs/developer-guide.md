@@ -138,6 +138,27 @@ Native views, Quick Picks, input boxes, folder pickers, notifications, and text
 editors are used instead of a Webview. This gives the extension standard VS
 Code keyboard, theme, zoom, and screen-reader behavior.
 
+### Platform assignment deep links
+
+Programming assignments on the platform can select the corresponding exercise
+in the extension with this identifier-only URI:
+
+```text
+vscode://aalto-opencs.aalto-opencs-ide/assignments/open?course=<course-slug>&exercise=<exercise-uuid>
+```
+
+The extension resolves the link against the signed-in student's live enrolment
+and the backend's active course instance. When signed out, it completes the
+normal browser PKCE sign-in first and then resumes the request. A valid link
+selects the course and exercise and shows the existing download action; it never
+downloads or overwrites student files automatically.
+
+If the student is not enrolled, the extension requires explicit **Enrol and
+Open** confirmation. It reuses the platform's active-instance operation, which
+creates the enrolment when needed, asks the student to choose when multiple
+course versions are available, and verifies the resulting active enrolment
+before saving the local course and exercise selection.
+
 ### Registered commands
 
 | Command ID | Owner and effect |

@@ -1,6 +1,7 @@
 .vscode/**
 .github/**
 .vscode-test/**
+.env.test.local
 DEVELOPMENT_DIARY.md
 out/**
 node_modules/**

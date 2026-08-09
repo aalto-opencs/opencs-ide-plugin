@@ -13,6 +13,8 @@ import {
 import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
 import { AssignmentController } from '../features/assignments/assignmentController';
+import { AssignmentDeepLinkController } from '../features/assignments/assignmentDeepLinkController';
+import { AssignmentDeepLinkService } from '../features/assignments/assignmentDeepLinkService';
 import { AssignmentDownloadService } from '../features/assignments/assignmentDownloadService';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
@@ -53,6 +55,7 @@ import {
 } from '../features/submissions/submissionRepository';
 import { SubmissionService } from '../features/submissions/submissionService';
 import { ApiClient } from '../infrastructure/apiClient';
+import { ExtensionUriRouter } from '../infrastructure/extensionUriRouter';
 import { registerViews } from '../views/registerViews';
 import { AccountController } from '../features/account/accountController';
 import { CoursePointsService } from '../features/coursePoints/coursePointsService';
@@ -193,9 +196,6 @@ export function registerCommands(
     mockApiEnabled,
     context.extension.id,
   );
-  const authenticationUriHandler = vscode.window.registerUriHandler(
-    authController,
-  );
   const accountController = new AccountController(
     authService,
     assignmentFolderRepository,
@@ -269,6 +269,22 @@ export function registerCommands(
     submissionTreeProvider.refresh();
     await courseController.showSelectedInstanceEndWarning();
   };
+  const assignmentDeepLinkController = new AssignmentDeepLinkController(
+    authService,
+    new AssignmentDeepLinkService(
+      courseService,
+      courseMaterialService,
+      courseSelectionRepository,
+      currentAssignmentRepository,
+      courseCacheRepository,
+    ),
+    () => authController.signIn(),
+    refreshUiState,
+    (exerciseUuid) => courseTreeProvider.revealAssignment(exerciseUuid),
+  );
+  const extensionUriHandler = vscode.window.registerUriHandler(
+    new ExtensionUriRouter(authController, assignmentDeepLinkController),
+  );
   void refreshUiState();
 
   const makeCurrent = async (
@@ -510,7 +526,7 @@ export function registerCommands(
   );
 
   context.subscriptions.push(
-    authenticationUriHandler,
+    extensionUriHandler,
     checkPlatformStatusCommand,
     signInCommand,
     showCurrentUserCommand,

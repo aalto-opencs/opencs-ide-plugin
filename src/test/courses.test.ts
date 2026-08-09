@@ -7,6 +7,7 @@ import { SessionRepository } from '../features/auth/sessionRepository';
 import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
+import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
 import { CoursePart } from '../features/courseMaterials/courseMaterialModels';
 import {
   ApiCourseMaterialRepository,
@@ -529,6 +530,68 @@ suite('Courses', () => {
     }
   });
 
+  test('reveals and selects the current assignment with its parent path', async () => {
+    const {
+      provider,
+      sessionRepository,
+      currentAssignmentRepository,
+    } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+    );
+    let revealedItem: vscode.TreeItem | undefined;
+    let revealOptions: {
+      select?: boolean;
+      focus?: boolean;
+      expand?: boolean | number;
+    } | undefined;
+    provider.attachTreeView({
+      description: undefined,
+      message: undefined,
+      reveal: async (
+        item: vscode.TreeItem,
+        options?: typeof revealOptions,
+      ) => {
+        revealedItem = item;
+        revealOptions = options;
+      },
+    } as unknown as Parameters<typeof provider.attachTreeView>[0]);
+
+    try {
+      await sessionRepository.save(session);
+      await currentAssignmentRepository.save(session.student.id, {
+        exerciseUuid: '11111111-1111-4111-8111-111111111111',
+        name: 'Hello Web',
+        type: 'programming-exercise',
+        courseSlug: 'web-software-development',
+        courseInstanceId: 12,
+      });
+
+      assert.strictEqual(
+        await provider.revealAssignment(
+          '11111111-1111-4111-8111-111111111111',
+        ),
+        true,
+      );
+      assert.strictEqual(revealedItem?.label, 'Hello Web');
+      assert.deepStrictEqual(revealOptions, {
+        select: true,
+        focus: true,
+        expand: false,
+      });
+      assert.match(String(revealedItem?.description), /^Current/);
+
+      const chapter = provider.getParent(
+        revealedItem as Parameters<typeof provider.getParent>[0],
+      );
+      const part = chapter ? provider.getParent(chapter) : undefined;
+      assert.strictEqual(chapter?.label, 'Introduction');
+      assert.strictEqual(part?.label, 'Web Applications and HTTP');
+    } finally {
+      provider.dispose();
+    }
+  });
+
   test('applies an in-memory development completion override', async () => {
     const { provider, sessionRepository } = createProvider(
       { getEnrolments: async () => enrolments },
@@ -652,6 +715,7 @@ function createProvider(
 ): {
   provider: CourseTreeProvider;
   sessionRepository: SessionRepository;
+  currentAssignmentRepository: CurrentAssignmentRepository;
 } {
   const sessionRepository = new SessionRepository(
     new InMemorySecretStorage(),
@@ -674,6 +738,9 @@ function createProvider(
     new InMemoryMemento(),
   );
   const courseCacheRepository = new CourseCacheRepository(
+    new InMemoryMemento(),
+  );
+  const currentAssignmentRepository = new CurrentAssignmentRepository(
     new InMemoryMemento(),
   );
   if (folderSelected) {
@@ -703,7 +770,9 @@ function createProvider(
       submissionRepository,
       isDevelopmentCompleted,
       courseCacheRepository,
+      currentAssignmentRepository,
     ),
     sessionRepository,
+    currentAssignmentRepository,
   };
 }
