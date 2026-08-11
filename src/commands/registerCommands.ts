@@ -161,6 +161,7 @@ export function registerCommands(
     exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
+    assignmentHandoutViewProvider,
   } = registerViews(
     context,
     authService,
@@ -269,6 +270,7 @@ export function registerCommands(
     courseTreeProvider.refresh();
     exerciseTreeProvider.refresh();
     submissionTreeProvider.refresh();
+    await assignmentHandoutViewProvider.refresh();
     await courseController.showSelectedInstanceEndWarning();
   };
   const assignmentDeepLinkController = new AssignmentDeepLinkController(
@@ -389,6 +391,11 @@ export function registerCommands(
   const refreshExerciseCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.refreshExercise',
     () => exerciseTreeProvider.refresh(),
+  );
+
+  const showAssignmentHandoutCommand = vscode.commands.registerCommand(
+    'aaltoOpenCsIde.showAssignmentHandout',
+    () => assignmentHandoutViewProvider.show(),
   );
 
   const refreshSubmissionsCommand = vscode.commands.registerCommand(
@@ -536,6 +543,7 @@ export function registerCommands(
     signOutCommand,
     refreshCoursesCommand,
     refreshExerciseCommand,
+    showAssignmentHandoutCommand,
     refreshSubmissionsCommand,
     selectCourseCommand,
     selectAssignmentFolderCommand,

@@ -19,6 +19,10 @@ import { SubmissionHistorySyncService } from '../features/submissions/submission
 import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
 import { ExerciseTreeProvider } from '../features/assignments/exerciseTreeProvider';
 import { CourseSelectionTreeProvider } from '../features/courses/courseSelectionTreeProvider';
+import {
+  ASSIGNMENT_HANDOUT_VIEW_ID,
+  AssignmentHandoutViewProvider,
+} from '../features/assignments/assignmentHandoutViewProvider';
 
 /**
  * Creates and registers the native workflow tree views. Keep cross-feature view
@@ -47,6 +51,7 @@ export function registerViews(
   exerciseTreeProvider: ExerciseTreeProvider;
   submissionTreeProvider: SubmissionTreeProvider;
   submissionDetailsProvider: SubmissionDetailsProvider;
+  assignmentHandoutViewProvider: AssignmentHandoutViewProvider;
 } {
   const courseSelectionTreeProvider = new CourseSelectionTreeProvider(
     authService,
@@ -86,6 +91,14 @@ export function registerViews(
     currentAssignmentRepository,
   );
   const submissionDetailsProvider = new SubmissionDetailsProvider();
+  const assignmentHandoutViewProvider = new AssignmentHandoutViewProvider(
+    context.extensionUri,
+    context.globalState,
+    authService,
+    assignmentFolderRepository,
+    assignmentFileRepository,
+    currentAssignmentRepository,
+  );
 
   const courseSelectionTreeView = vscode.window.createTreeView(
     'aaltoOpenCsIde.courseSelection',
@@ -113,6 +126,11 @@ export function registerViews(
     exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
+    assignmentHandoutViewProvider,
+    vscode.window.registerWebviewViewProvider(
+      ASSIGNMENT_HANDOUT_VIEW_ID,
+      assignmentHandoutViewProvider,
+    ),
     vscode.workspace.registerTextDocumentContentProvider(
       SUBMISSION_DETAILS_SCHEME,
       submissionDetailsProvider,
@@ -137,6 +155,7 @@ export function registerViews(
     exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
+    assignmentHandoutViewProvider,
   };
 }
 

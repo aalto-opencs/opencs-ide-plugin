@@ -100,6 +100,7 @@ export class ExerciseTreeProvider implements
     );
     this.watch(folder);
     return [
+      createHandoutItem(assignment.name),
       createSubmitItem(assignment.name),
       ...await this.readDirectory(folder),
     ];
@@ -156,6 +157,21 @@ export class ExerciseTreeProvider implements
       this.treeView.description = description;
     }
   }
+}
+
+function createHandoutItem(assignmentName: string): vscode.TreeItem {
+  const item = new vscode.TreeItem('Show Assignment Handout');
+  item.description = assignmentName;
+  item.iconPath = new vscode.ThemeIcon('book');
+  item.command = {
+    command: 'aaltoOpenCsIde.showAssignmentHandout',
+    title: 'Show Assignment Handout',
+  };
+  item.tooltip = 'Display the current exercise handout beside your code.';
+  item.accessibilityInformation = {
+    label: `Show assignment handout: ${assignmentName}`,
+  };
+  return item;
 }
 
 function createSubmitItem(assignmentName: string): vscode.TreeItem {

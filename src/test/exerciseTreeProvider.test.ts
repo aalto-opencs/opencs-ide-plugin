@@ -79,15 +79,20 @@ suite('ExerciseTreeProvider', () => {
     try {
       const children = await provider.getChildren();
       assert.deepStrictEqual(children.map((item) => String(item.label)), [
+        'Show Assignment Handout',
         'Submit Current Exercise',
         'src',
         'assignment-handout.md',
       ]);
       assert.strictEqual(
         children[0].command?.command,
+        'aaltoOpenCsIde.showAssignmentHandout',
+      );
+      assert.strictEqual(
+        children[1].command?.command,
         'aaltoOpenCsIde.submitCurrentAssignment',
       );
-      const sourceChildren = await provider.getChildren(children[1]);
+      const sourceChildren = await provider.getChildren(children[2]);
       assert.strictEqual(String(sourceChildren[0].label), 'main.ts');
       assert.strictEqual(sourceChildren[0].command?.command, 'vscode.open');
     } finally {

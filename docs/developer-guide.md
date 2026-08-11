@@ -616,6 +616,25 @@ Preferred file order:
 5. Another recognized source file, preferring shallower paths
 6. `assignment-handout.md`
 
+### Assignment Handout view
+
+The Course Parts and Exercise toolbars' **Show Assignment Handout** command
+prompts before enabling the `aaltoOpenCsIde.assignmentHandout` webview view.
+The view is hidden initially and is never opened as a side effect of selecting
+or downloading an exercise. Cancelling the confirmation or VS Code's
+destination picker leaves the view hidden. Once VS Code opens the view after
+placement, the extension remembers that it is enabled and future toolbar
+actions focus it directly. The IDE owns and persists the actual workbench
+placement.
+
+`AssignmentHandoutViewProvider` resolves the current downloaded assignment
+through the signed-in student's root and email, reads
+`assignment-handout.md` with `workspace.fs`, and watches that file for local
+changes. Markdown is rendered with raw HTML disabled in a script-free webview
+with a restrictive content security policy. Local images are limited to the
+current assignment folder. Missing, undownloaded, and signed-out states render
+guidance instead of opening the view automatically.
+
 Generated directories such as `node_modules`, `dist`, `build`, `coverage`, and
 `target` are skipped during discovery.
 

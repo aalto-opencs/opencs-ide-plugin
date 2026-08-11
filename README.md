@@ -113,6 +113,14 @@ selected-root/
 The metadata file associates the local folder with the exact exercise, course,
 and course instance. Submit is available only when this metadata is valid.
 
+After downloading the current exercise, use the prominent **Show Assignment
+Handout** action at the top of the Exercise view, or the book button in the
+Course Parts or Exercise toolbar, to enable its rendered handout view. On first
+use, confirm the prompt and select **New Secondary Side Bar Entry**. Cancelling
+either step keeps the handout hidden. The IDE remembers the selected layout.
+Changes to the local `assignment-handout.md` refresh the rendered view
+automatically.
+
 Assignment actions depend on local and backend state:
 
 - not downloaded: Download
