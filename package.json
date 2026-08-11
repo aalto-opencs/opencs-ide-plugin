@@ -41,6 +41,7 @@
     "onCommand:aaltoOpenCsIde.showAssignmentFolder",
     "onCommand:aaltoOpenCsIde.redownloadAssignment",
     "onCommand:aaltoOpenCsIde.submitAssignment",
+    "onCommand:aaltoOpenCsIde.runCurrentAssignment",
     "onView:aaltoOpenCsIde.authenticationSetup",
     "onView:aaltoOpenCsIde.folderSetup",
     "onView:aaltoOpenCsIde.courseSelection",
@@ -235,6 +236,13 @@
         "title": "Aalto OpenCS IDE: Show Assignment Handout",
         "shortTitle": "Show Handout",
         "icon": "$(book)"
+      },
+      {
+        "command": "aaltoOpenCsIde.runCurrentAssignment",
+        "title": "Aalto OpenCS IDE: Run Assignment",
+        "shortTitle": "Run Assignment",
+        "icon": "$(play)",
+        "enablement": "aaltoOpenCsIde.currentAssignmentRunnable"
       }
     ],
     "menus": {
@@ -312,6 +320,18 @@
           "group": "navigation@2"
         }
       ],
+      "editor/title": [
+        {
+          "command": "aaltoOpenCsIde.runCurrentAssignment",
+          "when": "aaltoOpenCsIde.currentAssignmentDownloaded",
+          "group": "navigation@-100"
+        },
+        {
+          "command": "aaltoOpenCsIde.submitCurrentAssignment",
+          "when": "aaltoOpenCsIde.currentAssignmentDownloaded",
+          "group": "navigation@-99"
+        }
+      ],
       "commandPalette": [
         {
           "command": "aaltoOpenCsIde.downloadAssignment",
@@ -344,6 +364,10 @@
         {
           "command": "aaltoOpenCsIde.showAssignmentHandout",
           "when": "!aaltoOpenCsIde.currentAssignmentDownloaded"
+        },
+        {
+          "command": "aaltoOpenCsIde.runCurrentAssignment",
+          "when": "!aaltoOpenCsIde.currentAssignmentDownloaded"
         }
       ]
     },
@@ -361,6 +385,12 @@
           "default": "http://localhost:7799",
           "scope": "machine",
           "description": "Website URL used for browser sign-in. Set this to the production Aalto OpenCS platform URL outside local development."
+        },
+        "aaltoOpenCsIde.pythonCommand": {
+          "type": "string",
+          "default": "",
+          "scope": "machine",
+          "description": "Command used to run Introduction to Programming assignments locally. Empty uses python3 on macOS/Linux and py on Windows. Python must be installed. Command arguments are supported; quote interpreter paths that contain spaces."
         },
         "aaltoOpenCsIde.useMockApi": {
           "type": "boolean",

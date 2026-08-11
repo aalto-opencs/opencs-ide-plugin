@@ -121,6 +121,18 @@ either step keeps the handout hidden. The IDE remembers the selected layout.
 Changes to the local `assignment-handout.md` refresh the rendered view
 automatically.
 
+When the current exercise is downloaded, editor titles show **Run Assignment**
+and **Submit Current Exercise** actions. Both actions target the exercise shown
+in the Exercise view, regardless of which file is currently open. Run remains
+visible but is disabled outside the Introduction to Programming course. For
+supported assignments, it saves modified local files and opens an integrated
+terminal in the assignment folder before running `python3 main.py` on
+macOS/Linux or `py main.py` on Windows. Python must be installed locally. Set
+`aaltoOpenCsIde.pythonCommand` to use another command, command arguments, or a
+quoted virtual-environment interpreter path. Interactive `input()` and files
+opened with relative paths work through the terminal. Local execution is not
+available in browser-only IDE hosts.
+
 Assignment actions depend on local and backend state:
 
 - not downloaded: Download

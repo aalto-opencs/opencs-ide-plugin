@@ -64,6 +64,8 @@ import {
   CoursePointsRepository,
   MockCoursePointsRepository,
 } from '../features/coursePoints/coursePointsRepository';
+import { LocalPythonExecutionController } from '../features/localExecution/localPythonExecutionController';
+import { LocalPythonExecutionService } from '../features/localExecution/localPythonExecutionService';
 
 /**
  * Extension composition root.
@@ -190,6 +192,13 @@ export function registerCommands(
     submissionTreeProvider,
     () => courseTreeProvider.refresh(),
   );
+  const localPythonExecutionController = new LocalPythonExecutionController(
+    new LocalPythonExecutionService(),
+    authService,
+    assignmentFolderRepository,
+    assignmentFileRepository,
+    currentAssignmentRepository,
+  );
 
   const authController = new AuthController(
     authService,
@@ -271,6 +280,7 @@ export function registerCommands(
     exerciseTreeProvider.refresh();
     submissionTreeProvider.refresh();
     await assignmentHandoutViewProvider.refresh();
+    await localPythonExecutionController.updateRunContext();
     await courseController.showSelectedInstanceEndWarning();
   };
   const assignmentDeepLinkController = new AssignmentDeepLinkController(
@@ -396,6 +406,18 @@ export function registerCommands(
   const showAssignmentHandoutCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.showAssignmentHandout',
     () => assignmentHandoutViewProvider.show(),
+  );
+
+  const runCurrentAssignmentCommand = vscode.commands.registerCommand(
+    'aaltoOpenCsIde.runCurrentAssignment',
+    () => localPythonExecutionController.runCurrentAssignment(),
+  );
+  const pythonConfigurationListener = vscode.workspace.onDidChangeConfiguration(
+    (event) => {
+      if (event.affectsConfiguration('aaltoOpenCsIde.pythonCommand')) {
+        void localPythonExecutionController.updateRunContext();
+      }
+    },
   );
 
   const refreshSubmissionsCommand = vscode.commands.registerCommand(
@@ -544,6 +566,9 @@ export function registerCommands(
     refreshCoursesCommand,
     refreshExerciseCommand,
     showAssignmentHandoutCommand,
+    runCurrentAssignmentCommand,
+    pythonConfigurationListener,
+    localPythonExecutionController,
     refreshSubmissionsCommand,
     selectCourseCommand,
     selectAssignmentFolderCommand,

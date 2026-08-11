@@ -638,6 +638,23 @@ guidance instead of opening the view automatically.
 Generated directories such as `node_modules`, `dist`, `build`, `coverage`, and
 `target` are skipped during discovery.
 
+### Local Python execution
+
+`LocalPythonExecutionController` maintains run context for the current
+downloaded assignment. Editor-title Run and Submit actions target the exercise
+shown in the Exercise view instead of the active file. Run is enabled only on
+desktop IDE hosts when the course slug is `introduction-to-programming` and the
+assignment contains `main.py`; for other courses it remains visible and
+disabled. Submit continues to use the existing confirmed submission flow.
+
+Before running, the controller revalidates downloaded assignment metadata and
+saves dirty documents inside that assignment. `LocalPythonExecutionService`
+then prepares `<python command> main.py`; the controller creates an integrated
+terminal with the assignment folder as `cwd`, which preserves interactive
+standard input and relative-file behavior. The default command is `python3` on
+macOS/Linux and `py` on Windows. `aaltoOpenCsIde.pythonCommand` overrides it.
+The extension does not install Python or assignment dependencies.
+
 ### Redownload
 
 Redownload is intentionally destructive and requires the exact modal action
