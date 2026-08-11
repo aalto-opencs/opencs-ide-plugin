@@ -66,7 +66,10 @@ suite('Assignment workflow backend integration', () => {
         name: configuration.assignmentName,
         type: PROGRAMMING_EXERCISE_TYPE,
         courseSlug: configuration.courseSlug,
+        courseName: enrolment.courseName || configuration.courseSlug,
         courseInstanceId: enrolment.activeInstanceId,
+        courseInstanceName: enrolment.instances.find((instance) =>
+          instance.id === enrolment.activeInstanceId)?.label,
       };
       const root = await mkdtemp(join(
         tmpdir(),
@@ -77,10 +80,11 @@ suite('Assignment workflow backend integration', () => {
         const downloaded = await downloadService.download(
           assignment,
           vscode.Uri.file(root),
+          session.student.email,
         );
 
         assert.strictEqual(
-          basename(dirname(downloaded.folder.fsPath)),
+          basename(dirname(dirname(downloaded.folder.fsPath))),
           configuration.courseSlug,
         );
         assert.strictEqual(
@@ -98,6 +102,7 @@ suite('Assignment workflow backend integration', () => {
         assert.strictEqual(
           await downloadService.isDownloaded(
             vscode.Uri.file(root),
+            session.student.email,
             assignment,
           ),
           true,

@@ -59,12 +59,14 @@ export class SubmissionController {
 
     const folder = this.assignmentFileRepository.getAssignmentFolder(
       root,
+      session.student.email,
       assignment,
     );
 
     try {
       if (!await this.assignmentFileRepository.isDownloadedAssignment(
         root,
+        session.student.email,
         assignment,
       )) {
         await vscode.window.showErrorMessage(

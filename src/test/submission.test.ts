@@ -54,6 +54,7 @@ suite('Assignment submission', () => {
     try {
       const folder = repository.getAssignmentFolder(
         vscode.Uri.file(root),
+        'student@example.com',
         assignment,
       );
       await mkdir(folder.fsPath, { recursive: true });
@@ -71,6 +72,7 @@ suite('Assignment submission', () => {
       assert.strictEqual(
         await repository.isDownloadedAssignment(
           vscode.Uri.file(root),
+          'student@example.com',
           assignment,
         ),
         true,
@@ -78,6 +80,7 @@ suite('Assignment submission', () => {
       assert.strictEqual(
         await repository.isDownloadedAssignment(
           vscode.Uri.file(root),
+          'student@example.com',
           { ...assignment, courseInstanceId: 99 },
         ),
         false,

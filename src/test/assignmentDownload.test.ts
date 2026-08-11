@@ -26,8 +26,11 @@ const assignment: ProgrammingAssignment = {
   name: 'Hello Web!',
   type: 'programming-exercise',
   courseSlug: 'web-software-development',
+  courseName: 'Web Software Development',
   courseInstanceId: 12,
+  courseInstanceName: 'Summer 2026',
 };
+const userEmail = 'Ada.Student+OpenCS@example.com';
 
 suite('Assignment download', () => {
   test('restores the selected assignment root', async () => {
@@ -116,19 +119,29 @@ suite('Assignment download', () => {
       const downloaded = await service.download(
         assignment,
         vscode.Uri.file(root),
+        userEmail,
       );
 
       assert.strictEqual(basename(downloaded.folder.fsPath), 'hello-web');
       assert.strictEqual(
         basename(dirname(downloaded.folder.fsPath)),
+        'summer-2026',
+      );
+      assert.strictEqual(
+        basename(dirname(dirname(downloaded.folder.fsPath))),
         'web-software-development',
+      );
+      assert.strictEqual(
+        basename(dirname(dirname(dirname(downloaded.folder.fsPath)))),
+        'ada.student-opencs-example.com',
       );
       assert.strictEqual(
         service.getCourseFolder(
           vscode.Uri.file(root),
+          userEmail,
           assignment,
         ).fsPath,
-        dirname(downloaded.folder.fsPath),
+        dirname(dirname(downloaded.folder.fsPath)),
       );
       assert.strictEqual(
         downloaded.handoutFilename,
@@ -184,12 +197,13 @@ suite('Assignment download', () => {
       const downloaded = await service.download(
         assignment,
         vscode.Uri.file(root),
+        userEmail,
       );
       const studentFile = join(downloaded.folder.fsPath, 'src', 'index.ts');
       await writeFile(studentFile, 'student work\n');
 
       await assert.rejects(
-        service.download(assignment, vscode.Uri.file(root)),
+        service.download(assignment, vscode.Uri.file(root), userEmail),
         AssignmentAlreadyExistsError,
       );
       assert.strictEqual(await readFile(studentFile, 'utf8'), 'student work\n');
@@ -210,6 +224,7 @@ suite('Assignment download', () => {
       const downloaded = await service.download(
         assignment,
         vscode.Uri.file(root),
+        userEmail,
       );
       await writeFile(
         join(downloaded.folder.fsPath, 'src', 'index.ts'),
@@ -223,6 +238,7 @@ suite('Assignment download', () => {
       const freshDownload = await service.download(
         assignment,
         vscode.Uri.file(root),
+        userEmail,
         true,
       );
 
@@ -258,6 +274,7 @@ suite('Assignment download', () => {
       const downloaded = await initialService.download(
         assignment,
         vscode.Uri.file(root),
+        userEmail,
       );
       const studentFile = join(downloaded.folder.fsPath, 'src', 'index.ts');
       await writeFile(studentFile, 'student work\n');
@@ -270,6 +287,7 @@ suite('Assignment download', () => {
         brokenReplacementService.download(
           assignment,
           vscode.Uri.file(root),
+          userEmail,
           true,
         ),
       );
@@ -301,6 +319,7 @@ suite('Assignment download', () => {
       service.download(
         { ...assignment, type: 'quiz' },
         vscode.Uri.file('/unused'),
+        userEmail,
       ),
       /Only programming assignments/,
     );
@@ -320,7 +339,7 @@ suite('Assignment download', () => {
       );
 
       await assert.rejects(
-        service.download(assignment, vscode.Uri.file(root)),
+        service.download(assignment, vscode.Uri.file(root), userEmail),
         /Unsafe path/,
       );
     } finally {

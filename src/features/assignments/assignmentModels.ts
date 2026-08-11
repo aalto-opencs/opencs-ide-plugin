@@ -7,7 +7,9 @@ export interface ProgrammingAssignment {
   name: string;
   type: string;
   courseSlug: string;
+  courseName?: string;
   courseInstanceId: number | null;
+  courseInstanceName?: string;
 }
 
 export interface ProgrammingExerciseStarter {

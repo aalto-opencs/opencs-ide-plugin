@@ -181,9 +181,12 @@ export class CourseTreeProvider implements
 
       const contentResult = await this.loadCourseContent(
         enrolment.courseSlug,
+        enrolment.courseName || enrolment.courseSlug,
         instance.id,
+        instance.label,
         assignmentRoot,
         session.student.id,
+        session.student.email,
       );
       const usingCache = enrolmentResult.cached || contentResult.cached ||
         this.usedCachedProgress;
@@ -217,9 +220,12 @@ export class CourseTreeProvider implements
 
   private async loadCourseContent(
     courseSlug: string,
+    courseName: string,
     courseInstanceId: number,
+    courseInstanceName: string,
     root: vscode.Uri,
     userId: number,
+    userEmail: string,
   ): Promise<{ items: CourseTreeItem[]; cached: boolean }> {
     const structureResult = await this.loadStructure(userId, courseSlug);
     const programmingParts = structureResult.value
@@ -239,9 +245,12 @@ export class CourseTreeProvider implements
         ? await Promise.all(programmingParts.map((part) => this.createPartItem(
           part,
           courseSlug,
+          courseName,
           courseInstanceId,
+          courseInstanceName,
           root,
           userId,
+          userEmail,
         )))
         : [this.createMessageItem(
           'No programming assignments found.',
@@ -253,17 +262,23 @@ export class CourseTreeProvider implements
   private async createPartItem(
     part: CoursePart,
     courseSlug: string,
+    courseName: string,
     courseInstanceId: number | null,
+    courseInstanceName: string,
     root: vscode.Uri | undefined,
     userId: number | undefined,
+    userEmail: string,
   ): Promise<CourseTreeItem> {
     const chapters = await Promise.all(part.chapters.map((chapter) =>
       this.createChapterItem(
         chapter,
         courseSlug,
+        courseName,
         courseInstanceId,
+        courseInstanceName,
         root,
         userId,
+        userEmail,
       )));
     const item = new CourseTreeItem(
       part.name,
@@ -293,17 +308,23 @@ export class CourseTreeProvider implements
   private async createChapterItem(
     chapter: CourseChapter,
     courseSlug: string,
+    courseName: string,
     courseInstanceId: number | null,
+    courseInstanceName: string,
     root: vscode.Uri | undefined,
     userId: number | undefined,
+    userEmail: string,
   ): Promise<CourseTreeItem> {
     const exercises = await Promise.all(chapter.exercises.map((exercise) =>
       this.createExerciseItem(
         exercise,
         courseSlug,
+        courseName,
         courseInstanceId,
+        courseInstanceName,
         root,
         userId,
+        userEmail,
       )));
     const item = new CourseTreeItem(
       chapter.name,
@@ -333,9 +354,12 @@ export class CourseTreeProvider implements
   private async createExerciseItem(
     exercise: CourseExercise,
     courseSlug: string,
+    courseName: string,
     courseInstanceId: number | null,
+    courseInstanceName: string,
     root: vscode.Uri | undefined,
     userId: number | undefined,
+    userEmail: string,
   ): Promise<CourseTreeItem> {
     const item = new CourseTreeItem(
       exercise.name || exercise.exerciseUuid,
@@ -357,12 +381,15 @@ export class CourseTreeProvider implements
         name: exercise.name || exercise.exerciseUuid,
         type: exercise.type,
         courseSlug,
+        courseName,
         courseInstanceId,
+        courseInstanceName,
       };
       const [downloaded, backendPassed] = await Promise.all([
         root
           ? this.assignmentFileRepository.isDownloadedAssignment(
             root,
+            userEmail,
             assignment,
           )
           : false,

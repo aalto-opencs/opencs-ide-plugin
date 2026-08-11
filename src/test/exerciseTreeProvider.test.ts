@@ -40,7 +40,11 @@ suite('ExerciseTreeProvider', () => {
       courseSlug: 'web-software-development',
       courseInstanceId: 2,
     };
-    const assignmentFolder = files.getAssignmentFolder(root, assignment);
+    const assignmentFolder = files.getAssignmentFolder(
+      root,
+      'ada@example.com',
+      assignment,
+    );
     const sourceFolder = vscode.Uri.joinPath(assignmentFolder, 'src');
     await mkdir(sourceFolder.fsPath, { recursive: true });
     await writeFile(

@@ -67,7 +67,9 @@ suite('Assignment platform deep links', () => {
       name: 'Hello world!',
       type: 'programming-exercise',
       courseSlug: 'web-software-development',
+      courseName: 'Web Software Development',
       courseInstanceId: 17,
+      courseInstanceName: 'Summer 2026',
     });
     assert.deepStrictEqual(assignmentRepository.get(42), assignment);
     assert.deepStrictEqual(selectionRepository.getSelection(42), {

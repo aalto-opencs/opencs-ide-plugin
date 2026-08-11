@@ -529,7 +529,7 @@ sequenceDiagram
 
     Student->>Controller: Download assignment
     Controller->>API: Check previous passing result
-    Controller->>Service: download(assignment, root)
+    Controller->>Service: download(assignment, root, student email)
     Service->>Repo: getStarter(exerciseUuid)
     Repo->>API: GET starter metadata
     Service->>Repo: getStarterFiles(exerciseUuid)
@@ -547,15 +547,20 @@ but the student may choose **Download Anyway**.
 
 ```text
 <student-selected-root>/
-└── <sanitized-course-slug>/
-    └── <sanitized-assignment-name>/
-        ├── assignment-handout.md
-        ├── starter files...
-        └── .aalto-fitech-assignment.json
+└── <sanitized-student-email>/
+    └── <sanitized-course-name>/
+        └── <sanitized-course-instance-label>/
+            └── <sanitized-assignment-name>/
+                ├── assignment-handout.md
+                ├── starter files...
+                └── .aalto-opencs-assignment.json
 ```
 
-Folder names are Unicode-normalized, lowercased, stripped of unsafe characters,
-limited to 80 characters, and protected against reserved Windows device names.
+Every generated path segment is Unicode-normalized, lowercased, stripped of
+unsafe characters, limited to 80 characters, and protected against reserved
+Windows device names. The student-selected root is used unchanged. Older
+persisted assignments without display names fall back to the course slug and
+`instance-<id>`.
 
 The metadata file contains:
 
@@ -593,8 +598,9 @@ entry point.
 
 ### Opening a download
 
-**Open Assignment Folder** adds the sanitized course-slug folder to the current
-workspace, not the individual assignment folder. It then:
+**Open Assignment Folder** adds the sanitized course-name folder beneath the
+student-email folder to the current workspace, not the individual assignment
+folder. It then:
 
 1. Selects a likely starter file.
 2. Opens that file as a non-preview editor.

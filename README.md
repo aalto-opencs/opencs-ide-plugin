@@ -101,11 +101,13 @@ Downloaded assignments use this structure:
 
 ```text
 selected-root/
-└── course-slug/
-    └── assignment-name/
-        ├── assignment-handout.md
-        ├── starter files...
-        └── .aalto-fitech-assignment.json
+└── student-email/
+    └── course-name/
+        └── course-instance/
+            └── assignment-name/
+                ├── assignment-handout.md
+                ├── starter files...
+                └── .aalto-opencs-assignment.json
 ```
 
 The metadata file associates the local folder with the exact exercise, course,

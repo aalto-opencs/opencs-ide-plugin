@@ -142,7 +142,11 @@ export class AssignmentController {
           title: `Downloading ${assignment.name}`,
           cancellable: false,
         },
-        () => this.downloadService.download(assignment, root),
+        () => this.downloadService.download(
+          assignment,
+          root,
+          session.student.email,
+        ),
       );
       await onDownloaded();
 
@@ -153,7 +157,11 @@ export class AssignmentController {
 
       await this.handleOpenAction(
         action,
-        this.downloadService.getCourseFolder(root, assignment),
+        this.downloadService.getCourseFolder(
+          root,
+          session.student.email,
+          assignment,
+        ),
         downloaded.folder,
         downloaded.mainFile,
       );
@@ -165,7 +173,11 @@ export class AssignmentController {
         );
         await this.handleOpenAction(
           action,
-          this.downloadService.getCourseFolder(root, assignment),
+          this.downloadService.getCourseFolder(
+            root,
+            session.student.email,
+            assignment,
+          ),
           error.folder,
         );
         return;
@@ -224,6 +236,7 @@ export class AssignmentController {
         () => this.downloadService.download(
           assignment,
           location.root,
+          location.userEmail,
           true,
         ),
       );
@@ -243,7 +256,11 @@ export class AssignmentController {
     );
     await this.handleOpenAction(
       openAction,
-      this.downloadService.getCourseFolder(location.root, assignment),
+      this.downloadService.getCourseFolder(
+        location.root,
+        location.userEmail,
+        assignment,
+      ),
       downloaded.folder,
       downloaded.mainFile,
     );
@@ -253,6 +270,7 @@ export class AssignmentController {
     assignment?: ProgrammingAssignment,
   ): Promise<{
     root: vscode.Uri;
+    userEmail: string;
     folder: vscode.Uri;
   } | undefined> {
     if (!assignment) {
@@ -267,7 +285,11 @@ export class AssignmentController {
       ? this.folderRepository.getRoot(session.student.id)
       : undefined;
     if (!session || !root ||
-      !await this.downloadService.isDownloaded(root, assignment)) {
+      !await this.downloadService.isDownloaded(
+        root,
+        session.student.email,
+        assignment,
+      )) {
       await vscode.window.showErrorMessage(
         'This assignment has not been downloaded with the extension.',
       );
@@ -276,7 +298,12 @@ export class AssignmentController {
 
     return {
       root,
-      folder: this.downloadService.getAssignmentFolder(root, assignment),
+      userEmail: session.student.email,
+      folder: this.downloadService.getAssignmentFolder(
+        root,
+        session.student.email,
+        assignment,
+      ),
     };
   }
 

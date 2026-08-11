@@ -16,6 +16,7 @@ export class AssignmentDownloadService {
   public async download(
     assignment: ProgrammingAssignment,
     root: vscode.Uri,
+    userEmail: string,
     overwrite = false,
   ): Promise<DownloadedAssignment> {
     if (assignment.type !== PROGRAMMING_EXERCISE_TYPE) {
@@ -45,6 +46,7 @@ export class AssignmentDownloadService {
 
     return this.fileRepository.writeAssignment(
       root,
+      userEmail,
       assignment,
       starter,
       archive,
@@ -54,23 +56,30 @@ export class AssignmentDownloadService {
 
   public getAssignmentFolder(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
   ): vscode.Uri {
-    return this.fileRepository.getAssignmentFolder(root, assignment);
+    return this.fileRepository.getAssignmentFolder(root, userEmail, assignment);
   }
 
   public getCourseFolder(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
   ): vscode.Uri {
-    return this.fileRepository.getCourseFolder(root, assignment);
+    return this.fileRepository.getCourseFolder(root, userEmail, assignment);
   }
 
   public isDownloaded(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
   ): Promise<boolean> {
-    return this.fileRepository.isDownloadedAssignment(root, assignment);
+    return this.fileRepository.isDownloadedAssignment(
+      root,
+      userEmail,
+      assignment,
+    );
   }
 
   public getPreferredOpenFile(folder: vscode.Uri): Promise<vscode.Uri> {

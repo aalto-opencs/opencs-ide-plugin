@@ -123,7 +123,9 @@ export class AssignmentDeepLinkService {
       name: exercise.name || exercise.exerciseUuid,
       type: PROGRAMMING_EXERCISE_TYPE,
       courseSlug,
+      courseName: enrolment.courseName || courseSlug,
       courseInstanceId: activeInstance.id,
+      courseInstanceName: activeInstance.label,
     };
     await Promise.all([
       this.courseSelectionRepository.saveSelection(userId, {

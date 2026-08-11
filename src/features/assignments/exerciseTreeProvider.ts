@@ -84,6 +84,7 @@ export class ExerciseTreeProvider implements
 
     const downloaded = await this.fileRepository.isDownloadedAssignment(
       root,
+      session.student.email,
       assignment,
     );
     this.setDescription(assignment.name);
@@ -92,7 +93,11 @@ export class ExerciseTreeProvider implements
       return [];
     }
 
-    const folder = this.fileRepository.getAssignmentFolder(root, assignment);
+    const folder = this.fileRepository.getAssignmentFolder(
+      root,
+      session.student.email,
+      assignment,
+    );
     this.watch(folder);
     return [
       createSubmitItem(assignment.name),

@@ -39,26 +39,50 @@ export class AssignmentAlreadyExistsError extends Error {
 export class AssignmentFileRepository {
   public getAssignmentFolder(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
   ): vscode.Uri {
     return vscode.Uri.joinPath(
-      this.getCourseFolder(root, assignment),
+      this.getCourseInstanceFolder(root, userEmail, assignment),
       sanitizeFolderName(assignment.name, assignment.exerciseUuid),
     );
   }
 
   public getCourseFolder(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
   ): vscode.Uri {
     return vscode.Uri.joinPath(
       root,
-      sanitizeFolderName(assignment.courseSlug, 'course'),
+      sanitizeFolderName(userEmail, 'student'),
+      sanitizeFolderName(
+        assignment.courseName ?? assignment.courseSlug,
+        assignment.courseSlug || 'course',
+      ),
+    );
+  }
+
+  public getCourseInstanceFolder(
+    root: vscode.Uri,
+    userEmail: string,
+    assignment: ProgrammingAssignment,
+  ): vscode.Uri {
+    return vscode.Uri.joinPath(
+      this.getCourseFolder(root, userEmail, assignment),
+      sanitizeFolderName(
+        assignment.courseInstanceName ??
+          (assignment.courseInstanceId === null
+            ? 'course-instance'
+            : `instance-${assignment.courseInstanceId}`),
+        'course-instance',
+      ),
     );
   }
 
   public async writeAssignment(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
     starter: ProgrammingExerciseStarter,
     archiveBytes: Uint8Array,
@@ -68,8 +92,16 @@ export class AssignmentFileRepository {
       throw new Error('The starter archive is too large to download safely.');
     }
 
-    const courseFolder = this.getCourseFolder(root, assignment);
-    const assignmentFolder = this.getAssignmentFolder(root, assignment);
+    const courseFolder = this.getCourseInstanceFolder(
+      root,
+      userEmail,
+      assignment,
+    );
+    const assignmentFolder = this.getAssignmentFolder(
+      root,
+      userEmail,
+      assignment,
+    );
 
     const assignmentExists = await this.exists(assignmentFolder);
     if (assignmentExists && !overwrite) {
@@ -217,9 +249,10 @@ export class AssignmentFileRepository {
 
   public async isDownloadedAssignment(
     root: vscode.Uri,
+    userEmail: string,
     assignment: ProgrammingAssignment,
   ): Promise<boolean> {
-    const folder = this.getAssignmentFolder(root, assignment);
+    const folder = this.getAssignmentFolder(root, userEmail, assignment);
 
     try {
       const bytes = await vscode.workspace.fs.readFile(

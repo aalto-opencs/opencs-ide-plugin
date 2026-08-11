@@ -409,7 +409,9 @@ suite('Courses', () => {
         name: 'Hello Web',
         type: 'programming-exercise',
         courseSlug: 'web-software-development',
+        courseName: 'Web Software Development',
         courseInstanceId: 12,
+        courseInstanceName: 'Spring 2026',
       });
       assert.strictEqual(exercises.length, 1);
       assert.strictEqual(

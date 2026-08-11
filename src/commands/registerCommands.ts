@@ -220,9 +220,11 @@ export function registerCommands(
     const assignmentRoot = session
       ? assignmentFolderRepository.getRoot(session.student.id)
       : undefined;
-    const currentAssignmentDownloaded = currentAssignment && assignmentRoot
+    const currentAssignmentDownloaded = session && currentAssignment &&
+        assignmentRoot
       ? await assignmentFileRepository.isDownloadedAssignment(
         assignmentRoot,
+        session.student.email,
         currentAssignment,
       ).catch(() => false)
       : false;

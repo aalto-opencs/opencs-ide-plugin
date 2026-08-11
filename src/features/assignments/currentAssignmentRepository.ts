@@ -51,6 +51,12 @@ function isProgrammingAssignment(
     assignment.type === PROGRAMMING_EXERCISE_TYPE &&
     typeof assignment.courseSlug === 'string' &&
     assignment.courseSlug.length > 0 &&
+    (assignment.courseName === undefined ||
+      (typeof assignment.courseName === 'string' &&
+        assignment.courseName.length > 0)) &&
+    (assignment.courseInstanceName === undefined ||
+      (typeof assignment.courseInstanceName === 'string' &&
+        assignment.courseInstanceName.length > 0)) &&
     (assignment.courseInstanceId === null ||
       (typeof assignment.courseInstanceId === 'number' &&
         Number.isInteger(assignment.courseInstanceId) &&
