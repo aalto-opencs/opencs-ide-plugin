@@ -2,12 +2,10 @@ import { ApiClient } from '../../infrastructure/apiClient';
 import {
   CourseEnrolment,
   CourseInstance,
-  StudentVisibleCourse,
 } from './courseModels';
 
 export interface CourseRepository {
   getEnrolments(): Promise<CourseEnrolment[]>;
-  getStudentVisibleCourses?(): Promise<StudentVisibleCourse[]>;
   getCourseInstances?(courseSlug: string): Promise<CourseInstance[]>;
   activateCourseInstance?(courseInstanceId: number): Promise<void>;
 }
@@ -21,13 +19,6 @@ export class ApiCourseRepository implements CourseRepository {
     return this.apiClient.get<CourseEnrolment[]>(
       '/users/enrolments-by-course',
     );
-  }
-
-  public async getStudentVisibleCourses(): Promise<StudentVisibleCourse[]> {
-    const response = await this.apiClient.get<unknown>(
-      '/course-materials/ide/visible-courses',
-    );
-    return parseStudentVisibleCoursesResponse(response);
   }
 
   public async getCourseInstances(courseSlug: string): Promise<CourseInstance[]> {
@@ -53,14 +44,6 @@ export class ApiCourseRepository implements CourseRepository {
 }
 
 export class MockCourseRepository implements CourseRepository {
-  public async getStudentVisibleCourses(): Promise<StudentVisibleCourse[]> {
-    return [{
-      courseSlug: 'web-software-development',
-      courseName: 'Web Software Development',
-      abbreviation: 'WSD',
-    }];
-  }
-
   public async getEnrolments(): Promise<CourseEnrolment[]> {
     return [{
       courseSlug: 'web-software-development',
@@ -82,38 +65,6 @@ export class MockCourseRepository implements CourseRepository {
   }
 
   public async activateCourseInstance(_courseInstanceId: number): Promise<void> {}
-}
-
-function parseStudentVisibleCoursesResponse(
-  value: unknown,
-): StudentVisibleCourse[] {
-  if (
-    typeof value !== 'object' || value === null ||
-    !('status' in value) || value.status !== 'success' ||
-    !('courses' in value) || !Array.isArray(value.courses)
-  ) {
-    throw new Error('The platform returned invalid courses.');
-  }
-  return value.courses.map((course) => {
-    if (typeof course !== 'object' || course === null) {
-      throw new Error('The platform returned an invalid course.');
-    }
-    const record = course as Record<string, unknown>;
-    const courseSlug = record.slug ?? record.courseSlug;
-    const courseName = record.name ?? record.courseName;
-    if (
-      typeof courseSlug !== 'string' || !courseSlug.trim() ||
-      typeof courseName !== 'string' || !courseName.trim() ||
-      typeof record.abbreviation !== 'string'
-    ) {
-      throw new Error('The platform returned an invalid course.');
-    }
-    return {
-      courseSlug,
-      courseName,
-      abbreviation: record.abbreviation,
-    };
-  });
 }
 
 function parseCourseInstancesResponse(value: unknown): CourseInstance[] {

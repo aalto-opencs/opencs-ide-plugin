@@ -5,14 +5,13 @@ import {
   CourseInstance,
   CourseInstanceEndWarnings,
   CourseSelection,
-  StudentVisibleCourse,
 } from './courseModels';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
 import { CourseCacheRepository } from './courseCacheRepository';
 
 interface CourseQuickPickItem extends vscode.QuickPickItem {
-  course: StudentVisibleCourse;
+  enrolment: CourseEnrolment;
 }
 
 interface InstanceQuickPickItem extends vscode.QuickPickItem {
@@ -45,31 +44,25 @@ export class CourseController {
     try {
       let usingCache = false;
       let enrolments: CourseEnrolment[];
-      let courses: StudentVisibleCourse[];
       try {
-        [courses, enrolments] = await Promise.all([
-          this.courseService.getStudentVisibleCourses(),
-          this.courseService.getEnrolments(),
-        ]);
-        await Promise.all([
-          this.cacheRepository?.saveStudentVisibleCourses(courses),
-          this.cacheRepository?.saveEnrolments(session.student.id, enrolments),
-        ]).catch(() => undefined);
+        enrolments = await this.courseService.getEnrolments();
+        await this.cacheRepository?.saveEnrolments(
+          session.student.id,
+          enrolments,
+        ).catch(() => undefined);
       } catch (error: unknown) {
-        const cachedCourses = this.cacheRepository?.getStudentVisibleCourses();
         const cachedEnrolments = this.cacheRepository?.getEnrolments(
           session.student.id,
         );
-        if (!cachedCourses || !cachedEnrolments) {
+        if (!cachedEnrolments) {
           throw error;
         }
-        courses = cachedCourses;
         enrolments = cachedEnrolments;
         usingCache = true;
       }
-      if (!courses.length) {
+      if (!enrolments.length) {
         await vscode.window.showInformationMessage(
-          'No courses are currently available.',
+          'No course enrolments were found for your account.',
         );
         return false;
       }
@@ -82,13 +75,13 @@ export class CourseController {
       const selectedCourse = await vscode.window.showQuickPick<
         CourseQuickPickItem
       >(
-        courses.map((course) => ({
-          label: course.courseName || course.courseSlug,
-          description: course.abbreviation || course.courseSlug,
-          course,
+        enrolments.map((enrolment) => ({
+          label: enrolment.courseName || enrolment.courseSlug,
+          description: enrolment.abbreviation || enrolment.courseSlug,
+          enrolment,
         })),
         {
-          title: 'Select a course',
+          title: 'Select an enrolled course',
           placeHolder: 'Choose the course you want to work on',
           ignoreFocusOut: true,
         },
@@ -105,11 +98,9 @@ export class CourseController {
       }
 
       const instances = [...await this.courseService.getCourseInstances(
-        selectedCourse.course.courseSlug,
+        selectedCourse.enrolment.courseSlug,
       )].sort((first, second) => first.label.localeCompare(second.label));
-      const activeInstanceId = enrolments.find((enrolment) =>
-        enrolment.courseSlug === selectedCourse.course.courseSlug)
-        ?.activeInstanceId;
+      const activeInstanceId = selectedCourse.enrolment.activeInstanceId;
 
       if (!instances.length) {
         await vscode.window.showErrorMessage(
@@ -166,7 +157,7 @@ export class CourseController {
 
       const refreshedEnrolments = await this.courseService.getEnrolments();
       const refreshedCourse = refreshedEnrolments.find((enrolment) =>
-        enrolment.courseSlug === selectedCourse.course.courseSlug);
+        enrolment.courseSlug === selectedCourse.enrolment.courseSlug);
       if (refreshedCourse?.activeInstanceId !== selectedInstance.instance.id) {
         throw new Error(
           'The platform did not confirm the selected course version as active.',
@@ -180,7 +171,7 @@ export class CourseController {
       await this.selectionRepository.saveSelection(
         session.student.id,
         {
-          courseSlug: selectedCourse.course.courseSlug,
+          courseSlug: selectedCourse.enrolment.courseSlug,
           courseInstanceId: selectedInstance.instance.id,
           schemaVersion: 2,
           instanceLabel: selectedInstance.instance.label,

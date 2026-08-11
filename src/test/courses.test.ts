@@ -146,44 +146,6 @@ suite('Courses', () => {
     }
   });
 
-  test('requests student-visible courses with the stored token', async () => {
-    let requestedPath: string | undefined;
-    let authorization: string | undefined;
-    const server = await startTestHttpServer((request, response) => {
-      requestedPath = request.url;
-      authorization = request.headers.authorization;
-      response.writeHead(200, { 'Content-Type': 'application/json' });
-      response.end(JSON.stringify({
-        status: 'success',
-        courses: [{
-          slug: 'web-software-development-v1',
-          name: 'Web Software Development',
-          abbreviation: 'WSD',
-        }],
-      }));
-    });
-
-    try {
-      const repository = new ApiCourseRepository(
-        new ApiClient(server.baseUrl, async () => session.token),
-      );
-      const result = await repository.getStudentVisibleCourses();
-
-      assert.strictEqual(
-        requestedPath,
-        '/course-materials/ide/visible-courses',
-      );
-      assert.strictEqual(authorization, session.token);
-      assert.deepStrictEqual(result, [{
-        courseSlug: 'web-software-development-v1',
-        courseName: 'Web Software Development',
-        abbreviation: 'WSD',
-      }]);
-    } finally {
-      await server.close();
-    }
-  });
-
   test('requests and maps all instances for a selected course', async () => {
     let requestedPath: string | undefined;
     let authorization: string | undefined;

@@ -274,9 +274,8 @@ Current endpoints:
 | GET | `/status` | No | Platform availability |
 | POST | `/auth/ide/authorize` | Browser platform session | Create a one-time PKCE-bound code |
 | POST | `/auth/ide/exchange` | One-time code + verifier | Create the extension session |
-| GET | `/course-materials/ide/visible-courses` | Yes | Platform-visible courses for IDE clients |
 | GET | `/users/enrolments-by-course` | Yes | Active student enrolments by course |
-| GET | `/course-instances?courseSlug=<slug>` | Yes | All versions of a visible course |
+| GET | `/course-instances?courseSlug=<slug>` | Yes | All versions of an enrolled course |
 | POST | `/course-instances/:id/active` | Yes | Enrol and activate a selected version |
 | GET | `/course-materials/:courseSlug/structure` | Yes | Parts, chapters, and exercises |
 | GET | `/points/courses/:courseSlug/progress` | Yes | Optional Account points line for selected instance |
@@ -411,11 +410,11 @@ earned/max points and percentage. Failure or a missing row simply omits points.
 The selection flow:
 
 1. Require a current session.
-2. Request `/course-materials/ide/visible-courses` for the course picker
-   and `/users/enrolments-by-course` for active-instance synchronization.
-3. Save successful visible courses and active enrolments to their caches.
-4. If the API fails, offer validated cached course choices when available.
-5. Ask the student to choose a course.
+2. Request `/users/enrolments-by-course` and use those enrolments for the
+   course picker and active-instance synchronization.
+3. Save successful enrolments to the per-student cache.
+4. If the API fails, offer validated cached enrolments when available.
+5. Ask the student to choose an enrolled course.
 6. Request every instance/version for that course from
    `/course-instances?courseSlug=<slug>` and display the labels alphabetically,
    matching the platform UI without date-based filtering.
@@ -498,7 +497,6 @@ does not open a file automatically.
 
 ```text
 aaltoFitechPlatform.courseCache.v1.enrolments.<userId>
-aaltoFitechPlatform.courseCache.v1.visibleCourses
 aaltoFitechPlatform.courseCache.v1.structure.<userId>.<courseSlug>
 aaltoFitechPlatform.courseCache.v1.passed.<userId>.<instanceId>.<exerciseUuid>
 ```

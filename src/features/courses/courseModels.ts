@@ -14,12 +14,6 @@ export interface CourseEnrolment {
   instances: CourseInstance[];
 }
 
-export interface StudentVisibleCourse {
-  courseSlug: string;
-  courseName: string;
-  abbreviation: string;
-}
-
 export interface CourseSelection {
   courseSlug: string;
   courseInstanceId: number;
