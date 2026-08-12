@@ -169,7 +169,10 @@ export class AssignmentHandoutViewProvider implements
   <title>${escapeHtml(title)}</title>
 </head>
 <body>
-  <main>${content}</main>
+  <main>
+    <h1>Assignment Handout</h1>
+    ${content}
+  </main>
 </body>
 </html>`;
   }
