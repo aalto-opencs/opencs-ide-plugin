@@ -31,6 +31,7 @@ export class MockCourseMaterialRepository implements
       name: 'Getting Started with Web Development',
       order: 0,
       chapters: [{
+        slug: '1-getting-started',
         name: 'Getting started',
         order: 0,
         exercises: [{

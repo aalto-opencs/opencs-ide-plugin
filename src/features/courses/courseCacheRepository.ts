@@ -134,7 +134,8 @@ function isCourseChapter(value: unknown): value is CourseChapter {
   if (!isObject(value)) {
     return false;
   }
-  return typeof value.name === 'string' &&
+  return (value.slug === undefined || typeof value.slug === 'string') &&
+    typeof value.name === 'string' &&
     typeof value.order === 'number' &&
     Array.isArray(value.exercises) &&
     value.exercises.every(isCourseExercise);

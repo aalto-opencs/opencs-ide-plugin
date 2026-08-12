@@ -153,6 +153,11 @@ function assertValidCoursePart(part: CoursePart): number {
 }
 
 function assertValidCourseChapter(chapter: CourseChapter): number {
+  assert.ok(
+    typeof chapter.slug === 'string',
+    'Expected chapter slug to be a string',
+  );
+  assertNonEmptyString(chapter.slug, 'chapter slug');
   assertNonEmptyString(chapter.name, 'chapter name');
   assertNonNegativeInteger(chapter.order, 'chapter order');
   assert.ok(

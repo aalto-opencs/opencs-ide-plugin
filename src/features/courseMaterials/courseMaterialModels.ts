@@ -7,6 +7,7 @@ export interface CourseExercise {
 }
 
 export interface CourseChapter {
+  slug?: string;
   name: string;
   order: number;
   exercises: CourseExercise[];
