@@ -325,6 +325,19 @@ credentials for a disposable backend test account, and run:
 Open the project in VS Code and press `F5` to start an Extension Development
 Host.
 
+Two F5 launch configurations are available for layout testing:
+
+- **Run Extension (Fresh User Layout)** uses a disposable VS Code profile for
+  every launch. This simulates a new IDE user, including default view
+  locations, without changing the developer's real VS Code profile. The
+  temporary profile is discarded when the Extension Development Host closes.
+- **Run Extension (Current Development Layout)** keeps the existing Extension
+  Development Host state. Select this configuration to turn off fresh-layout
+  resets and resume the previous development layout.
+
+VS Code runs the most recently selected launch configuration when `F5` is
+pressed. Use the Run and Debug configuration dropdown to switch modes.
+
 Development builds show an **Aalto Fitech Test Tools** status-bar action. It can
 simulate assignment completion or reset all extension test data. Overrides are
 kept in memory, and the production build compiles all development-test tools

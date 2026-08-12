@@ -6,7 +6,20 @@
 	"version": "0.2.0",
 	"configurations": [
 		{
-			"name": "Run Extension",
+			"name": "Run Extension (Fresh User Layout)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--profile-temp"
+			],
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "watch"
+		},
+		{
+			"name": "Run Extension (Current Development Layout)",
 			"type": "extensionHost",
 			"request": "launch",
 			"args": [
