@@ -2,6 +2,10 @@ import * as vscode from 'vscode';
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
+import {
+  AssignmentVersionService,
+  AssignmentVersionStatus,
+} from '../assignments/assignmentVersionService';
 import { AuthService } from '../auth/authService';
 import {
   GRADING_STATUS_PENDING,
@@ -25,6 +29,7 @@ export class SubmissionController {
     private readonly service: SubmissionService,
     private readonly assignmentFileRepository: AssignmentFileRepository,
     private readonly assignmentFolderRepository: AssignmentFolderRepository,
+    private readonly assignmentVersionService: AssignmentVersionService,
     private readonly authService: AuthService,
     private readonly historyRepository: SubmissionHistoryRepository,
     private readonly treeProvider: SubmissionTreeProvider,
@@ -64,14 +69,24 @@ export class SubmissionController {
     );
 
     try {
-      if (!await this.assignmentFileRepository.isDownloadedAssignment(
-        root,
-        session.student.email,
-        assignment,
-      )) {
+      const metadata = await this.assignmentFileRepository
+        .getDownloadedAssignmentMetadata(
+          root,
+          session.student.email,
+          assignment,
+        );
+      if (!metadata) {
         await vscode.window.showErrorMessage(
           'Download this assignment with the extension before submitting it.',
         );
+        return;
+      }
+
+      const versionStatus = await this.assignmentVersionService.check(
+        assignment.exerciseUuid,
+        metadata,
+      );
+      if (!await confirmAssignmentVersion(versionStatus, assignment.name)) {
         return;
       }
 
@@ -173,6 +188,39 @@ export class SubmissionController {
     }
   }
 
+}
+
+async function confirmAssignmentVersion(
+  status: AssignmentVersionStatus,
+  assignmentName: string,
+): Promise<boolean> {
+  if (status === 'current') {
+    return true;
+  }
+
+  if (status === 'platform-unavailable') {
+    await vscode.window.showWarningMessage(
+      'Aalto OpenCS platform is unavailable. Try again later.',
+    );
+    return false;
+  }
+
+  const message = status === 'changed'
+    ? `${assignmentName} has changed since you downloaded it.`
+    : `The version of ${assignmentName} cannot be verified.`;
+  const action = await vscode.window.showWarningMessage(
+    message,
+    {
+      modal: true,
+      detail: [
+        'Redownloading is recommended, but it will replace the current assignment folder.',
+        '',
+        'Do you still want to submit your current files?',
+      ].join('\n'),
+    },
+    'Submit Anyway',
+  );
+  return action === 'Submit Anyway';
 }
 
 function formatProgressStatus(status: string): string {

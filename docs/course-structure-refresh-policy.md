@@ -11,10 +11,9 @@ workflow. A student will normally receive updated parts, chapters, and
 assignment listings after selecting a course, downloading an exercise,
 submitting work, or manually refreshing the views.
 
-The more important unresolved problem is different: the extension cannot tell
-whether an assignment's handout, starter files, or grading definition changed
-after the student downloaded it. Course structure identifies an assignment by
-UUID but does not provide an assignment version or content checksum.
+Assignment content freshness is checked separately from course structure. The
+extension stores the platform exercise content hash during download and checks
+the current hash before submission.
 
 ## Part 1: When course structure is refreshed
 
@@ -97,7 +96,7 @@ the student remains idle. However, the next normal refresh replaces the local
 cache with the latest online response. The saved cache is used only when the
 platform request fails.
 
-## Part 2: The unresolved assignment-change problem
+## Part 2: Assignment-change detection
 
 ### Course structure freshness is not assignment-content freshness
 
@@ -108,7 +107,8 @@ response, such as:
 - An assignment being renamed or moved.
 - Its points or display order changing.
 
-It cannot detect changes that are not represented in that response, such as:
+Course structure still cannot detect changes that are not represented in that
+response, such as:
 
 - The assignment handout changing.
 - Starter files changing.
@@ -117,8 +117,9 @@ It cannot detect changes that are not represented in that response, such as:
 - Hidden grader tests changing.
 - Grading configuration changing.
 
-The structure currently provides the exercise UUID but no assignment revision,
-publication version, or content checksum.
+The authenticated exercise endpoint exposes a content hash as the `ETag` of
+`HEAD /api/exercises/:uuid`. The extension uses that separate endpoint instead
+of relying on course structure for assignment content freshness.
 
 ### Example problem scenario
 
@@ -128,13 +129,13 @@ publication version, or content checksum.
 3. The student's extension refreshes course structure.
 4. The same UUID is still present, so the extension considers the assignment
    to be the same downloaded exercise.
-5. The student submits version 1 files.
-6. The backend grades them using the current version 2 definition and tests.
+5. Before submission, the extension compares the downloaded and current hashes.
+6. The extension warns that the assignment changed and recommends redownloading.
+7. The student may cancel or explicitly choose **Submit Anyway**.
 ```
 
-The student may then receive failures caused by the assignment update rather
-than by their solution. Repeated course-structure refreshes do not solve this
-because both versions look identical at the structure level.
+Submitting remains possible because redownloading replaces the current
+assignment folder and the student may prefer to preserve and submit their work.
 
 ### Other assignment-change cases
 
@@ -156,55 +157,31 @@ Even if local files and the handout did not change, grading behavior can change.
 Whether this should invalidate an existing download is a product decision, but
 the platform should still record a new published revision.
 
-## Recommended solution: assignment revisions
+## Implemented content-hash flow
 
-Give each published assignment definition a revision or content checksum.
-
-The revision should be included in:
-
-1. The course-structure response.
-2. The assignment download response.
-3. The downloaded `.aalto-fitech-assignment.json` metadata.
-4. The submission request.
-
-The resulting flow would be:
+The platform generates a content hash for each exercise definition. The plugin
+records it in `.aalto-opencs-assignment.json` when downloading:
 
 ```text
-Course structure: exercise UUID + current revision
-Downloaded metadata: exercise UUID + downloaded revision
-Submission: exercise UUID + downloaded revision
+Download: HEAD exercise + starter metadata/files + HEAD exercise
+Downloaded metadata: exercise UUID + downloaded content hash
+Submission preparation: HEAD exercise + compare hashes
 ```
 
-Before submission, the extension should request the latest structure and wait
-for the result:
+The two hash requests around a download prevent the plugin from installing
+starter content if the assignment changes while it is being fetched.
 
-- **Same UUID and revision:** allow submission.
-- **Same UUID but newer revision:** warn or block submission and explain that
-  the assignment changed.
-- **UUID no longer belongs to the selected course:** block submission while
-  preserving the student's local files.
-- **Platform unavailable:** follow an agreed policy—either block because the
-  revision cannot be confirmed or allow with a clear warning.
+Before submission, the extension waits for the latest hash:
 
-The backend should also validate course membership and assignment revision. A
-client-side check improves the student experience, but backend validation is
-needed to prevent outdated or inconsistent submissions from other clients.
+- **Same hash:** continue to the normal exact-file-list confirmation.
+- **Different hash:** warn that the assignment changed and allow **Submit
+  Anyway**.
+- **Legacy download without a hash:** explain that the version cannot be
+  verified and allow **Submit Anyway**.
+- **Hash request fails while platform status is healthy:** explain that the
+  version cannot be verified and allow **Submit Anyway**.
+- **Platform unavailable:** stop and ask the student to try later.
 
-## Decisions needed from the supervisor
-
-1. What changes create a new assignment revision: handout, starter files,
-   public tests, hidden tests, grading configuration, or all of them?
-2. Should the extension block or only warn when the downloaded revision is old?
-3. What should happen when the platform is unavailable and the revision cannot
-   be checked?
-4. Should students be offered a safe comparison/merge flow, or only a manual
-   redownload warning?
-5. How should previous submissions be interpreted if grading tests change
-   after they were submitted?
-
-## Recommendation
-
-Do not prioritize periodic course-structure polling yet. The existing normal
-user actions provide reasonable structure freshness. Prioritize assignment
-revision tracking and an awaited pre-submission validation, because this
-addresses the case that ordinary refresh triggers cannot detect.
+The current policy is deliberately advisory. The content hash is not submitted
+to or validated by the submission endpoint, and students are not forced to
+replace their local work when an assignment changes.

@@ -25,6 +25,7 @@ import {
   AssignmentRepository,
   MockAssignmentRepository,
 } from '../features/assignments/assignmentRepository';
+import { AssignmentVersionService } from '../features/assignments/assignmentVersionService';
 import {
   ApiCourseMaterialRepository,
   CourseMaterialRepository,
@@ -87,10 +88,11 @@ export function registerCommands(
   );
   // Status is deliberately public: never attach a student's session token to
   // the health-check endpoint or expose API failure details in its controller.
+  const platformStatusService = new PlatformStatusService(
+    new ApiPlatformStatusRepository(new ApiClient(apiBaseUrl)),
+  );
   const platformStatusController = new PlatformStatusController(
-    new PlatformStatusService(
-      new ApiPlatformStatusRepository(new ApiClient(apiBaseUrl)),
-    ),
+    platformStatusService,
   );
   const mockApiEnabled = useMockApi();
 
@@ -187,6 +189,10 @@ export function registerCommands(
     ),
     assignmentFileRepository,
     assignmentFolderRepository,
+    new AssignmentVersionService(
+      assignmentRepository,
+      platformStatusService,
+    ),
     authService,
     submissionHistoryRepository,
     submissionTreeProvider,

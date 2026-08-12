@@ -486,7 +486,7 @@ aaltoFitechPlatform.currentAssignment.v1.<userId>
 
 The selection is marked **Current** and drives both Exercise and Submissions.
 Exercise projects the downloaded folder as a native file tree, hides the
-internal `.aalto-fitech-assignment.json`, watches for changes, and opens files
+internal `.aalto-opencs-assignment.json`, watches for changes, and opens files
 with `vscode.open`. A Submit Current Exercise action is rendered above the file
 tree only for a valid download. Selecting another exercise changes views but
 does not open a file automatically.
@@ -566,17 +566,19 @@ The metadata file contains:
 
 ```json
 {
-  "schemaVersion": 1,
+  "schemaVersion": 2,
   "exerciseUuid": "...",
   "exerciseType": "programming-exercise",
   "courseSlug": "...",
-  "courseInstanceId": 123
+  "courseInstanceId": 123,
+  "contentHash": "0123456789abcdef0123456789abcdef"
 }
 ```
 
 This file is required to recognize a folder as an extension download. It is also
 the trust link that prevents submitting an arbitrary folder as another
-assignment.
+assignment. Schema version 1 downloads remain valid, but their assignment
+version cannot be verified before submission.
 
 ### ZIP safety
 
@@ -673,14 +675,14 @@ successful confirmed redownload.
 
 ## 13. Submission file collection
 
-Submission is allowed only when `.aalto-fitech-assignment.json` matches the
+Submission is allowed only when `.aalto-opencs-assignment.json` matches the
 selected exercise, type, course slug, and course instance.
 
 `SubmissionFileRepository` recursively collects UTF-8 text files.
 
 Excluded root files:
 
-- `.aalto-fitech-assignment.json`
+- `.aalto-opencs-assignment.json`
 - `assignment-handout.md`
 - `.DS_Store`
 

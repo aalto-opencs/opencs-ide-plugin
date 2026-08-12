@@ -3,6 +3,7 @@ import JSZip = require('jszip');
 import * as vscode from 'vscode';
 import {
   AssignmentMetadata,
+  DownloadedAssignmentMetadata,
   DownloadedAssignment,
   PROGRAMMING_EXERCISE_TYPE,
   ProgrammingAssignment,
@@ -85,6 +86,7 @@ export class AssignmentFileRepository {
     userEmail: string,
     assignment: ProgrammingAssignment,
     starter: ProgrammingExerciseStarter,
+    contentHash: string,
     archiveBytes: Uint8Array,
     overwrite = false,
   ): Promise<DownloadedAssignment> {
@@ -178,11 +180,12 @@ export class AssignmentFileRepository {
       );
 
       const metadata: AssignmentMetadata = {
-        schemaVersion: 1,
+        schemaVersion: 2,
         exerciseUuid: assignment.exerciseUuid,
         exerciseType: 'programming-exercise',
         courseSlug: assignment.courseSlug,
         courseInstanceId: assignment.courseInstanceId,
+        contentHash,
       };
       await vscode.workspace.fs.writeFile(
         vscode.Uri.joinPath(temporaryFolder, METADATA_FILENAME),
@@ -252,6 +255,18 @@ export class AssignmentFileRepository {
     userEmail: string,
     assignment: ProgrammingAssignment,
   ): Promise<boolean> {
+    return Boolean(await this.getDownloadedAssignmentMetadata(
+      root,
+      userEmail,
+      assignment,
+    ));
+  }
+
+  public async getDownloadedAssignmentMetadata(
+    root: vscode.Uri,
+    userEmail: string,
+    assignment: ProgrammingAssignment,
+  ): Promise<DownloadedAssignmentMetadata | undefined> {
     const folder = this.getAssignmentFolder(root, userEmail, assignment);
 
     try {
@@ -260,14 +275,16 @@ export class AssignmentFileRepository {
       );
       const metadata: unknown = JSON.parse(new TextDecoder().decode(bytes));
 
-      return isMatchingMetadata(metadata, assignment);
+      return isMatchingMetadata(metadata, assignment)
+        ? metadata
+        : undefined;
     } catch (error: unknown) {
       if (
         error instanceof SyntaxError ||
         (error instanceof vscode.FileSystemError &&
           error.code === 'FileNotFound')
       ) {
-        return false;
+        return undefined;
       }
       throw error;
     }
@@ -371,13 +388,18 @@ function getSourceFilePriority(segments: string[]): number {
 function isMatchingMetadata(
   value: unknown,
   assignment: ProgrammingAssignment,
-): value is AssignmentMetadata {
+): value is DownloadedAssignmentMetadata {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }
 
   const metadata = value as Record<string, unknown>;
-  return metadata.schemaVersion === 1 &&
+  const versionIsValid = metadata.schemaVersion === 1 ||
+    (metadata.schemaVersion === 2 &&
+      typeof metadata.contentHash === 'string' &&
+      /^[0-9a-f]{32}$/.test(metadata.contentHash));
+
+  return versionIsValid &&
     metadata.exerciseUuid === assignment.exerciseUuid &&
     metadata.exerciseType === PROGRAMMING_EXERCISE_TYPE &&
     metadata.courseSlug === assignment.courseSlug &&

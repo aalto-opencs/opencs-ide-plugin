@@ -34,6 +34,16 @@ export class ApiClient {
     );
   }
 
+  public async head(path: string): Promise<Headers> {
+    return this.request(
+      path,
+      'HEAD',
+      undefined,
+      {},
+      async (response) => response.headers,
+    );
+  }
+
   public async post<TResponse>(
     path: string,
     body: unknown,
@@ -55,7 +65,7 @@ export class ApiClient {
 
   private async request<TResponse>(
     path: string,
-    method: 'GET' | 'POST',
+    method: 'GET' | 'HEAD' | 'POST',
     body?: string | FormData,
     requestHeaders: Record<string, string> = {},
     parseResponse: (response: Response) => Promise<TResponse> =

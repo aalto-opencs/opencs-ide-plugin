@@ -134,12 +134,14 @@ suite('Assignment workflow backend integration', () => {
           'Expected the handout to describe the configured assignment',
         );
         assert.deepStrictEqual(metadata, {
-          schemaVersion: 1,
+          schemaVersion: 2,
           exerciseUuid: configuration.exerciseUuid,
           exerciseType: PROGRAMMING_EXERCISE_TYPE,
           courseSlug: configuration.courseSlug,
           courseInstanceId: enrolment.activeInstanceId,
+          contentHash: metadata.contentHash,
         });
+        assert.match(metadata.contentHash, /^[0-9a-f]{32}$/);
       } finally {
         await rm(root, { recursive: true, force: true });
       }

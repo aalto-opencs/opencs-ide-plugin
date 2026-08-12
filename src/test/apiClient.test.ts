@@ -100,4 +100,31 @@ suite('ApiClient', () => {
       await server.close();
     }
   });
+
+  test('returns response headers from an authenticated HEAD request', async () => {
+    let method: string | undefined;
+    let authorization: string | undefined;
+    const server = await startTestHttpServer((request, response) => {
+      method = request.method;
+      authorization = request.headers.authorization;
+      response.writeHead(200, { ETag: '"0123456789abcdef0123456789abcdef"' });
+      response.end();
+    });
+
+    try {
+      const headers = await new ApiClient(
+        server.baseUrl,
+        async () => 'raw-session-token',
+      ).head('/exercise');
+
+      assert.strictEqual(method, 'HEAD');
+      assert.strictEqual(authorization, 'raw-session-token');
+      assert.strictEqual(
+        headers.get('ETag'),
+        '"0123456789abcdef0123456789abcdef"',
+      );
+    } finally {
+      await server.close();
+    }
+  });
 });

@@ -23,6 +23,9 @@ export class AssignmentDownloadService {
       throw new Error('Only programming assignments can be downloaded.');
     }
 
+    const contentHash = await this.assignmentRepository.getContentHash(
+      assignment.exerciseUuid,
+    );
     const starter = await this.assignmentRepository.getStarter(
       assignment.exerciseUuid,
     );
@@ -43,12 +46,22 @@ export class AssignmentDownloadService {
     const archive = await this.assignmentRepository.getStarterFiles(
       assignment.exerciseUuid,
     );
+    const currentContentHash = await this.assignmentRepository.getContentHash(
+      assignment.exerciseUuid,
+    );
+
+    if (contentHash !== currentContentHash) {
+      throw new Error(
+        'The assignment changed while it was downloading. Try again.',
+      );
+    }
 
     return this.fileRepository.writeAssignment(
       root,
       userEmail,
       assignment,
       starter,
+      contentHash,
       archive,
       overwrite,
     );

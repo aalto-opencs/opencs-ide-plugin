@@ -68,6 +68,14 @@ suite('Assignment download', () => {
       paths.push(request.url ?? '');
       authorizations.push(request.headers.authorization);
 
+      if (request.method === 'HEAD') {
+        response.writeHead(200, {
+          ETag: '"0123456789abcdef0123456789abcdef"',
+        });
+        response.end();
+        return;
+      }
+
       if (request.url?.endsWith('/starter/files')) {
         response.writeHead(200, { 'Content-Type': 'application/zip' });
         response.end(archive);
@@ -89,16 +97,22 @@ suite('Assignment download', () => {
         new ApiClient(server.baseUrl, async () => 'raw-session-token'),
       );
 
+      assert.strictEqual(
+        await repository.getContentHash(assignment.exerciseUuid),
+        '0123456789abcdef0123456789abcdef',
+      );
       await repository.getStarter(assignment.exerciseUuid);
       assert.deepStrictEqual(
         await repository.getStarterFiles(assignment.exerciseUuid),
         archive,
       );
       assert.deepStrictEqual(paths, [
+        `/exercises/${assignment.exerciseUuid}`,
         `/exercises/${assignment.exerciseUuid}/starter`,
         `/exercises/${assignment.exerciseUuid}/starter/files`,
       ]);
       assert.deepStrictEqual(authorizations, [
+        'raw-session-token',
         'raw-session-token',
         'raw-session-token',
       ]);
@@ -174,12 +188,67 @@ suite('Assignment download', () => {
           'utf8',
         )),
         {
-          schemaVersion: 1,
+          schemaVersion: 2,
           exerciseUuid: assignment.exerciseUuid,
           exerciseType: 'programming-exercise',
           courseSlug: assignment.courseSlug,
           courseInstanceId: assignment.courseInstanceId,
+          contentHash: '0123456789abcdef0123456789abcdef',
         },
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects an invalid content hash response', async () => {
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(200, { ETag: 'invalid' });
+      response.end();
+    });
+
+    try {
+      const repository = new ApiAssignmentRepository(
+        new ApiClient(server.baseUrl),
+      );
+      await assert.rejects(
+        repository.getContentHash(assignment.exerciseUuid),
+        /invalid assignment version/,
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('does not install an assignment that changes during download', async () => {
+    const root = await createTemporaryRoot();
+    let hashRequest = 0;
+    const repository = createAssignmentRepository(
+      await createStarterArchive(),
+    );
+    repository.getContentHash = async () => {
+      hashRequest += 1;
+      return hashRequest === 1
+        ? '0123456789abcdef0123456789abcdef'
+        : 'fedcba9876543210fedcba9876543210';
+    };
+    const service = new AssignmentDownloadService(
+      repository,
+      new AssignmentFileRepository(),
+    );
+
+    try {
+      await assert.rejects(
+        service.download(assignment, vscode.Uri.file(root), userEmail),
+        /changed while it was downloading/,
+      );
+      assert.strictEqual(
+        await service.isDownloaded(
+          vscode.Uri.file(root),
+          userEmail,
+          assignment,
+        ),
+        false,
       );
     } finally {
       await rm(root, { recursive: true, force: true });
@@ -301,6 +370,10 @@ suite('Assignment download', () => {
   test('rejects non-programming assignments before API access', async () => {
     let apiCalls = 0;
     const repository: AssignmentRepository = {
+      getContentHash: async () => {
+        apiCalls += 1;
+        return '0123456789abcdef0123456789abcdef';
+      },
       getStarter: async () => {
         apiCalls += 1;
         throw new Error('should not be called');
@@ -352,6 +425,7 @@ function createAssignmentRepository(
   archive: Uint8Array,
 ): AssignmentRepository {
   return {
+    getContentHash: async () => '0123456789abcdef0123456789abcdef',
     getStarter: async () => ({
       uuid: assignment.exerciseUuid,
       type: 'programming-exercise',
