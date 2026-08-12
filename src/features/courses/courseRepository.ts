@@ -17,7 +17,7 @@ export class ApiCourseRepository implements CourseRepository {
 
   public async getEnrolments(): Promise<CourseEnrolment[]> {
     return this.apiClient.get<CourseEnrolment[]>(
-      '/users/enrolments-by-course',
+      '/users/ide-available-course-enrolments',
     );
   }
 

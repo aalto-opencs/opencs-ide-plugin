@@ -274,7 +274,7 @@ Current endpoints:
 | GET | `/status` | No | Platform availability |
 | POST | `/auth/ide/authorize` | Browser platform session | Create a one-time PKCE-bound code |
 | POST | `/auth/ide/exchange` | One-time code + verifier | Create the extension session |
-| GET | `/users/enrolments-by-course` | Yes | Active student enrolments by course |
+| GET | `/users/ide-available-course-enrolments` | Yes | Active student enrolments for courses available in the IDE |
 | GET | `/course-instances?courseSlug=<slug>` | Yes | All versions of an enrolled course |
 | POST | `/course-instances/:id/active` | Yes | Enrol and activate a selected version |
 | GET | `/course-materials/:courseSlug/structure` | Yes | Parts, chapters, and exercises |
@@ -410,8 +410,9 @@ earned/max points and percentage. Failure or a missing row simply omits points.
 The selection flow:
 
 1. Require a current session.
-2. Request `/users/enrolments-by-course` and use those enrolments for the
-   course picker and active-instance synchronization.
+2. Request `/users/ide-available-course-enrolments` and use the active
+   enrolments for IDE-enabled courses in the course picker and active-instance
+   synchronization.
 3. Save successful enrolments to the per-student cache.
 4. If the API fails, offer validated cached enrolments when available.
 5. Ask the student to choose an enrolled course.

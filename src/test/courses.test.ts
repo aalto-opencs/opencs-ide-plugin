@@ -138,7 +138,10 @@ suite('Courses', () => {
 
       const result = await repository.getEnrolments();
 
-      assert.strictEqual(requestedPath, '/users/enrolments-by-course');
+      assert.strictEqual(
+        requestedPath,
+        '/users/ide-available-course-enrolments',
+      );
       assert.strictEqual(authorization, session.token);
       assert.deepStrictEqual(result, enrolments);
     } finally {
