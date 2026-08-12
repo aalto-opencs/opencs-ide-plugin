@@ -146,12 +146,17 @@ Unit/extension-host tests:
 npm test
 ```
 
-If the default downloaded VS Code test binary is unavailable, use the known
-working test version:
+`npm test` is deliberately pinned to VS Code 1.130.0. Do not remove or update
+that pin without first verifying macOS packaging and Electron compatibility.
+Newer downloaded builds may contain `Contents/MacOS/Code` while the current
+test CLI attempts to launch `Contents/MacOS/Electron`, which fails with
+`ENOENT` before tests start.
 
-```bash
-npx vscode-test --code-version 1.130.0
-```
+On macOS, the VS Code test host is a GUI application. When running tests from
+Codex or another sandboxed agent environment, launch `npm test` with normal
+macOS GUI access. A restricted launch can abort in AppKit application
+registration with `SIGABRT`; this is an execution-environment failure, not a
+test failure. Confirm success from the passing-test count and exit code.
 
 ### Real-platform integration tests
 
@@ -299,6 +304,10 @@ When committing IntroCS work, stage intended paths explicitly rather than using
 - For changes in this plugin repository, when committing and pushing are
   explicitly requested, work may be committed and pushed directly to `main`;
   creating an additional branch is not required.
+- Use conventional prefixes such as `feat:`, `fix:`, `docs:`, `test:`, and
+  `dev:` for commit titles in this plugin repository. Do not use these prefixes
+  for commits in the related IntroCS repository; match IntroCS's existing
+  unprefixed commit-title style instead.
 - Keep commits small and behavior-focused.
 - Update user-facing docs when configuration, authentication, workflow, or
   testing behavior changes.
