@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import { randomUUID } from 'crypto';
+import { AssignmentActivityRepository } from '../assignmentActivity/assignmentActivityRepository';
+import { AssignmentActivityEvent } from '../assignmentActivity/assignmentActivityModels';
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
@@ -38,6 +41,7 @@ export class SubmissionController {
     private readonly treeProvider: SubmissionTreeProvider,
     private readonly onAssignmentCompleted: () => void,
     private readonly syntaxCheckController?: PythonSyntaxCheckController,
+    private readonly activityRepository?: AssignmentActivityRepository,
   ) {}
 
   public async submitAssignment(
@@ -129,14 +133,37 @@ export class SubmissionController {
         return;
       }
 
+      const submitEvent: AssignmentActivityEvent = {
+        id: randomUUID(),
+        timestamp: new Date().toISOString(),
+        action: 'submit',
+        files: prepared.files,
+      };
+      let activityEvents = [
+        ...(this.activityRepository?.get(session.student.id, assignment) ?? []),
+        submitEvent,
+      ].slice(-20);
+      if (this.activityRepository) {
+        activityEvents = await this.activityRepository.add(
+          session.student.id,
+          assignment,
+          submitEvent,
+        ).catch(() => activityEvents);
+      }
+
       const result = await vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
           title: `Submitting ${assignment.name}`,
           cancellable: false,
         },
-        () => this.service.submit(assignment, prepared),
+        () => this.service.submit(assignment, prepared, activityEvents),
       );
+      await this.activityRepository?.remove(
+        session.student.id,
+        assignment,
+        activityEvents.map((event) => event.id),
+      ).catch(() => undefined);
       await this.historyRepository.add({
         schemaVersion: 1,
         userId: session.student.id,

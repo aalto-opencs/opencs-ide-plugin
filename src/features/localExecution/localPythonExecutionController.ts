@@ -1,11 +1,14 @@
 import * as path from 'path';
+import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
+import { AssignmentActivityRepository } from '../assignmentActivity/assignmentActivityRepository';
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 import { AuthService } from '../auth/authService';
 import { LocalPythonExecutionService } from './localPythonExecutionService';
+import { SubmissionFileRepository } from '../submissions/submissionFileRepository';
 
 const RUNNABLE_ASSIGNMENT_CONTEXT =
   'aaltoOpenCsIde.currentAssignmentRunnable';
@@ -24,6 +27,8 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     private readonly folderRepository: AssignmentFolderRepository,
     private readonly assignmentFileRepository: AssignmentFileRepository,
     private readonly currentAssignmentRepository: CurrentAssignmentRepository,
+    private readonly submissionFileRepository: SubmissionFileRepository,
+    private readonly activityRepository: AssignmentActivityRepository,
   ) {}
 
   public async updateRunContext(): Promise<void> {
@@ -45,6 +50,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
   }
 
   public async runCurrentAssignment(): Promise<void> {
+    const clickedAt = new Date().toISOString();
     if (vscode.env.uiKind !== vscode.UIKind.Desktop) {
       await vscode.window.showInformationMessage(
         'Local Python execution is available only in the desktop IDE.',
@@ -68,6 +74,16 @@ export class LocalPythonExecutionController implements vscode.Disposable {
 
     try {
       await this.saveAssignmentDocuments(resolved.folder);
+      const files = await this.submissionFileRepository.collect(
+        resolved.folder,
+        resolved.submissionFiles,
+      );
+      await this.activityRepository.add(resolved.userId, resolved.assignment, {
+        id: randomUUID(),
+        timestamp: clickedAt,
+        action: 'run',
+        files,
+      }).catch(() => undefined);
       const run = await this.service.prepare(
         resolved.assignment,
         resolved.folder,
@@ -98,6 +114,8 @@ export class LocalPythonExecutionController implements vscode.Disposable {
   private async resolveCurrentAssignment(): Promise<{
     assignment: ProgrammingAssignment;
     folder: vscode.Uri;
+    userId: number;
+    submissionFiles?: string[];
   } | undefined> {
     const session = await this.authService.getCurrentSession();
     if (!session) {
@@ -107,12 +125,16 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       session.student.id,
     );
     const root = this.folderRepository.getRoot(session.student.id);
-    if (!assignment || !root ||
-        !await this.assignmentFileRepository.isDownloadedAssignment(
-          root,
-          session.student.email,
-          assignment,
-        ).catch(() => false)) {
+    if (!assignment || !root) {
+      return undefined;
+    }
+    const metadata = await this.assignmentFileRepository
+      .getDownloadedAssignmentMetadata(
+        root,
+        session.student.email,
+        assignment,
+      ).catch(() => undefined);
+    if (!metadata) {
       return undefined;
     }
     return {
@@ -122,6 +144,10 @@ export class LocalPythonExecutionController implements vscode.Disposable {
         session.student.email,
         assignment,
       ),
+      userId: session.student.id,
+      submissionFiles: metadata.schemaVersion === 3
+        ? metadata.submissionFiles
+        : undefined,
     };
   }
 

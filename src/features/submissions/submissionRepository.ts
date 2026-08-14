@@ -31,11 +31,19 @@ export class ApiSubmissionRepository implements SubmissionRepository {
     formData.append('exerciseUuid', submission.exerciseUuid);
     formData.append('courseSlug', submission.courseSlug);
     formData.append('data', JSON.stringify(submission.files));
+    formData.append(
+      'activityEvents',
+      JSON.stringify(submission.activityEvents),
+    );
 
-    return this.apiClient.postForm<SubmissionResponse>(
+    const response = await this.apiClient.postForm<unknown>(
       '/submissions',
       formData,
     );
+    if (!isSubmissionResponse(response)) {
+      throw new Error('The platform returned an invalid submission ID.');
+    }
+    return response;
   }
 
   public async getStatus(submissionUuid: string): Promise<SubmissionStatus> {
@@ -133,6 +141,17 @@ export class MockSubmissionRepository implements SubmissionRepository {
   ): Promise<boolean> {
     return false;
   }
+}
+
+function isSubmissionResponse(value: unknown): value is SubmissionResponse {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) {
+    return false;
+  }
+  const response = value as Record<string, unknown>;
+  return typeof response.submissionUuid === 'string' &&
+    /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(
+      response.submissionUuid,
+    );
 }
 
 function isExerciseSubmissionSummaries(

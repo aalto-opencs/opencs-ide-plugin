@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { AssignmentActivityEvent } from '../assignmentActivity/assignmentActivityModels';
 import {
   PROGRAMMING_EXERCISE_TYPE,
   ProgrammingAssignment,
@@ -36,6 +37,7 @@ export class SubmissionService {
   public async submit(
     assignment: ProgrammingAssignment,
     prepared: CollectedSubmission,
+    activityEvents: AssignmentActivityEvent[] = [],
   ): Promise<SubmissionResponse> {
     if (assignment.type !== PROGRAMMING_EXERCISE_TYPE) {
       throw new Error('Only programming assignments can be submitted.');
@@ -45,6 +47,7 @@ export class SubmissionService {
       exerciseUuid: assignment.exerciseUuid,
       courseSlug: assignment.courseSlug,
       files: prepared.files,
+      activityEvents,
     });
   }
 

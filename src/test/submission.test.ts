@@ -4,6 +4,7 @@ import { IncomingMessage } from 'http';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import * as vscode from 'vscode';
+import { AssignmentActivityRepository } from '../features/assignmentActivity/assignmentActivityRepository';
 import { AuthRepository } from '../features/auth/authRepository';
 import { AuthSession } from '../features/auth/authModels';
 import { AuthService } from '../features/auth/authService';
@@ -210,6 +211,14 @@ suite('Assignment submission', () => {
         files: {
           'src/app.js': 'console.log("student work");\n',
         },
+        activityEvents: [{
+          id: '33333333-3333-4333-8333-333333333333',
+          timestamp: '2026-08-14T10:30:00.000Z',
+          action: 'submit',
+          files: {
+            'src/app.js': 'console.log("student work");\n',
+          },
+        }],
       });
 
       assert.strictEqual(authorization, 'raw-session-token');
@@ -225,6 +234,17 @@ suite('Assignment submission', () => {
       assert.deepStrictEqual(
         JSON.parse(String(submittedForm?.get('data'))),
         { 'src/app.js': 'console.log("student work");\n' },
+      );
+      assert.deepStrictEqual(
+        JSON.parse(String(submittedForm?.get('activityEvents'))),
+        [{
+          id: '33333333-3333-4333-8333-333333333333',
+          timestamp: '2026-08-14T10:30:00.000Z',
+          action: 'submit',
+          files: {
+            'src/app.js': 'console.log("student work");\n',
+          },
+        }],
       );
       assert.strictEqual(
         result.submissionUuid,
@@ -856,6 +876,68 @@ suite('Assignment submission', () => {
     } finally {
       await server.close();
     }
+  });
+});
+
+suite('Assignment activity persistence', () => {
+  const assignment: ProgrammingAssignment = {
+    exerciseUuid: '11111111-1111-4111-8111-111111111111',
+    name: 'Hello platform',
+    type: 'programming-exercise',
+    courseSlug: 'web-software-development',
+    courseInstanceId: 42,
+  };
+
+  test('scopes events and removes only acknowledged event IDs', async () => {
+    const repository = new AssignmentActivityRepository(
+      new InMemoryMemento(),
+    );
+    const first = {
+      id: '22222222-2222-4222-8222-222222222222',
+      timestamp: '2026-08-14T10:00:00.000Z',
+      action: 'run' as const,
+      files: { 'main.py': 'print("first")\n' },
+    };
+    const second = {
+      id: '33333333-3333-4333-8333-333333333333',
+      timestamp: '2026-08-14T10:01:00.000Z',
+      action: 'run' as const,
+      files: { 'main.py': 'print("second")\n' },
+    };
+
+    await repository.add(7, assignment, first);
+    await repository.add(7, assignment, second);
+    await repository.add(8, assignment, first);
+    await repository.remove(7, assignment, [first.id]);
+
+    assert.deepStrictEqual(repository.get(7, assignment), [second]);
+    assert.deepStrictEqual(repository.get(8, assignment), [first]);
+  });
+
+  test('keeps only the newest twenty events', async () => {
+    const repository = new AssignmentActivityRepository(
+      new InMemoryMemento(),
+    );
+    for (let index = 0; index < 21; index += 1) {
+      const eventId = String(index).padStart(12, '0');
+      await repository.add(7, assignment, {
+        id: `00000000-0000-4000-8000-${eventId}`,
+        timestamp: `2026-08-14T10:${String(index).padStart(2, '0')}:00.000Z`,
+        action: 'run',
+        files: { 'main.py': `print(${index})\n` },
+      });
+    }
+
+    const events = repository.get(7, assignment);
+    assert.strictEqual(events.length, 20);
+    assert.strictEqual(
+      events[0].id,
+      '00000000-0000-4000-8000-000000000001',
+    );
+    assert.strictEqual(
+      events[19].id,
+      '00000000-0000-4000-8000-000000000020',
+    );
   });
 });
 

@@ -47,6 +47,7 @@ import { PlatformStatusController } from '../features/platformStatus/platformSta
 import { ApiPlatformStatusRepository } from '../features/platformStatus/platformStatusRepository';
 import { PlatformStatusService } from '../features/platformStatus/platformStatusService';
 import { SubmissionController } from '../features/submissions/submissionController';
+import { AssignmentActivityRepository } from '../features/assignmentActivity/assignmentActivityRepository';
 import { SubmissionFileRepository } from '../features/submissions/submissionFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
 import {
@@ -147,6 +148,9 @@ export function registerCommands(
   const submissionHistoryRepository = new SubmissionHistoryRepository(
     context.globalState,
   );
+  const assignmentActivityRepository = new AssignmentActivityRepository(
+    context.globalState,
+  );
   const developmentCompletionRepository = __DEVELOPMENT_TOOLS__ &&
       context.extensionMode === vscode.ExtensionMode.Development
     ? new DevelopmentCompletionRepository()
@@ -209,6 +213,7 @@ export function registerCommands(
     submissionTreeProvider,
     () => courseTreeProvider.refresh(),
     pythonSyntaxCheckController,
+    assignmentActivityRepository,
   );
   const localPythonExecutionController = new LocalPythonExecutionController(
     new LocalPythonExecutionService(),
@@ -216,6 +221,8 @@ export function registerCommands(
     assignmentFolderRepository,
     assignmentFileRepository,
     currentAssignmentRepository,
+    new SubmissionFileRepository(),
+    assignmentActivityRepository,
   );
 
   const authController = new AuthController(
@@ -350,6 +357,7 @@ export function registerCommands(
           courseCacheRepository.clearAll(),
           currentAssignmentRepository.clearAll(),
           submissionHistoryRepository.clearAll(),
+          assignmentActivityRepository.clearAll(),
         ]);
         await refreshUiState();
       },
@@ -402,7 +410,11 @@ export function registerCommands(
   const signOutCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.signOut',
     async () => {
+      const session = await authService.getCurrentSession();
       await authController.signOut();
+      if (session) {
+        await assignmentActivityRepository.clearForUser(session.student.id);
+      }
       await refreshUiState();
     },
   );
