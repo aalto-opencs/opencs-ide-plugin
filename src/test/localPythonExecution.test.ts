@@ -8,6 +8,10 @@ import { isEqualOrChild } from '../features/localExecution/localPythonExecutionC
 import {
   LocalPythonExecutionService,
 } from '../features/localExecution/localPythonExecutionService';
+import {
+  parsePythonCommand,
+  PythonSyntaxCheckService,
+} from '../features/localExecution/pythonSyntaxCheckService';
 
 const pythonAssignment: ProgrammingAssignment = {
   exerciseUuid: 'python-exercise',
@@ -84,6 +88,76 @@ suite('Assignment editor containment', () => {
         folder,
       ),
       false,
+    );
+  });
+});
+
+suite('PythonSyntaxCheckService', () => {
+  test('checks only submitted Python files', async () => {
+    let checkedFiles: Record<string, string> | undefined;
+    const service = new PythonSyntaxCheckService(
+      () => 'python3',
+      async (_command, files) => {
+        checkedFiles = files;
+        return { exitCode: 0, stdout: '[]' };
+      },
+    );
+
+    const result = await service.check(pythonAssignment, {
+      folder: vscode.Uri.file('/assignment'),
+      files: {
+        'main.py': 'print("Hello")\n',
+        'helper.py': 'answer = 42\n',
+        'notes.txt': 'student notes',
+      },
+    });
+
+    assert.deepStrictEqual(checkedFiles, {
+      'main.py': 'print("Hello")\n',
+      'helper.py': 'answer = 42\n',
+    });
+    assert.deepStrictEqual(result, { status: 'passed', checkedFiles: 2 });
+  });
+
+  test('returns structured Python syntax errors', async () => {
+    const service = new PythonSyntaxCheckService(
+      () => 'python3',
+      async () => ({
+        exitCode: 1,
+        stdout: JSON.stringify([{
+          filePath: 'main.py',
+          line: 3,
+          column: 7,
+          message: "'(' was never closed",
+        }]),
+      }),
+    );
+
+    const result = await service.check(pythonAssignment, {
+      folder: vscode.Uri.file('/assignment'),
+      files: { 'main.py': 'print("Hello"\n' },
+    });
+
+    assert.deepStrictEqual(result, {
+      status: 'errors',
+      checkedFiles: 1,
+      errors: [{
+        filePath: 'main.py',
+        line: 3,
+        column: 7,
+        message: "'(' was never closed",
+      }],
+    });
+  });
+
+  test('parses configured interpreter paths and arguments', () => {
+    assert.deepStrictEqual(
+      parsePythonCommand('"/Applications/Python 3/python3" -u'),
+      ['/Applications/Python 3/python3', '-u'],
+    );
+    assert.deepStrictEqual(
+      parsePythonCommand('C:\\Python311\\python.exe -u'),
+      ['C:\\Python311\\python.exe', '-u'],
     );
   });
 });

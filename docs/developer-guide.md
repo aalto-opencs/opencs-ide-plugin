@@ -234,9 +234,9 @@ checks.
 
 | Setting | Current default | Read by |
 | --- | --- | --- |
-| `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | `getApiBaseUrl()` |
-| `aaltoFitechPlatform.platformBaseUrl` | `http://localhost:7799` | `getPlatformBaseUrl()` |
-| `aaltoFitechPlatform.useMockApi` | `true` | `useMockApi()` |
+| `aaltoOpenCsIde.apiBaseUrl` | `http://localhost:8842/api` | `getApiBaseUrl()` |
+| `aaltoOpenCsIde.platformBaseUrl` | `http://localhost:7799` | `getPlatformBaseUrl()` |
+| `aaltoOpenCsIde.useMockApi` | `true` | `useMockApi()` |
 
 All settings use machine scope.
 
@@ -244,9 +244,9 @@ Local real-API development normally uses:
 
 ```json
 {
-  "aaltoFitechPlatform.apiBaseUrl": "http://localhost:8842/api",
-  "aaltoFitechPlatform.platformBaseUrl": "http://localhost:7799",
-  "aaltoFitechPlatform.useMockApi": false
+  "aaltoOpenCsIde.apiBaseUrl": "http://localhost:8842/api",
+  "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799",
+  "aaltoOpenCsIde.useMockApi": false
 }
 ```
 
@@ -657,6 +657,16 @@ terminal with the assignment folder as `cwd`, which preserves interactive
 standard input and relative-file behavior. The default command is `python3` on
 macOS/Linux and `py` on Windows. `aaltoOpenCsIde.pythonCommand` overrides it.
 The extension does not install Python or assignment dependencies.
+
+Introduction to Programming assignments also provide **Check Syntax** beside
+Run and Submit. `PythonSyntaxCheckService` checks the exact submitted `.py`
+contents in a temporary directory without running student programs or creating
+files in the assignment folder. Errors appear as editor diagnostics and in the
+Problems view, and the first error opens at its reported location. Editing a
+file clears its previous diagnostics. Submit repeats the check against the
+prepared submission: students are directed to review syntax errors but can
+explicitly submit anyway, and they can submit without checking when local
+Python is unavailable. The backend grader remains authoritative.
 
 ### Redownload
 

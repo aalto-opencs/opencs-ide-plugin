@@ -67,6 +67,8 @@ import {
 } from '../features/coursePoints/coursePointsRepository';
 import { LocalPythonExecutionController } from '../features/localExecution/localPythonExecutionController';
 import { LocalPythonExecutionService } from '../features/localExecution/localPythonExecutionService';
+import { PythonSyntaxCheckController } from '../features/localExecution/pythonSyntaxCheckController';
+import { PythonSyntaxCheckService } from '../features/localExecution/pythonSyntaxCheckService';
 
 /**
  * Extension composition root.
@@ -182,11 +184,20 @@ export function registerCommands(
       developmentCompletionRepository?.isCompleted(userId, assignment) ??
         false,
   );
+  const submissionService = new SubmissionService(
+    submissionRepository,
+    new SubmissionFileRepository(),
+  );
+  const pythonSyntaxCheckController = new PythonSyntaxCheckController(
+    new PythonSyntaxCheckService(),
+    submissionService,
+    authService,
+    assignmentFolderRepository,
+    assignmentFileRepository,
+    currentAssignmentRepository,
+  );
   const submissionController = new SubmissionController(
-    new SubmissionService(
-      submissionRepository,
-      new SubmissionFileRepository(),
-    ),
+    submissionService,
     assignmentFileRepository,
     assignmentFolderRepository,
     new AssignmentVersionService(
@@ -197,6 +208,7 @@ export function registerCommands(
     submissionHistoryRepository,
     submissionTreeProvider,
     () => courseTreeProvider.refresh(),
+    pythonSyntaxCheckController,
   );
   const localPythonExecutionController = new LocalPythonExecutionController(
     new LocalPythonExecutionService(),
@@ -418,6 +430,10 @@ export function registerCommands(
     'aaltoOpenCsIde.runCurrentAssignment',
     () => localPythonExecutionController.runCurrentAssignment(),
   );
+  const checkCurrentAssignmentSyntaxCommand = vscode.commands.registerCommand(
+    'aaltoOpenCsIde.checkCurrentAssignmentSyntax',
+    () => pythonSyntaxCheckController.checkCurrentAssignment(),
+  );
   const pythonConfigurationListener = vscode.workspace.onDidChangeConfiguration(
     (event) => {
       if (event.affectsConfiguration('aaltoOpenCsIde.pythonCommand')) {
@@ -573,8 +589,10 @@ export function registerCommands(
     refreshExerciseCommand,
     showAssignmentHandoutCommand,
     runCurrentAssignmentCommand,
+    checkCurrentAssignmentSyntaxCommand,
     pythonConfigurationListener,
     localPythonExecutionController,
+    pythonSyntaxCheckController,
     refreshSubmissionsCommand,
     selectCourseCommand,
     selectAssignmentFolderCommand,

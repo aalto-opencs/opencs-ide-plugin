@@ -8,6 +8,9 @@ import {
 } from '../assignments/assignmentVersionService';
 import { AuthService } from '../auth/authService';
 import {
+  PythonSyntaxCheckController,
+} from '../localExecution/pythonSyntaxCheckController';
+import {
   GRADING_STATUS_PENDING,
 } from './submissionModels';
 import { SubmissionHistoryRepository } from './submissionHistoryRepository';
@@ -34,6 +37,7 @@ export class SubmissionController {
     private readonly historyRepository: SubmissionHistoryRepository,
     private readonly treeProvider: SubmissionTreeProvider,
     private readonly onAssignmentCompleted: () => void,
+    private readonly syntaxCheckController?: PythonSyntaxCheckController,
   ) {}
 
   public async submitAssignment(
@@ -104,11 +108,19 @@ export class SubmissionController {
         ),
       );
       const filePaths = Object.keys(prepared.files).sort();
+      const syntaxDecision = await this.syntaxCheckController
+        ?.checkForSubmission(assignment, prepared) ?? 'continue';
+      if (syntaxDecision === 'cancel') {
+        return;
+      }
       const action = await vscode.window.showInformationMessage(
         `Submit ${assignment.name}?`,
         {
           modal: true,
-          detail: createFilePreview(filePaths),
+          detail: createFilePreview(
+            filePaths,
+            syntaxDecision === 'passed',
+          ),
         },
         'Submit',
       );
@@ -234,10 +246,16 @@ function formatProgressStatus(status: string): string {
     : `Status: ${status}`;
 }
 
-function createFilePreview(filePaths: string[]): string {
+function createFilePreview(
+  filePaths: string[],
+  syntaxPassed = false,
+): string {
   const visibleFiles = filePaths.slice(0, MAX_PREVIEW_FILES);
   const remaining = filePaths.length - visibleFiles.length;
   const lines = [
+    ...(syntaxPassed
+      ? ['Syntax check passed. This does not run the assignment tests.', '']
+      : []),
     `${filePaths.length} file${filePaths.length === 1 ? '' : 's'} will be submitted:`,
     '',
     ...visibleFiles,

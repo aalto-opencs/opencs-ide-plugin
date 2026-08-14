@@ -3,6 +3,7 @@ import { AuthService } from '../auth/authService';
 import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
 import { CurrentAssignmentRepository } from './currentAssignmentRepository';
+import { PYTHON_COURSE_SLUG } from '../localExecution/localPythonExecutionService';
 
 const METADATA_FILENAME = '.aalto-opencs-assignment.json';
 
@@ -101,6 +102,9 @@ export class ExerciseTreeProvider implements
     this.watch(folder);
     return [
       createHandoutItem(assignment.name),
+      ...(assignment.courseSlug === PYTHON_COURSE_SLUG
+        ? [createSyntaxCheckItem(assignment.name)]
+        : []),
       createSubmitItem(assignment.name),
       ...await this.readDirectory(folder),
     ];
@@ -185,6 +189,21 @@ function createSubmitItem(assignmentName: string): vscode.TreeItem {
   item.tooltip = 'Review and submit the files in the current exercise.';
   item.accessibilityInformation = {
     label: `Submit current exercise: ${assignmentName}`,
+  };
+  return item;
+}
+
+function createSyntaxCheckItem(assignmentName: string): vscode.TreeItem {
+  const item = new vscode.TreeItem('Check Syntax');
+  item.description = assignmentName;
+  item.iconPath = new vscode.ThemeIcon('check');
+  item.command = {
+    command: 'aaltoOpenCsIde.checkCurrentAssignmentSyntax',
+    title: 'Check Syntax',
+  };
+  item.tooltip = 'Check submitted Python files for syntax errors without running them.';
+  item.accessibilityInformation = {
+    label: `Check syntax for current exercise: ${assignmentName}`,
   };
   return item;
 }

@@ -42,6 +42,7 @@
     "onCommand:aaltoOpenCsIde.redownloadAssignment",
     "onCommand:aaltoOpenCsIde.submitAssignment",
     "onCommand:aaltoOpenCsIde.runCurrentAssignment",
+    "onCommand:aaltoOpenCsIde.checkCurrentAssignmentSyntax",
     "onView:aaltoOpenCsIde.authenticationSetup",
     "onView:aaltoOpenCsIde.folderSetup",
     "onView:aaltoOpenCsIde.courseSelection",
@@ -243,6 +244,13 @@
         "shortTitle": "Run Assignment",
         "icon": "$(play)",
         "enablement": "aaltoOpenCsIde.currentAssignmentRunnable"
+      },
+      {
+        "command": "aaltoOpenCsIde.checkCurrentAssignmentSyntax",
+        "title": "Aalto OpenCS IDE: Check Assignment Syntax",
+        "shortTitle": "Check Syntax",
+        "icon": "$(check)",
+        "enablement": "aaltoOpenCsIde.currentAssignmentRunnable"
       }
     ],
     "menus": {
@@ -327,9 +335,14 @@
           "group": "navigation@-100"
         },
         {
-          "command": "aaltoOpenCsIde.submitCurrentAssignment",
+          "command": "aaltoOpenCsIde.checkCurrentAssignmentSyntax",
           "when": "aaltoOpenCsIde.currentAssignmentDownloaded",
           "group": "navigation@-99"
+        },
+        {
+          "command": "aaltoOpenCsIde.submitCurrentAssignment",
+          "when": "aaltoOpenCsIde.currentAssignmentDownloaded",
+          "group": "navigation@-98"
         }
       ],
       "commandPalette": [
@@ -367,6 +380,10 @@
         },
         {
           "command": "aaltoOpenCsIde.runCurrentAssignment",
+          "when": "!aaltoOpenCsIde.currentAssignmentDownloaded"
+        },
+        {
+          "command": "aaltoOpenCsIde.checkCurrentAssignmentSyntax",
           "when": "!aaltoOpenCsIde.currentAssignmentDownloaded"
         }
       ]
