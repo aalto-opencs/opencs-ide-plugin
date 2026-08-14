@@ -292,6 +292,7 @@ Submission multipart fields:
 | `exerciseUuid` | Platform exercise UUID |
 | `courseSlug` | Selected course slug |
 | `data` | JSON object mapping relative path to UTF-8 source text |
+| `activityEvents` | JSON array of queued `run` events and the confirmed `submit` event |
 
 The response validators in repositories treat all backend JSON as untrusted.
 When changing a backend response, update the model, validation/mapping code, and
@@ -657,6 +658,17 @@ terminal with the assignment folder as `cwd`, which preserves interactive
 standard input and relative-file behavior. The default command is `python3` on
 macOS/Linux and `py` on Windows. `aaltoOpenCsIde.pythonCommand` overrides it.
 The extension does not install Python or assignment dependencies.
+
+After the student invokes Run, the extension snapshots the assignment's
+manifest-selected submission files with a UTC timestamp and a `run` action.
+After final submission confirmation, it snapshots the exact prepared files
+with a `submit` action. These bounded activity events are stored in
+`globalState`, scoped by student, course instance, and exercise. The submission
+request includes up to 20 events in the multipart `activityEvents` field. Only
+the transmitted event IDs are cleared after the platform returns a valid
+submission UUID, so failed requests and newer concurrent events are retained.
+The queue is also limited to 10 MB, and every snapshot follows the existing
+1 MB submission-file limit. Source contents are never logged.
 
 Introduction to Programming assignments also provide **Check Syntax** beside
 Run and Submit. `PythonSyntaxCheckService` checks the exact submitted `.py`
