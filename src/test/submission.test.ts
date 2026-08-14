@@ -143,6 +143,46 @@ suite('Assignment submission', () => {
     }
   });
 
+  test('collects exactly the assignment submission allowlist', async () => {
+    const root = await createTemporaryRoot();
+
+    try {
+      await mkdir(join(root, 'src'), { recursive: true });
+      await mkdir(join(root, 'data'), { recursive: true });
+      await writeFile(join(root, 'src', 'main.py'), 'print("student")\n');
+      await writeFile(join(root, 'src', 'notes.txt'), 'do not upload\n');
+      await writeFile(join(root, 'data', 'input.csv'), 'value\n42\n');
+
+      const files = await new SubmissionFileRepository().collect(
+        vscode.Uri.file(root),
+        ['src/main.py', 'data/input.csv'],
+      );
+
+      assert.deepStrictEqual(files, {
+        'src/main.py': 'print("student")\n',
+        'data/input.csv': 'value\n42\n',
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects a missing required submission file', async () => {
+    const root = await createTemporaryRoot();
+
+    try {
+      await assert.rejects(
+        new SubmissionFileRepository().collect(
+          vscode.Uri.file(root),
+          ['student-created.py'],
+        ),
+        /required file is missing: student-created\.py/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('posts the file map as authenticated multipart form data', async () => {
     let authorization: string | undefined;
     let contentType: string | undefined;

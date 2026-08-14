@@ -96,7 +96,12 @@ export class SubmissionController {
           title: `Preparing ${assignment.name}`,
           cancellable: false,
         },
-        () => this.service.prepare(folder),
+        () => this.service.prepare(
+          folder,
+          metadata.schemaVersion === 3
+            ? metadata.submissionFiles
+            : undefined,
+        ),
       );
       const filePaths = Object.keys(prepared.files).sort();
       const action = await vscode.window.showInformationMessage(

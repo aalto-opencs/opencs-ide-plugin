@@ -25,10 +25,11 @@ export class SubmissionService {
 
   public async prepare(
     folder: vscode.Uri,
+    submissionFiles?: string[],
   ): Promise<CollectedSubmission> {
     return {
       folder,
-      files: await this.fileRepository.collect(folder),
+      files: await this.fileRepository.collect(folder, submissionFiles),
     };
   }
 

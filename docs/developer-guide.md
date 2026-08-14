@@ -704,9 +704,16 @@ Safety limits:
 - No binary or invalid UTF-8 files.
 - No unsupported or ambiguous path segments.
 
-The current policy submits every remaining text file. It does not yet compare
-files with a backend solution manifest. This policy is an explicit unresolved
-product decision because some assignments require students to add new files.
+Assignments downloaded with a `submission_files` manifest use that list as an
+exact allowlist. The manifest is stored in schema-version-3 local assignment
+metadata, so it remains aligned with the downloaded assignment version. Listed
+paths may be nested and may be absent from the starter when the student is
+expected to create them. Submission stops if a listed file is missing, and
+unlisted files are not uploaded.
+
+Assignments without a manifest, including older downloads, retain the recursive
+text-file policy above. This fallback keeps other courses and schema-version-1
+or schema-version-2 metadata compatible.
 
 Before upload, the controller shows the exact file list, truncated visually
 after 20 entries, and requires **Submit** confirmation.

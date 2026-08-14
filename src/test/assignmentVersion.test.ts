@@ -10,7 +10,7 @@ import { PlatformStatusService } from '../features/platformStatus/platformStatus
 
 const contentHash = '0123456789abcdef0123456789abcdef';
 const metadata: AssignmentMetadata = {
-  schemaVersion: 2,
+  schemaVersion: 3,
   exerciseUuid: '11111111-1111-4111-8111-111111111111',
   exerciseType: 'programming-exercise',
   courseSlug: 'web-software-development',

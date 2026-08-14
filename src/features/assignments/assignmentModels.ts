@@ -18,6 +18,7 @@ export interface ProgrammingExerciseStarter {
   name: string;
   handout: string | null;
   prerequisites_met?: boolean;
+  submission_files?: string[] | null;
 }
 
 export interface LegacyAssignmentMetadata {
@@ -28,7 +29,7 @@ export interface LegacyAssignmentMetadata {
   courseInstanceId: number | null;
 }
 
-export interface AssignmentMetadata {
+export interface VersionedAssignmentMetadata {
   schemaVersion: 2;
   exerciseUuid: string;
   exerciseType: typeof PROGRAMMING_EXERCISE_TYPE;
@@ -37,8 +38,17 @@ export interface AssignmentMetadata {
   contentHash: string;
 }
 
+export interface AssignmentMetadata extends Omit<
+  VersionedAssignmentMetadata,
+  'schemaVersion'
+> {
+  schemaVersion: 3;
+  submissionFiles?: string[];
+}
+
 export type DownloadedAssignmentMetadata =
   | AssignmentMetadata
+  | VersionedAssignmentMetadata
   | LegacyAssignmentMetadata;
 
 export interface DownloadedAssignment {

@@ -188,12 +188,13 @@ suite('Assignment download', () => {
           'utf8',
         )),
         {
-          schemaVersion: 2,
+          schemaVersion: 3,
           exerciseUuid: assignment.exerciseUuid,
           exerciseType: 'programming-exercise',
           courseSlug: assignment.courseSlug,
           courseInstanceId: assignment.courseInstanceId,
           contentHash: '0123456789abcdef0123456789abcdef',
+          submissionFiles: ['src/index.ts', 'reports/summary.txt'],
         },
       );
     } finally {
@@ -217,6 +218,38 @@ suite('Assignment download', () => {
       );
     } finally {
       await server.close();
+    }
+  });
+
+  test('omits the allowlist when the platform has no submission manifest', async () => {
+    const root = await createTemporaryRoot();
+
+    try {
+      const service = new AssignmentDownloadService(
+        createAssignmentRepository(await createStarterArchive(), null),
+        new AssignmentFileRepository(),
+      );
+      await service.download(
+        assignment,
+        vscode.Uri.file(root),
+        userEmail,
+      );
+      const metadata = await new AssignmentFileRepository()
+        .getDownloadedAssignmentMetadata(
+          vscode.Uri.file(root),
+          userEmail,
+          assignment,
+        );
+
+      assert.strictEqual(metadata?.schemaVersion, 3);
+      assert.strictEqual(
+        metadata?.schemaVersion === 3
+          ? metadata.submissionFiles
+          : undefined,
+        undefined,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
     }
   });
 
@@ -423,6 +456,10 @@ suite('Assignment download', () => {
 
 function createAssignmentRepository(
   archive: Uint8Array,
+  submissionFiles: string[] | null = [
+    'src/index.ts',
+    'reports/summary.txt',
+  ],
 ): AssignmentRepository {
   return {
     getContentHash: async () => '0123456789abcdef0123456789abcdef',
@@ -432,6 +469,7 @@ function createAssignmentRepository(
       name: assignment.name,
       handout: '# Hello Web\n\nImplement the starter.',
       prerequisites_met: true,
+      submission_files: submissionFiles,
     }),
     getStarterFiles: async () => archive,
   };

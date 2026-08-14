@@ -23,6 +23,7 @@ const SOURCE_FILE_EXTENSIONS = new Set([
 const IGNORED_OPEN_FOLDERS = new Set([
   'build', 'coverage', 'dist', 'node_modules', 'target',
 ]);
+const SAFE_SUBMISSION_PATH_SEGMENT = /^[A-Za-z0-9._+@()[\] -]+$/;
 
 export class AssignmentAlreadyExistsError extends Error {
   public constructor(public readonly folder: vscode.Uri) {
@@ -90,6 +91,7 @@ export class AssignmentFileRepository {
     archiveBytes: Uint8Array,
     overwrite = false,
   ): Promise<DownloadedAssignment> {
+    const submissionFiles = validateSubmissionFiles(starter.submission_files);
     if (archiveBytes.byteLength > MAX_ARCHIVE_BYTES) {
       throw new Error('The starter archive is too large to download safely.');
     }
@@ -180,12 +182,13 @@ export class AssignmentFileRepository {
       );
 
       const metadata: AssignmentMetadata = {
-        schemaVersion: 2,
+        schemaVersion: 3,
         exerciseUuid: assignment.exerciseUuid,
         exerciseType: 'programming-exercise',
         courseSlug: assignment.courseSlug,
         courseInstanceId: assignment.courseInstanceId,
         contentHash,
+        ...(submissionFiles ? { submissionFiles } : {}),
       };
       await vscode.workspace.fs.writeFile(
         vscode.Uri.joinPath(temporaryFolder, METADATA_FILENAME),
@@ -395,15 +398,62 @@ function isMatchingMetadata(
 
   const metadata = value as Record<string, unknown>;
   const versionIsValid = metadata.schemaVersion === 1 ||
-    (metadata.schemaVersion === 2 &&
+    ((metadata.schemaVersion === 2 || metadata.schemaVersion === 3) &&
       typeof metadata.contentHash === 'string' &&
-      /^[0-9a-f]{32}$/.test(metadata.contentHash));
+      /^[0-9a-f]{32}$/.test(metadata.contentHash) &&
+      (metadata.schemaVersion !== 3 ||
+        isSubmissionFiles(metadata.submissionFiles)));
 
   return versionIsValid &&
     metadata.exerciseUuid === assignment.exerciseUuid &&
     metadata.exerciseType === PROGRAMMING_EXERCISE_TYPE &&
     metadata.courseSlug === assignment.courseSlug &&
     metadata.courseInstanceId === assignment.courseInstanceId;
+}
+
+function validateSubmissionFiles(value: unknown): string[] | undefined {
+  if (value === undefined || value === null) {
+    return undefined;
+  }
+  if (!isSubmissionFiles(value) || value === undefined) {
+    throw new Error('The platform returned invalid submission file paths.');
+  }
+  return value;
+}
+
+function isSubmissionFiles(value: unknown): value is string[] | undefined {
+  if (value === undefined) {
+    return true;
+  }
+  if (!Array.isArray(value) || value.length === 0) {
+    return false;
+  }
+
+  const normalizedPaths = new Set<string>();
+  for (const path of value) {
+    if (typeof path !== 'string') {
+      return false;
+    }
+    const segments = path.split('/');
+    if (segments.some((segment) =>
+      !SAFE_SUBMISSION_PATH_SEGMENT.test(segment) ||
+      segment === '.' ||
+      segment === '..' ||
+      segment.trim() !== segment
+    )) {
+      return false;
+    }
+    const normalizedPath = segments.join('/').toLowerCase();
+    if (
+      normalizedPaths.has(normalizedPath) ||
+      normalizedPath === METADATA_FILENAME ||
+      normalizedPath === HANDOUT_FILENAME
+    ) {
+      return false;
+    }
+    normalizedPaths.add(normalizedPath);
+  }
+  return true;
 }
 
 function sanitizeFolderName(value: string, fallback: string): string {
