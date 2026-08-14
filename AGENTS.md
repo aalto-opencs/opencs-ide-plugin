@@ -202,6 +202,13 @@ The related platform repository is normally located at:
 Relevant backend work belongs on its `vscode-plugin` branch. Modify it only
 when the task explicitly includes backend work.
 
+If an IntroCS pull request from `vscode-plugin` has already been squash-merged,
+do not reuse that diverged branch for follow-up pull requests. Create a fresh
+branch or separate worktree from the latest `origin/master`, cherry-pick only
+the post-merge commits that belong in the follow-up, and open a new pull
+request. Preserve the original dirty worktree and avoid force-pushing the
+historical `vscode-plugin` branch.
+
 ### Local platform and grader setup
 
 The unified executor/grader repository must be a sibling of IntroCS:
