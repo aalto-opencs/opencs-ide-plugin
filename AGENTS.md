@@ -222,13 +222,19 @@ Read both repositories' `README.md` files and
 `executor-and-grader/docker-exec-api/README.md` before changing the setup. The
 supported local startup flow is:
 
-1. Start or rebuild the platform, database, and migrations from IntroCS:
+1. Start or rebuild the complete Apple Silicon platform, database, migrations,
+   cache, routing, and unified executor/grader stack from IntroCS:
 
    ```bash
    cd /Users/buiducmanh/work/Coding/introcs
-   ./scripts/manage-containers.sh restart --build -c \
-     opencs-ui opencs-api database flyway
+   docker compose -f docker-compose-with-executor.m1.yml up -d --build \
+     database flyway valkey opencs-api opencs-ui traefik docker-exec-api
    ```
+
+   `docker-compose-with-executor.m1.yml` combines IntroCS's Apple Silicon
+   services with the sibling `executor-and-grader` compose project. The current
+   cache service is named `valkey`; an older README command that says `redis`
+   is stale.
 
 2. After a fresh database initialization, inject the documented demo accounts:
 
@@ -240,25 +246,12 @@ supported local startup flow is:
    `normal@normal.com` / `normal123`. Do not repeatedly run this non-idempotent
    script when those users already exist.
 
-3. Start the unified grader and its Traefik route through the combined compose
-   file:
-
-   ```bash
-   docker compose -f docker-compose-with-executor.yml up -d --build \
-     traefik docker-exec-api
-   ```
-
-   To start the complete stack directly through the combined compose file, use
-   the services `database flyway valkey opencs-api opencs-ui traefik
-   docker-exec-api`. The current cache service is named `valkey`; an older
-   README command that says `redis` is stale.
-
-4. Confirm service health before testing:
+3. Confirm service health before testing:
 
    ```bash
    curl http://localhost:8842/api/status
    curl http://localhost:9080/docker-exec-api/api/health
-   docker compose -f docker-compose-with-executor.yml ps
+   docker compose -f docker-compose-with-executor.m1.yml ps
    ```
 
 The platform calls
