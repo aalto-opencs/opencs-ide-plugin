@@ -207,26 +207,25 @@ machine-specific settings. They can also be placed in VS Code's user
 
 | Setting | Default | Development use |
 | --- | --- | --- |
-| `aaltoFitechPlatform.apiBaseUrl` | `http://localhost:8842/api` | Base URL including the backend's `/api` path. |
-| `aaltoFitechPlatform.platformBaseUrl` | `http://localhost:7799` | Website URL opened for browser sign-in. |
-| `aaltoFitechPlatform.useMockApi` | `true` | Uses a built-in demo account and makes no platform API requests. |
+| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | Base URL including the backend's `/api` path. |
+| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Website URL opened for browser sign-in. |
+| `aaltoOpenCsIde.useMockApi` | `false` | Uses a built-in demo account and makes no platform API requests when enabled. |
 
 To use the local backend, set:
 
 ```json
 {
-  "aaltoFitechPlatform.apiBaseUrl": "http://localhost:8842/api",
-  "aaltoFitechPlatform.platformBaseUrl": "http://localhost:7799",
-  "aaltoFitechPlatform.useMockApi": false
+  "aaltoOpenCsIde.apiBaseUrl": "http://localhost:8842/api",
+  "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799",
+  "aaltoOpenCsIde.useMockApi": false
 }
 ```
 
 Reload the Extension Development Host after changing `useMockApi`, because the
 repository implementations are selected when the extension activates.
 
-For production, configure both settings with the approved HTTPS platform and
-API URLs and set `useMockApi` to `false`. The defaults remain local-development
-values until those production URLs are approved.
+The defaults connect to the production OpenCS platform. Override both URL
+settings for local development and reload the Extension Development Host.
 
 ### Stored data and network use
 
@@ -244,7 +243,7 @@ values until those production URLs are approved.
 
 ### The demo account appears instead of the signed-in account
 
-Set `aaltoFitechPlatform.useMockApi` to `false`, then reload the Extension
+Set `aaltoOpenCsIde.useMockApi` to `false`, then reload the Extension
 Development Host. The mock/real choice is made only during activation.
 
 ### Platform offline - retry later
@@ -325,12 +324,17 @@ credentials for a disposable backend test account, and run:
 Open the project in VS Code and press `F5` to start an Extension Development
 Host.
 
-Two F5 launch configurations are available for layout testing:
+Three F5 launch configurations are available for development testing:
 
 - **Run Extension (Fresh User Layout)** uses a disposable VS Code profile for
   every launch. This simulates a new IDE user, including default view
   locations, without changing the developer's real VS Code profile. The
   temporary profile is discarded when the Extension Development Host closes.
+- **Run Extension (Fresh Production Profile)** uses the same disposable
+  profile while forcing `https://opencs.aalto.fi/api`,
+  `https://opencs.aalto.fi`, and real API mode. It starts without a saved
+  extension session, making it suitable for production sign-in and fresh-user
+  workflow smoke tests. It does not run automated submissions.
 - **Run Extension (Current Development Layout)** keeps the existing Extension
   Development Host state. Select this configuration to turn off fresh-layout
   resets and resume the previous development layout.
@@ -348,9 +352,9 @@ run under Xvfb because VS Code's Electron test host requires a display.
 
 ## Release preparation
 
-The extension is marked **Preview**, uses the GitHub repository owner
-`manh-bui` as the provisional Marketplace publisher, and is currently
-`UNLICENSED`. Before publishing, confirm that the matching Visual Studio
+The extension is marked **Preview**, uses `aalto-opencs` as its provisional
+Marketplace publisher, and is currently `UNLICENSED`. Before publishing,
+confirm that the matching Visual Studio
 Marketplace publisher exists, obtain an approved project license, approve the
 production API URL, disable mock mode by default, and run the manual
 accessibility checks documented above.

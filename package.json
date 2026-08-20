@@ -393,15 +393,15 @@
       "properties": {
         "aaltoOpenCsIde.apiBaseUrl": {
           "type": "string",
-          "default": "http://localhost:8842/api",
+          "default": "https://opencs.aalto.fi/api",
           "scope": "machine",
-          "description": "Base URL of the Aalto OpenCS platform API. Use the local URL only for development."
+          "description": "Base URL of the Aalto OpenCS platform API. Override this only for development or testing."
         },
         "aaltoOpenCsIde.platformBaseUrl": {
           "type": "string",
-          "default": "http://localhost:7799",
+          "default": "https://opencs.aalto.fi",
           "scope": "machine",
-          "description": "Website URL used for browser sign-in. Set this to the production Aalto OpenCS platform URL outside local development."
+          "description": "Website URL used for browser sign-in. Override this only for development or testing."
         },
         "aaltoOpenCsIde.pythonCommand": {
           "type": "string",
@@ -411,7 +411,7 @@
         },
         "aaltoOpenCsIde.useMockApi": {
           "type": "boolean",
-          "default": true,
+          "default": false,
           "scope": "machine",
           "description": "Use built-in demonstration data instead of contacting the configured platform API. Intended for extension development only."
         }

@@ -1,22 +1,40 @@
 import * as vscode from 'vscode';
 
 const CONFIGURATION_SECTION = 'aaltoOpenCsIde';
+const PRODUCTION_API_BASE_URL = 'https://opencs.aalto.fi/api';
+const PRODUCTION_PLATFORM_BASE_URL = 'https://opencs.aalto.fi';
+const DEVELOPMENT_PROFILE_ENV = 'AALTO_OPENCS_IDE_DEVELOPMENT_PROFILE';
+
+function useProductionDevelopmentProfile(): boolean {
+  return typeof __DEVELOPMENT_TOOLS__ !== 'undefined' &&
+    __DEVELOPMENT_TOOLS__ &&
+    process.env[DEVELOPMENT_PROFILE_ENV] === 'production';
+}
 
 export function getApiBaseUrl(): string {
+  if (useProductionDevelopmentProfile()) {
+    return PRODUCTION_API_BASE_URL;
+  }
   return vscode.workspace
     .getConfiguration(CONFIGURATION_SECTION)
-    .get<string>('apiBaseUrl', 'http://localhost:8842/api');
+    .get<string>('apiBaseUrl', PRODUCTION_API_BASE_URL);
 }
 
 export function getPlatformBaseUrl(): string {
+  if (useProductionDevelopmentProfile()) {
+    return PRODUCTION_PLATFORM_BASE_URL;
+  }
   return vscode.workspace
     .getConfiguration(CONFIGURATION_SECTION)
-    .get<string>('platformBaseUrl', 'http://localhost:7799')
+    .get<string>('platformBaseUrl', PRODUCTION_PLATFORM_BASE_URL)
     .replace(/\/+$/, '');
 }
 
 export function useMockApi(): boolean {
+  if (useProductionDevelopmentProfile()) {
+    return false;
+  }
   return vscode.workspace
     .getConfiguration(CONFIGURATION_SECTION)
-    .get<boolean>('useMockApi', true);
+    .get<boolean>('useMockApi', false);
 }

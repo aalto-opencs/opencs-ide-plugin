@@ -222,19 +222,34 @@ Read both repositories' `README.md` files and
 `executor-and-grader/docker-exec-api/README.md` before changing the setup. The
 supported local startup flow is:
 
-1. Start or rebuild the complete Apple Silicon platform, database, migrations,
-   cache, routing, and unified executor/grader stack from IntroCS:
+1. Choose one of these startup modes. Both support Apple Silicon and start or
+   rebuild the platform, database, migrations, cache, routing, and unified
+   executor/grader stack from IntroCS.
+
+   Full replica with the real courses only:
 
    ```bash
    cd /Users/buiducmanh/work/Coding/introcs
-   docker compose -f docker-compose-with-executor.m1.yml up -d --build \
+   docker compose -f docker-compose-with-executor.yml up -d --build \
      database flyway valkey opencs-api opencs-ui traefik docker-exec-api
    ```
 
-   `docker-compose-with-executor.m1.yml` combines IntroCS's Apple Silicon
-   services with the sibling `executor-and-grader` compose project. The current
-   cache service is named `valkey`; an older README command that says `redis`
-   is stale.
+   Full replica with the real courses plus `test-course`:
+
+   ```bash
+   cd /Users/buiducmanh/work/Coding/introcs
+   docker compose -f docker-compose-with-executor.yml \
+     -f docker-compose.with-test-course.yml up -d --build \
+     database flyway valkey opencs-api opencs-ui traefik docker-exec-api
+   ```
+
+   `docker-compose-with-executor.yml` includes the sibling
+   `executor-and-grader` compose project and the standard IntroCS Compose
+   configuration, which supports Apple Silicon directly. The optional
+   `docker-compose.with-test-course.yml` overlay adds `test-course` and its
+   targeted fixtures without replacing the real courses. Keep the combined
+   compose file before the optional overlay. The current cache service is named
+   `valkey`; an older README command that says `redis` is stale.
 
 2. After a fresh database initialization, inject the documented demo accounts:
 
@@ -246,12 +261,32 @@ supported local startup flow is:
    `normal@normal.com` / `normal123`. Do not repeatedly run this non-idempotent
    script when those users already exist.
 
-3. Confirm service health before testing:
+3. When using the real-courses-plus-test-course mode, make `test-course`, Web
+   Software Development, and Introduction to Programming visible in the IDE
+   and activate their default instances for the account:
+
+   ```bash
+   ./scripts/configure-test-course-for-ide.sh admin@admin.com
+   ```
+
+   The script is idempotent and accepts another account email as its optional
+   argument. Run it after the demo account exists and the API has imported the
+   courses.
+
+4. Confirm service health before testing:
 
    ```bash
    curl http://localhost:8842/api/status
    curl http://localhost:9080/docker-exec-api/api/health
-   docker compose -f docker-compose-with-executor.m1.yml ps
+   docker compose -f docker-compose-with-executor.yml ps
+   ```
+
+   For the real-courses-plus-test-course mode, include the overlay in the status
+   command as well:
+
+   ```bash
+   docker compose -f docker-compose-with-executor.yml \
+     -f docker-compose.with-test-course.yml ps
    ```
 
 The platform calls
@@ -284,13 +319,15 @@ submission integration test when end-to-end grading is in scope.
 
 ### IntroCS local files that must not be committed
 
-The following three files contain local Docker/UI runtime adjustments. Preserve
+The following five files contain local Docker/UI runtime adjustments. Preserve
 them in the working tree, do not discard them, and never stage or commit them:
 
 ```text
 opencs-ui/astro.config.mjs
 opencs-ui/package.json
 opencs-ui/package-lock.json
+docker-compose.with-test-course.yml
+scripts/configure-test-course-for-ide.sh
 ```
 
 When committing IntroCS work, stage intended paths explicitly rather than using

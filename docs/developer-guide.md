@@ -234,9 +234,9 @@ checks.
 
 | Setting | Current default | Read by |
 | --- | --- | --- |
-| `aaltoOpenCsIde.apiBaseUrl` | `http://localhost:8842/api` | `getApiBaseUrl()` |
-| `aaltoOpenCsIde.platformBaseUrl` | `http://localhost:7799` | `getPlatformBaseUrl()` |
-| `aaltoOpenCsIde.useMockApi` | `true` | `useMockApi()` |
+| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | `getApiBaseUrl()` |
+| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | `getPlatformBaseUrl()` |
+| `aaltoOpenCsIde.useMockApi` | `false` | `useMockApi()` |
 
 All settings use machine scope.
 
@@ -251,6 +251,13 @@ Local real-API development normally uses:
 ```
 
 Reload the Extension Development Host after changing mock mode.
+
+The **Run Extension (Fresh Production Profile)** debug configuration sets
+`AALTO_OPENCS_IDE_DEVELOPMENT_PROFILE=production`. Development builds treat
+that profile as an explicit override for the production API and website URLs
+and disable mock mode, even when the repository workspace contains local
+development settings. Production bundles do not honor this development-only
+override.
 
 ## 6. HTTP behavior and backend endpoints
 
@@ -1045,10 +1052,6 @@ When adding persisted data:
 
 ## 24. Current limitations and decisions still open
 
-- The browser authentication flow still requires full production deployment
-  and security review.
-- The production API URL is not approved.
-- Mock mode still defaults to `true`.
 - Marketplace publisher and project license require confirmation.
 - Submission currently includes every safe text file; final language-specific
   or solution-manifest rules are undecided.

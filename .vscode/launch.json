@@ -19,6 +19,22 @@
 			"preLaunchTask": "watch"
 		},
 		{
+			"name": "Run Extension (Fresh Production Profile)",
+			"type": "extensionHost",
+			"request": "launch",
+			"args": [
+				"--extensionDevelopmentPath=${workspaceFolder}",
+				"--profile-temp"
+			],
+			"env": {
+				"AALTO_OPENCS_IDE_DEVELOPMENT_PROFILE": "production"
+			},
+			"outFiles": [
+				"${workspaceFolder}/dist/**/*.js"
+			],
+			"preLaunchTask": "watch"
+		},
+		{
 			"name": "Run Extension (Current Development Layout)",
 			"type": "extensionHost",
 			"request": "launch",
