@@ -98,8 +98,8 @@ student's program or predict whether the grader will accept the solution.
 
 ## Interactions With Other Features
 
-- [Submission file selection](../developer-guide.md#13-submission-file-collection)
-  determines which source files are checked.
+- The assignment's submission-file selection policy determines which source
+  files are checked.
 - **Run Assignment** executes `main.py` in an interactive terminal and can
   reveal runtime or behavioral problems. Syntax checking is separate and does
   not execute the program.

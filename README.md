@@ -1,103 +1,79 @@
-# Aalto Fitech Platform VS Code Extension
+# Aalto OpenCS IDE
 
-This project is a VS Code client for the Aalto/FITech learning platform. The
-prototype lets students authenticate, browse enrolled course material,
-download programming assignments, work locally, submit source code, and view
-grader feedback without leaving VS Code.
+Aalto OpenCS IDE is an extension for VS Code-compatible desktop editors,
+including VS Code and VSCodium. It lets students sign in to OpenCS, choose an
+assignment folder and course version, browse programming exercises, work on
+them locally, submit their files, and inspect grading results without leaving
+the editor.
 
-The backend remains responsible for authentication sessions, course data,
-grading, hidden tests, points, and assignment progression. The extension does
-not duplicate those responsibilities locally.
+The OpenCS platform remains authoritative for authentication, enrolments,
+course structure, submissions, grading, points, and completion. The extension
+does not reproduce the grader or infer scores locally.
 
-## Project status
-
-The extension is an active prototype and is not ready for production use.
-
-Currently implemented:
-
-- browser-based platform authentication with a one-time PKCE code exchange
-- secure session persistence with VS Code `SecretStorage`
-- per-user assignment-folder and course-version selection
-- authenticated enrolment and course-structure retrieval
-- programming-assignment filtering and starter-file download
-- safe ZIP extraction with path, size, and overwrite protection
-- generated `assignment-handout.md` and assignment metadata
-- authenticated source-file submission and grader-status polling
-- backend-synchronized submission history scoped to the current exercise
-- persistent per-user local submission cache for offline fallback
-- persistent course, structure, and completion caches with visible offline state
-- passed, failed, pending, and grader-error states
-- failed-test details in read-only VS Code documents
-- assignment, chapter, and part completion indicators
-- setup-gated Course Selection, Course Parts, Exercise, and Submissions views
-- a per-user current exercise with a native local-file tree
-- development-only completion and data-reset tools that are removed from
-  production bundles
-
-Still planned:
-
-- final production authentication deployment and security review
-- synchronization of submissions from courses other than the current selection
-- final submission file-selection rules for each supported language
-- permitted public-test support
-- backend-driven next-assignment and progression guidance
-
-## Authentication
-
-Authentication is organized under `src/features/auth`:
-
-```text
-AuthController
-    -> AuthService
-        -> AuthRepository
-        -> SessionRepository
-```
-
-- `AuthController` opens the platform login page, validates the callback, and
-  owns VS Code messages.
-- `AuthService` coordinates sign-in, session lookup, and sign-out.
-- `ApiAuthRepository` exchanges a short-lived browser authorization code and
-  PKCE verifier for a normal platform session.
-- `SessionRepository` stores the session in VS Code `SecretStorage`.
-
-The browser flow uses:
-
-```text
-POST /api/auth/ide/authorize
-POST /api/auth/ide/exchange
-```
-
-The student authenticates on the existing platform login page using any method
-available there. The platform returns a five-minute, single-use code to VS Code;
-the session token is never placed in the callback URL. PKCE binds that code to
-the extension instance that started the request. Only the resulting session is
-stored in VS Code `SecretStorage`.
+The extension is currently published as a preview.
 
 ## Student workflow
 
-The Aalto Fitech activity-bar container changes with setup state:
+1. Sign in through the OpenCS website.
+2. Choose a local root folder for downloaded assignments.
+3. Choose an enrolled course and active course version.
+4. Browse parts, chapters, and programming exercises.
+5. Download an exercise and work on its files locally.
+6. Review the exact files selected for upload and submit them.
+7. Follow grading and inspect failed tests or grader errors.
 
-1. Sign in.
-2. Choose an assignment folder.
-3. Use the four working views: **Course Selection**, **Course Parts**,
-   **Exercise**, and **Submissions**.
+Setup state and selections are remembered per student. The working interface
+contains Course Selection, Course Parts, Exercise, Assignment Handout, and
+Submissions views, plus an Account action for changing the assignment folder or
+signing out.
 
-Authentication and Assignment Folder are shown one at a time during setup. The
-four working views replace them only after both steps are complete. A compact
-Account toolbar action then shows identity, the assignment folder, optional
-selected-course points, Change Assignment Folder, and Sign Out.
+Only exercises whose platform type is `programming-exercise` are displayed and
+downloaded.
 
-### Course Selection and Course Parts
+## Authentication
 
-Course Selection chooses one enrolled course and instance/version. Course Parts
-then displays its programming assignments by part and chapter. Selecting an
-assignment makes it the current exercise and updates Course Parts, Exercise,
-and Submissions immediately. The current row is explicitly marked.
+Sign-in uses the platform's browser-based IDE authorization flow with PKCE. The
+browser returns a short-lived authorization code to the editor, and the
+extension exchanges it for the student's platform session. The session token
+is never placed in the callback URL.
 
-The selected course and version appear in the view header. Non-programming
-exercise types are not displayed.
+The resulting session is stored only in the editor's `SecretStorage`. API
+requests send that token as the raw `Authorization` value, without a `Bearer`
+prefix.
 
-Downloaded assignments use this structure:
+Supported callback schemes are `vscode`, `vscode-insiders`, and `vscodium` for
+the extension identifier `aalto-opencs.aalto-opencs-ide`.
+
+## Courses and exercises
+
+Course Selection shows the signed-in student's active enrolments that are
+available to the IDE. Selecting another course instance first activates it on
+the platform and saves the local selection only after that succeeds.
+
+Course Parts shows programming exercises grouped under readable parts and
+chapters. Exercise rows indicate the current, downloaded, and completed states.
+The backend's grading result remains the authority for completion.
+
+Course data is network-first. The most recently loaded enrolments, course
+structure, and completion state are cached per student and can be shown when a
+later refresh fails. See
+[Course Structure Refresh and Assignment Changes](docs/course-structure-refresh-policy.md)
+for the current refresh and content-version policy.
+
+OpenCS assignment links can select an exercise in the extension:
+
+```text
+vscode://aalto-opencs.aalto-opencs-ide/assignments/open?course=<course-slug>&exercise=<exercise-uuid>
+```
+
+The extension validates the link against live platform data. It can resume the
+request after sign-in and, with explicit confirmation, enrol the student when
+necessary. A link selects the exercise but never downloads files or overwrites
+student work automatically.
+
+## Assignment downloads
+
+Downloaded assignments use this hierarchy:
 
 ```text
 selected-root/
@@ -110,108 +86,74 @@ selected-root/
                 └── .aalto-opencs-assignment.json
 ```
 
-The metadata file associates the local folder with the exact exercise, course,
-and course instance. Submit is available only when this metadata is valid.
+The metadata file identifies the student, course instance, exercise, download
+version, and any platform-defined submission-file allowlist. An assignment can
+be submitted only when that metadata matches the current selection.
 
-After downloading the current exercise, use the prominent **Show Assignment
-Handout** action at the top of the Exercise view, or the book button in the
-Course Parts or Exercise toolbar, to enable its rendered handout view. On first
-use, confirm the prompt and select **New Secondary Side Bar Entry**. Cancelling
-either step keeps the handout hidden. The IDE remembers the selected layout.
-Changes to the local `assignment-handout.md` refresh the rendered view
-automatically.
+Downloads enforce archive path and size limits. After downloading, the
+extension can add the course folder to the current workspace, reveal a likely
+entry file, and render the handout beside the student's code.
 
-When the current exercise is downloaded, editor titles show **Run Assignment**
-and **Submit Current Exercise** actions. Both actions target the exercise shown
-in the Exercise view, regardless of which file is currently open. Run remains
-visible but is disabled outside the Introduction to Programming course. For
-supported assignments, it saves modified local files and opens an integrated
-terminal in the assignment folder before running `python3 main.py` on
-macOS/Linux or `py main.py` on Windows. Python must be installed locally. Set
-`aaltoOpenCsIde.pythonCommand` to use another command, command arguments, or a
-quoted virtual-environment interpreter path. Interactive `input()` and files
-opened with relative paths work through the terminal. Local execution is not
-available in browser-only IDE hosts.
+Redownload requires explicit confirmation and replaces the current assignment
+folder. It deletes changes and additional files inside that assignment folder,
+so students should preserve anything they still need before confirming.
 
-Assignment actions depend on local and backend state:
+The extension records the exercise content hash during download and checks it
+again before submission. If the platform exercise changed, the student is
+warned and may redownload or explicitly submit the existing work.
 
-- not downloaded: Download
-- downloaded: Submit, Show Local Folder, and Redownload
-- completed: completed indicator plus local-folder and optional resubmission
-  actions
+## Local Python tools
 
-Redownload requires an explicit destructive confirmation, then replaces the
-current assignment folder with a fresh starter copy. Student changes and added
-files in that folder are deleted, and no persistent backup is created.
+Introduction to Programming exercises with a root-level `main.py` can be run
+in an interactive terminal. The extension saves dirty files within the current
+assignment, opens the terminal in the assignment folder, and uses:
 
-After a download or redownload, **Open Assignment Folder** adds the course-slug
-folder inside the selected assignment root to the current workspace, opens the
-most likely starter entry file, and reveals that file in Explorer. The
-assignment folder therefore remains visible and expanded instead of becoming
-an isolated root.
+- `python3 main.py` on macOS and Linux;
+- `py main.py` on Windows; or
+- the command configured in `aaltoOpenCsIde.pythonCommand`.
 
-### Exercise and Submissions
+The same supported exercises can be checked for Python syntax manually and
+during submission. Syntax checking parses the selected Python files but does
+not execute the program, run assignment tests, or predict the grader result.
 
-Exercise acts like a focused file explorer for the current downloaded
-assignment. It shows student-created directories and files, hides only the
-extension's internal metadata file, watches for local changes, and opens a file
-in the editor only when the student selects that file. A prominent **Submit
-Current Exercise** action appears above the file tree.
+Detailed behavior:
 
-The Submissions view synchronizes the selected course/version but displays only
-history for the current exercise. It shows the two newest submissions and
-groups older entries under **Past Submissions**. Rows start collapsed and
-display pending, passed, failed, or grader-error status.
+- [Local Python Assignment Running](docs/features/local-python-assignment-running.md)
+- [Python Syntax Checking](docs/features/python-syntax-checking.md)
 
-Failed tests are direct children of a submission. Selecting a failed test opens
-its complete error output in a read-only Markdown document. Submission history
-is cached per student so previously loaded results remain available if a later
-refresh cannot reach the backend.
+## Submission and grading
 
-## Reliability and offline behavior
+Before upload, the extension validates the downloaded assignment, prepares the
+payload, and shows the exact relative file paths selected for submission. The
+student must explicitly confirm the upload.
 
-The Course Selection and Course Parts views cache the last successfully loaded enrolments, selected-course
-structure, and assignment completion states per student. If a later API request
-fails, the view keeps the cached course usable and labels its description as
-**Cached**. A visible offline message explains that Refresh retries the backend.
+When the assignment metadata contains a submission-file allowlist, only those
+paths are accepted. Older downloads use the extension's safe UTF-8 text-file
+discovery policy. Internal metadata, generated handouts, binary files, unsafe
+paths, and oversized payloads are not submitted.
 
-The Submissions view follows the same pattern: cached results remain visible
-when history or pending-status refreshes fail, and Refresh Submissions retries
-the request. Invalid cached structures are ignored instead of being trusted.
+The Submissions view synchronizes backend history for the selected course and
+shows results for the current exercise. It supports pending, passed, failed,
+and grader-error states. Failed-test and grader-error details open as selectable
+text in an editor. Previously synchronized history remains available from the
+local cache when a later refresh fails.
 
-The activity-bar icon reuses the platform's official favicon mark and adapts to
-the active VS Code foreground color.
-
-## Commands
-
-Primary commands are available from the Command Palette or contextual view
-actions:
-
-- `Aalto Fitech Platform: Check Platform Status`
-- `Aalto Fitech Platform: Sign In`
-- `Aalto Fitech Platform: Show Current User`
-- `Aalto Fitech Platform: Sign Out`
-- `Aalto Fitech Platform: Select Assignment Folder`
-- `Aalto Fitech Platform: Select Course and Version`
-- `Aalto Fitech Platform: Refresh Courses`
-- `Aalto Fitech Platform: Refresh Submissions`
-
-Assignment download, submit, show-folder, and redownload commands appear only
-when they are relevant to the selected tree item.
+Local run and confirmed-submit snapshots can accompany the next accepted
+submission. See
+[Assignment Activity History](docs/features/assignment-activity-history.md).
 
 ## Configuration
 
-Open **Settings**, search for `Aalto Fitech Platform`, and change these
-machine-specific settings. They can also be placed in VS Code's user
-`settings.json`.
+Search editor settings for **Aalto OpenCS IDE**.
 
-| Setting | Default | Development use |
+| Setting | Default | Purpose |
 | --- | --- | --- |
-| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | Base URL including the backend's `/api` path. |
-| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Website URL opened for browser sign-in. |
-| `aaltoOpenCsIde.useMockApi` | `false` | Uses a built-in demo account and makes no platform API requests when enabled. |
+| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | OpenCS API base URL. Override only for development or testing. |
+| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Website used for browser sign-in. |
+| `aaltoOpenCsIde.pythonCommand` | empty | Local Python command. Empty uses the operating-system default described above. |
+| `aaltoOpenCsIde.useMockApi` | `false` | Use built-in development data instead of the configured API. |
 
-To use the local backend, set:
+Local platform configuration:
 
 ```json
 {
@@ -221,183 +163,135 @@ To use the local backend, set:
 }
 ```
 
-Reload the Extension Development Host after changing `useMockApi`, because the
-repository implementations are selected when the extension activates.
+Reload the Extension Development Host after changing `useMockApi`; repository
+implementations are selected during activation.
 
-The defaults connect to the production OpenCS platform. Override both URL
-settings for local development and reload the Extension Development Host.
+## Stored data and privacy
 
-### Stored data and network use
-
-- The session is kept in VS Code `SecretStorage`.
-- The selected assignment folder, selected course/version, course cache, and
-  submission history are stored per platform student in VS Code global state.
-- Downloaded assignments remain in the folder selected by the student.
-- Student source files are sent to the configured platform only when the
-  student explicitly runs **Submit Assignment**.
-- Sign Out removes the session but intentionally keeps per-student selections
-  and caches. Development builds provide **Reset all extension test data** for
-  a completely clean test state.
+- The platform session is stored in `SecretStorage`.
+- The assignment root, selected course, current assignment, course cache,
+  submission history, and queued activity are stored in editor global state,
+  scoped by student where applicable.
+- Downloaded assignments remain in the student-selected filesystem location.
+- Student source is uploaded only after explicit submission confirmation.
+- Student source, session tokens, authorization codes, and student identifiers
+  must not be logged.
+- Signing out removes the session and that student's queued activity. It keeps
+  downloaded files and reusable per-student selections and caches.
 
 ## Troubleshooting
 
-### The demo account appears instead of the signed-in account
+### The demo account appears
 
-Set `aaltoOpenCsIde.useMockApi` to `false`, then reload the Extension
-Development Host. The mock/real choice is made only during activation.
+Set `aaltoOpenCsIde.useMockApi` to `false` and reload the Extension Development
+Host. Mock or real repositories are selected only during activation.
 
-### Platform offline - retry later
+### Browser sign-in does not return to the editor
 
-The extension is showing the last successfully cached course or submission
-data. Check that `apiBaseUrl` includes `/api`, start the backend and grader if
-needed, then run **Refresh Courses** or **Refresh Submissions**. If no cache
-exists yet, the affected view remains unavailable until the API responds.
+Keep the editor running, accept the browser prompt to open the callback, or use
+the manual-open link on the platform confirmation page. Confirm that
+`platformBaseUrl` corresponds to the configured API.
 
-### Browser sign-in does not return to VS Code
+### A course or exercise is missing
 
-Keep VS Code running while signing in and accept the browser prompt to open the
-`vscode://` callback. If the prompt was dismissed, use the **open it manually**
-link on the platform confirmation page. Also confirm that `platformBaseUrl`
-points to the UI that corresponds to the configured API.
-
-### A course or assignment is missing
-
-Confirm that the student is enrolled, an assignment folder is selected, and
-the intended course version is active. Only programming assignments are shown.
-Use **Change Course** or **Refresh Courses** after backend data changes.
+Confirm that the student has an active enrolment and that the course is marked
+as available to the IDE. Only programming exercises are shown. Use **Change
+Course** or **Refresh Courses** after platform data changes.
 
 ### The assignment folder was moved or deleted
 
-Open the Account toolbar action and choose **Change Assignment Folder**. Existing
-downloads are recognized only when their extension metadata is still present.
+Open Account and choose **Change Assignment Folder**. Existing downloads are
+recognized only when their metadata remains present and valid.
+
+### Course or submission data is marked as cached
+
+The last successful data is being shown because the latest API request failed.
+Restore platform connectivity and use **Refresh Courses** or **Refresh
+Submissions**.
 
 ### A submission remains pending or grading fails
 
-The extension displays status reported by the backend; it does not run the
-grader itself. Verify the backend/grader services, then refresh Submissions.
-Previously synchronized results remain available from the local cache.
-
-### Resetting local extension data during development
-
-Use the **Aalto Fitech Test Tools** status-bar item and select **Reset all
-extension test data**. This signs out and clears extension storage, but does not
-delete downloaded assignment files or backend records.
-
-## Accessibility
-
-The extension uses native VS Code tree views, Quick Picks, notifications,
-folder pickers, and text editors so it inherits VS Code keyboard navigation,
-focus handling, zoom, high-contrast themes, and screen-reader support. Tree rows
-include explicit accessible names for account fields, download/completion
-states, submission states, and failed tests; information is not conveyed by
-color alone. Failed-test output opens as selectable text in a native editor.
-
-The code-level review and remaining manual release checks are documented in
-[`docs/accessibility-review.md`](docs/accessibility-review.md).
+The extension displays backend state and does not run the grader itself. Check
+the platform and grader services, then refresh Submissions.
 
 ## Development
 
-New contributors should start with the
-[`docs/developer-guide.md`](docs/developer-guide.md) architecture and data-flow
-guide. It documents feature ownership, API endpoints, persisted schemas,
-filesystem safety, UI refresh rules, testing, and current limitations.
-
-Install dependencies and verify the project:
+Install dependencies and run the standard checks:
 
 ```bash
 npm install
 npm run check-types
 npm run lint
+npm run compile-tests
 npm run compile
 npm test
-npm run package
 ```
 
-Real-backend integration tests use the normal platform login and IDE PKCE
-exchange. Copy `.env.test.example` to the gitignored `.env.test.local`, provide
-credentials for a disposable backend test account, and run:
+Open the project in a compatible desktop editor and launch an Extension
+Development Host. The provided launch configurations support a fresh user
+layout, a fresh production-connected profile, and the existing development
+layout.
+
+Real-platform integration tests are opt-in:
 
 ```bash
 ./scripts/run-integration-tests.sh
 ```
 
-Open the project in VS Code and press `F5` to start an Extension Development
-Host.
+They load the gitignored `.env.test.local`. A missing configuration causes
+integration cases to skip, so confirm the passing and pending counts.
 
-Three F5 launch configurations are available for development testing:
-
-- **Run Extension (Fresh User Layout)** uses a disposable VS Code profile for
-  every launch. This simulates a new IDE user, including default view
-  locations, without changing the developer's real VS Code profile. The
-  temporary profile is discarded when the Extension Development Host closes.
-- **Run Extension (Fresh Production Profile)** uses the same disposable
-  profile while forcing `https://opencs.aalto.fi/api`,
-  `https://opencs.aalto.fi`, and real API mode. It starts without a saved
-  extension session, making it suitable for production sign-in and fresh-user
-  workflow smoke tests. It does not run automated submissions.
-- **Run Extension (Current Development Layout)** keeps the existing Extension
-  Development Host state. Select this configuration to turn off fresh-layout
-  resets and resume the previous development layout.
-
-VS Code runs the most recently selected launch configuration when `F5` is
-pressed. Use the Run and Debug configuration dropdown to switch modes.
-
-Development builds show an **Aalto Fitech Test Tools** status-bar action. It can
-simulate assignment completion or reset all extension test data. Overrides are
-kept in memory, and the production build compiles all development-test tools
-out of the bundle.
-
-GitHub Actions runs the same checks on Linux, macOS, and Windows. Linux tests
-run under Xvfb because VS Code's Electron test host requires a display.
-
-## Release preparation
-
-The extension is marked **Preview**, uses `aalto-opencs` as its provisional
-Marketplace publisher, and is currently `UNLICENSED`. Before publishing,
-confirm that the matching Visual Studio
-Marketplace publisher exists, obtain an approved project license, approve the
-production API URL, disable mock mode by default, and run the manual
-accessibility checks documented above.
-
-The Marketplace image is `media/aalto-fitech-marketplace.png` (256×256 PNG).
-The activity-bar version is a theme-aware SVG.
+Development builds include completion simulation and state-reset tools that
+are removed from production bundles. Resetting extension state does not delete
+downloaded student assignments or backend records.
 
 ## Architecture
+
+The source is organized by feature:
 
 ```text
 src/
 ├── commands/
 ├── config/
 ├── features/
+│   ├── account/
+│   ├── assignmentActivity/
 │   ├── assignments/
 │   ├── auth/
 │   ├── courseMaterials/
+│   ├── coursePoints/
 │   ├── courses/
 │   ├── development/
+│   ├── localExecution/
 │   ├── platformStatus/
 │   └── submissions/
 ├── infrastructure/
+├── lifecycle/
 ├── views/
 └── extension.ts
 ```
 
-Feature code follows these boundaries:
+- Controllers own editor UI and interactions.
+- Services coordinate workflows while remaining independent of editor UI where
+  practical.
+- Repositories own API, persistence, and filesystem access.
+- Models define feature contracts and persisted data.
+- `src/commands/registerCommands.ts` is the composition root and chooses real
+  or mock implementations.
 
-- Controllers own VS Code interactions and do not call APIs directly.
-- Services coordinate workflows and do not show UI.
-- Repositories access APIs, secure storage, VS Code state, or the filesystem.
-- Models define feature-specific TypeScript contracts.
-- Infrastructure contains shared HTTP concerns.
-- `src/commands/registerCommands.ts` is the composition root.
+Living behavioral specifications are indexed in
+[`docs/features/README.md`](docs/features/README.md). Repository-wide agent and
+contributor constraints are maintained in `AGENTS.md`.
 
-## Security and scope rules
+## Release status
 
-- Do not log authorization codes, PKCE verifiers, session tokens, or student
-  source files.
-- Store sessions only in VS Code `SecretStorage`.
-- Send the platform session token as the raw `Authorization` header value.
-- Do not run graders or calculate points in the extension.
-- Do not expose hidden tests.
-- Do not silently overwrite student work.
-- Submit only folders downloaded and identified by extension metadata.
-- Let the backend decide points and assignment progression.
+- Package: `aalto-opencs-ide`
+- Publisher: `aalto-opencs`
+- Extension identifier: `aalto-opencs.aalto-opencs-ide`
+- Marketplace status: Preview
+- License: UNLICENSED
+
+Before a public release, verify the packaged extension on supported desktop
+editors and operating systems, complete keyboard and assistive-technology
+checks, confirm the production API configuration, and obtain an approved
+project license.
