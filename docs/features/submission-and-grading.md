@@ -69,6 +69,9 @@ its grading state, and presents the backend's authoritative outcome.
   validates the active instance and displays completion.
 - [Submission File Selection](./submission-file-selection.md) prepares the
   payload.
+- [Assignment Content-Version Verification](./assignment-content-version.md)
+  determines whether submission can continue directly, requires confirmation,
+  or is blocked by platform unavailability.
 - [Python Syntax Checking](./python-syntax-checking.md) can pass, warn, be
   bypassed explicitly, or cancel before final confirmation.
 - [Assignment Activity History](./assignment-activity-history.md) accompanies

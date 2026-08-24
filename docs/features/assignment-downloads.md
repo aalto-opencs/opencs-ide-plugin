@@ -95,6 +95,8 @@ copy while protecting the old copy if preparation or installation fails.
   provides the course instance and current exercise.
 - [Submission File Selection](./submission-file-selection.md) uses the
   downloaded metadata's allowlist when present.
+- [Assignment Content-Version Verification](./assignment-content-version.md)
+  records a stable download hash and detects mixed-revision downloads.
 - [Local Python Assignment Running](./local-python-assignment-running.md) and
   [Python Syntax Checking](./python-syntax-checking.md) require a recognized
   current download.
