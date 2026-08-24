@@ -11,6 +11,5 @@
     // Turn off tsc task auto detection since we have the necessary tasks as npm scripts
     "js/ts.tsc.autoDetect": "off",
     "aaltoOpenCsIde.apiBaseUrl": "http://localhost:8842/api",
-    "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799",
-    "aaltoOpenCsIde.useMockApi": false
+    "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799"
 }

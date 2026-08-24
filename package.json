@@ -2,10 +2,14 @@
   "name": "aalto-opencs-ide",
   "displayName": "Aalto OpenCS IDE",
   "description": "Browse Aalto OpenCS courses, download programming assignments, and view grader feedback in compatible IDEs.",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "publisher": "aalto-opencs",
   "author": {
     "name": "Aalto OpenCS IDE extension contributors"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/aalto-opencs/opencs-ide-plugin.git"
   },
   "license": "UNLICENSED",
   "preview": true,
@@ -408,12 +412,6 @@
           "default": "",
           "scope": "machine",
           "description": "Command used to run Introduction to Programming assignments locally. Empty uses python3 on macOS/Linux and py on Windows. Python must be installed. Command arguments are supported; quote interpreter paths that contain spaces."
-        },
-        "aaltoOpenCsIde.useMockApi": {
-          "type": "boolean",
-          "default": false,
-          "scope": "machine",
-          "description": "Use built-in demonstration data instead of contacting the configured platform API. Intended for extension development only."
         }
       }
     }
@@ -432,9 +430,7 @@
     "lint": "eslint src",
     "test": "vscode-test --code-version 1.130.0",
     "test:integration": "./scripts/run-integration-tests.sh",
-    "test:backend-auth": "./scripts/run-integration-tests.sh",
-    "mock-api:enable": "./scripts/set-mock-api.sh enable",
-    "mock-api:disable": "./scripts/set-mock-api.sh disable"
+    "test:backend-auth": "./scripts/run-integration-tests.sh"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

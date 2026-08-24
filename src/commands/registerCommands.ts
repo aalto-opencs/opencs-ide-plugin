@@ -2,13 +2,11 @@ import * as vscode from 'vscode';
 import {
   getApiBaseUrl,
   getPlatformBaseUrl,
-  useMockApi,
 } from '../config/configuration';
 import { AuthController } from '../features/auth/authController';
 import {
   ApiAuthRepository,
   AuthRepository,
-  MockAuthRepository,
 } from '../features/auth/authRepository';
 import { AuthService } from '../features/auth/authService';
 import { SessionRepository } from '../features/auth/sessionRepository';
@@ -23,20 +21,17 @@ import { CurrentAssignmentRepository } from '../features/assignments/currentAssi
 import {
   ApiAssignmentRepository,
   AssignmentRepository,
-  MockAssignmentRepository,
 } from '../features/assignments/assignmentRepository';
 import { AssignmentVersionService } from '../features/assignments/assignmentVersionService';
 import {
   ApiCourseMaterialRepository,
   CourseMaterialRepository,
-  MockCourseMaterialRepository,
 } from '../features/courseMaterials/courseMaterialRepository';
 import { CourseMaterialService } from '../features/courseMaterials/courseMaterialService';
 import { CourseController } from '../features/courses/courseController';
 import {
   ApiCourseRepository,
   CourseRepository,
-  MockCourseRepository,
 } from '../features/courses/courseRepository';
 import { CourseService } from '../features/courses/courseService';
 import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
@@ -52,7 +47,6 @@ import { SubmissionFileRepository } from '../features/submissions/submissionFile
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
 import {
   ApiSubmissionRepository,
-  MockSubmissionRepository,
   SubmissionRepository,
 } from '../features/submissions/submissionRepository';
 import { SubmissionService } from '../features/submissions/submissionService';
@@ -64,7 +58,6 @@ import { CoursePointsService } from '../features/coursePoints/coursePointsServic
 import {
   ApiCoursePointsRepository,
   CoursePointsRepository,
-  MockCoursePointsRepository,
 } from '../features/coursePoints/coursePointsRepository';
 import { LocalPythonExecutionController } from '../features/localExecution/localPythonExecutionController';
 import { LocalPythonExecutionService } from '../features/localExecution/localPythonExecutionService';
@@ -97,26 +90,16 @@ export function registerCommands(
   const platformStatusController = new PlatformStatusController(
     platformStatusService,
   );
-  const mockApiEnabled = useMockApi();
-
-  const authRepository: AuthRepository = mockApiEnabled
-    ? new MockAuthRepository()
-    : new ApiAuthRepository(apiClient);
-  const courseRepository: CourseRepository = mockApiEnabled
-    ? new MockCourseRepository()
-    : new ApiCourseRepository(apiClient);
-  const courseMaterialRepository: CourseMaterialRepository = mockApiEnabled
-    ? new MockCourseMaterialRepository()
-    : new ApiCourseMaterialRepository(apiClient);
-  const assignmentRepository: AssignmentRepository = mockApiEnabled
-    ? new MockAssignmentRepository()
-    : new ApiAssignmentRepository(apiClient);
-  const submissionRepository: SubmissionRepository = mockApiEnabled
-    ? new MockSubmissionRepository()
-    : new ApiSubmissionRepository(apiClient);
-  const coursePointsRepository: CoursePointsRepository = mockApiEnabled
-    ? new MockCoursePointsRepository()
-    : new ApiCoursePointsRepository(apiClient);
+  const authRepository: AuthRepository = new ApiAuthRepository(apiClient);
+  const courseRepository: CourseRepository = new ApiCourseRepository(apiClient);
+  const courseMaterialRepository: CourseMaterialRepository =
+    new ApiCourseMaterialRepository(apiClient);
+  const assignmentRepository: AssignmentRepository =
+    new ApiAssignmentRepository(apiClient);
+  const submissionRepository: SubmissionRepository =
+    new ApiSubmissionRepository(apiClient);
+  const coursePointsRepository: CoursePointsRepository =
+    new ApiCoursePointsRepository(apiClient);
 
   const authService = new AuthService(
     authRepository,
@@ -228,7 +211,6 @@ export function registerCommands(
   const authController = new AuthController(
     authService,
     getPlatformBaseUrl(),
-    mockApiEnabled,
     context.extension.id,
   );
   const accountController = new AccountController(

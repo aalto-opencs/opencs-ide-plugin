@@ -2,6 +2,9 @@
 .github/**
 .vscode-test/**
 .env.test.local
+.env.test.example
+.agents/**
+AGENTS.md
 DEVELOPMENT_DIARY.md
 out/**
 node_modules/**

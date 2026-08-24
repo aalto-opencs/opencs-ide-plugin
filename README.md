@@ -51,20 +51,15 @@ Search editor settings for **Aalto OpenCS IDE**.
 | `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | OpenCS API base URL. |
 | `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Website used for browser sign-in. |
 | `aaltoOpenCsIde.pythonCommand` | empty | Local Python command; empty uses the operating-system default. |
-| `aaltoOpenCsIde.useMockApi` | `false` | Use built-in development data instead of the API. |
 
 Local platform configuration:
 
 ```json
 {
   "aaltoOpenCsIde.apiBaseUrl": "http://localhost:8842/api",
-  "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799",
-  "aaltoOpenCsIde.useMockApi": false
+  "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799"
 }
 ```
-
-Reload the Extension Development Host after changing `useMockApi`; repository
-implementations are selected during activation.
 
 ## Development
 

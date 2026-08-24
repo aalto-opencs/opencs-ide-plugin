@@ -19,7 +19,7 @@ architecture into the extension.
 | --- | --- |
 | `src/extension.ts` | IDE extension activation and lifecycle initialization. |
 | `src/commands/registerCommands.ts` | Composition root. Wires concrete repositories, services, controllers, views, commands, and shared UI refresh. |
-| `src/config/` | IDE configuration, including API and website base URLs and mock mode. |
+| `src/config/` | IDE configuration, including API and website base URLs. |
 | `src/infrastructure/` | Shared HTTP client and API error handling. |
 | `src/features/auth/` | Browser PKCE sign-in, session models, session persistence, and account-facing authentication UI. |
 | `src/features/courses/` | Enrolments, course/version selection, persistent course cache, and Course Parts tree. |
@@ -64,8 +64,8 @@ the platform backend. Do not add an `authApi.ts` solely for symmetry.
   raw `Authorization` value. Do **not** prepend `Bearer`.
 - Never log tokens, authorization codes, passwords, UUIDs, or student source
   content.
-- `aaltoOpenCsIde.useMockApi` selects mock repositories at activation.
-  Reload the Extension Development Host after changing it.
+- Runtime workflows always use API-backed repositories. Unit tests may use
+  feature-local test doubles without exposing a mock mode to extension users.
 
 ### Extension identity
 

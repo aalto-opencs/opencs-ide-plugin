@@ -19,7 +19,6 @@ export class AuthController implements vscode.UriHandler {
   public constructor(
     private readonly authService: AuthService,
     private readonly platformBaseUrl: string,
-    private readonly mockApiEnabled: boolean,
     private readonly extensionId: string,
     private readonly now: () => number = Date.now,
     private readonly openExternal: (
@@ -28,10 +27,6 @@ export class AuthController implements vscode.UriHandler {
   ) {}
 
   public async signIn(): Promise<boolean> {
-    if (this.mockApiEnabled) {
-      return this.completeSignIn('mock-code', 'mock-code-verifier');
-    }
-
     if (this.pendingSignIn) {
       if (
         this.now() - this.pendingSignIn.startedAt < SIGN_IN_RETRY_LOCK_MS

@@ -103,7 +103,6 @@ suite('Authentication', () => {
     const controller = new AuthController(
       authService,
       'http://localhost:7799',
-      false,
       'aalto-opencs.aalto-opencs-ide',
       () => now,
       async (uri) => {

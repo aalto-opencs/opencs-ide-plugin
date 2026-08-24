@@ -134,9 +134,6 @@ the assignment folder, and sign out.
 
 ## Edge Cases
 
-- When mock API mode is active, sign-in completes with the built-in demo
-  session without opening the browser. Changing mock mode still requires an
-  extension reload because repository selection occurs during activation.
 - Starting a replacement sign-in resolves the earlier attempt as unsuccessful
   before the replacement finishes.
 - A valid session can coexist with saved selections and caches from previous
@@ -182,6 +179,6 @@ the assignment folder, and sign out.
 - Automated tests cover code exchange, session persistence and validation,
   sign-out storage removal, retry-state isolation, reinstall cleanup, and the
   real platform exchange contract. The browser-open failure, five-minute
-  timeout, missing-code callback, mock sign-in, account picker, account points,
+  timeout, missing-code callback, account picker, account points,
   sign-out activity cleanup, and full UI transition flows do not currently
   have focused automated coverage.

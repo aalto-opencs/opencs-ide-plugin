@@ -97,9 +97,9 @@ Programming assignments and its role in the submission flow.
 Describes when the current assignment can be run locally, where the action is
 available, and how execution and run activity behave.
 
-## Development and Mock Tools
+## Development Tools
 
-[Development and Mock Tools](./development-and-mock-tools.md)
+[Development Tools](./development-tools.md)
 
-Describes mock repositories, launch profiles, completion simulation, state
-reset, and production-bundle exclusion.
+Describes launch profiles, completion simulation, state reset, and
+production-bundle exclusion.

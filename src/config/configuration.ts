@@ -29,12 +29,3 @@ export function getPlatformBaseUrl(): string {
     .get<string>('platformBaseUrl', PRODUCTION_PLATFORM_BASE_URL)
     .replace(/\/+$/, '');
 }
-
-export function useMockApi(): boolean {
-  if (useProductionDevelopmentProfile()) {
-    return false;
-  }
-  return vscode.workspace
-    .getConfiguration(CONFIGURATION_SECTION)
-    .get<boolean>('useMockApi', false);
-}
