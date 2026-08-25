@@ -18,8 +18,8 @@ copy while protecting the old copy if preparation or installation fails.
 4. It validates and extracts the archive into a temporary folder, generates the
    local handout and metadata, and installs the completed folder atomically.
 5. The exercise becomes current and the UI refreshes.
-6. The student may add the course folder to the workspace and open a likely
-   starter file.
+6. The extension keeps the OpenCS sidebar visible, opens the preferred starter
+   file in the editor, and selects that file in the Exercise tree.
 
 ### Redownload
 
@@ -30,6 +30,8 @@ copy while protecting the old copy if preparation or installation fails.
    before moving the existing folder aside.
 4. It installs the new copy and deletes the replaced folder only after the new
    installation succeeds.
+5. The refreshed preferred file opens automatically in the editor and is
+   selected in the Exercise tree.
 
 ## Rules & Conditions
 
@@ -52,6 +54,8 @@ copy while protecting the old copy if preparation or installation fails.
   local copy is created.
 - The content hash must remain the same across the starter download. A change
   during download prevents installation.
+- Opening a downloaded exercise never closes editor tabs or discards unsaved
+  work from another exercise.
 
 ## Outcomes
 
@@ -61,6 +65,8 @@ copy while protecting the old copy if preparation or installation fails.
   names and shallow source paths; the handout is the fallback when no supported
   source file exists.
 - The Exercise view exposes the local file tree while hiding internal metadata.
+- Opening the preferred file keeps the Aalto OpenCS activity-bar container
+  visible instead of switching to the editor's native Explorer.
 - Redownload replaces the complete assignment folder, including student-created
   files, after confirmation.
 
@@ -76,8 +82,8 @@ copy while protecting the old copy if preparation or installation fails.
   untouched.
 - If replacing the old folder fails after it was moved aside, the extension
   restores the old folder before reporting failure.
-- Failing to open the workspace after a successful download does not undo the
-  downloaded files.
+- Failing to open or reveal the preferred file after a successful download does
+  not undo the downloaded files.
 
 ## Edge Cases
 
@@ -88,6 +94,9 @@ copy while protecting the old copy if preparation or installation fails.
   names; identity comes from metadata rather than the path alone.
 - Redownload does not create a persistent backup or use the operating-system
   trash for the replaced assignment folder.
+- If the active editor later shows a file under the assignment root but outside
+  the current exercise, the Exercise tree shows a warning action that reopens
+  the current exercise's preferred file.
 
 ## Interactions With Other Features
 
@@ -117,6 +126,6 @@ copy while protecting the old copy if preparation or installation fails.
 ## Open Questions
 
 - Automated tests cover filesystem layout, metadata, archive safety, content
-  hash races, non-overwrite, transactional replacement, and real-platform
-  download. Workspace layout prompts and all user-visible recovery messages do
-  not have focused extension-host coverage.
+  hash races, non-overwrite, transactional replacement, real-platform download,
+  Exercise-tree reveal, and mismatched-editor warnings. All user-visible
+  recovery messages do not have focused extension-host coverage.

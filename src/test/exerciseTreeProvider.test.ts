@@ -75,6 +75,12 @@ suite('ExerciseTreeProvider', () => {
       current,
       false,
     );
+    let revealed: vscode.TreeItem | undefined;
+    provider.attachTreeView({
+      reveal: async (item: vscode.TreeItem) => {
+        revealed = item;
+      },
+    } as unknown as vscode.TreeView<vscode.TreeItem>);
 
     try {
       const children = await provider.getChildren();
@@ -95,6 +101,33 @@ suite('ExerciseTreeProvider', () => {
       const sourceChildren = await provider.getChildren(children[2]);
       assert.strictEqual(String(sourceChildren[0].label), 'main.ts');
       assert.strictEqual(sourceChildren[0].command?.command, 'vscode.open');
+      await provider.revealFile(
+        vscode.Uri.joinPath(sourceFolder, 'main.ts'),
+      );
+      assert.strictEqual(String(revealed?.label), 'main.ts');
+      assert.strictEqual(
+        String(provider.getParent(revealed as vscode.TreeItem)?.label),
+        'src',
+      );
+
+      const otherExerciseFolder = vscode.Uri.joinPath(root, 'other-exercise');
+      const otherMainFile = vscode.Uri.joinPath(otherExerciseFolder, 'main.ts');
+      await mkdir(otherExerciseFolder.fsPath, { recursive: true });
+      await writeFile(otherMainFile.fsPath, 'export const old = true;');
+      const otherDocument = await vscode.workspace.openTextDocument(
+        otherMainFile,
+      );
+      await vscode.window.showTextDocument(otherDocument);
+      await provider.updateActiveEditorContext();
+      const mismatchedChildren = await provider.getChildren();
+      assert.strictEqual(
+        String(mismatchedChildren[0].label),
+        'Different exercise file open',
+      );
+      assert.strictEqual(
+        mismatchedChildren[0].command?.command,
+        'aaltoOpenCsIde.openCurrentExercise',
+      );
     } finally {
       provider.dispose();
       await rm(temporaryRoot, { recursive: true, force: true });

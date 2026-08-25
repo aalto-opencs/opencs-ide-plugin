@@ -18,6 +18,9 @@ and their current, downloaded, and completed states.
    exercises under their parts and chapters.
 6. Selecting an exercise makes it the current exercise and refreshes the
    Exercise, Assignment Handout, Submissions, and applicable editor actions.
+7. If the exercise is already downloaded, its preferred file opens and is
+   selected in the Exercise tree so the editor and sidebar show the same
+   exercise.
 
 ## Rules & Conditions
 
@@ -37,6 +40,9 @@ and their current, downloaded, and completed states.
   a part is complete only when all of its displayed chapters are complete.
 - Downloaded state requires matching local assignment metadata, not merely a
   folder with the expected name.
+- Selecting an undownloaded exercise does not open a file from a similarly
+  named folder; its preferred file opens only after a recognized download is
+  available.
 - A saved selection is scoped to one student and must contain a valid positive
   course-instance identifier. Invalid persisted selections are ignored.
 
@@ -58,6 +64,9 @@ and their current, downloaded, and completed states.
   accessibility labels, and current/downloaded/completed indicators.
 - Selecting an exercise does not download it. The Exercise view instead offers
   the appropriate download or local-work actions for the current state.
+- Previously opened exercise tabs remain available. If the student activates a
+  file under another assignment, the Exercise view warns that a different
+  exercise file is open and offers **Open Current Exercise**.
 
 ## Failure Behavior
 

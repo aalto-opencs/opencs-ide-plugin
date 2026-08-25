@@ -94,7 +94,8 @@ export class AssignmentController {
 
   public async downloadAssignment(
     assignment?: ProgrammingAssignment,
-    onDownloaded: () => void | Promise<void> = () => undefined,
+    onDownloaded: (downloaded: DownloadedAssignment) => void | Promise<void> =
+      () => undefined,
   ): Promise<void> {
     if (!assignment) {
       await vscode.window.showErrorMessage(
@@ -148,36 +149,18 @@ export class AssignmentController {
           session.student.email,
         ),
       );
-      await onDownloaded();
-
-      const action = await vscode.window.showInformationMessage(
+      await onDownloaded(downloaded);
+      await vscode.window.showInformationMessage(
         `Downloaded ${assignment.name}.`,
-        'Open Assignment Folder',
-      );
-
-      await this.handleOpenAction(
-        action,
-        this.downloadService.getCourseFolder(
-          root,
-          session.student.email,
-          assignment,
-        ),
-        downloaded.folder,
-        downloaded.mainFile,
       );
     } catch (error: unknown) {
       if (error instanceof AssignmentAlreadyExistsError) {
         const action = await vscode.window.showWarningMessage(
           'This assignment folder already exists. Existing files were not changed.',
-          'Open Assignment Folder',
+          'Open Current Exercise',
         );
         await this.handleOpenAction(
           action,
-          this.downloadService.getCourseFolder(
-            root,
-            session.student.email,
-            assignment,
-          ),
           error.folder,
         );
         return;
@@ -202,7 +185,8 @@ export class AssignmentController {
 
   public async redownloadAssignment(
     assignment?: ProgrammingAssignment,
-    onDownloaded: () => void | Promise<void> = () => undefined,
+    onDownloaded: (downloaded: DownloadedAssignment) => void | Promise<void> =
+      () => undefined,
   ): Promise<void> {
     const location = await this.getDownloadedAssignmentLocation(assignment);
     if (!location || !assignment) {
@@ -249,20 +233,9 @@ export class AssignmentController {
       return;
     }
 
-    await onDownloaded();
-    const openAction = await vscode.window.showInformationMessage(
+    await onDownloaded(downloaded);
+    await vscode.window.showInformationMessage(
       `Redownloaded ${assignment.name}.`,
-      'Open Assignment Folder',
-    );
-    await this.handleOpenAction(
-      openAction,
-      this.downloadService.getCourseFolder(
-        location.root,
-        location.userEmail,
-        assignment,
-      ),
-      downloaded.folder,
-      downloaded.mainFile,
     );
   }
 
@@ -309,38 +282,24 @@ export class AssignmentController {
 
   private async handleOpenAction(
     action: string | undefined,
-    courseFolder: vscode.Uri,
     folder: vscode.Uri,
     mainFile?: vscode.Uri,
   ): Promise<void> {
-    if (action !== 'Open Assignment Folder') {
+    if (action !== 'Open Current Exercise') {
       return;
     }
 
     try {
-      const folders = vscode.workspace.workspaceFolders ?? [];
-      const alreadyAdded = folders.some((workspaceFolder) =>
-        workspaceFolder.uri.toString() === courseFolder.toString());
-      if (!alreadyAdded) {
-        const courseName = courseFolder.path.split('/')
-          .filter(Boolean)
-          .at(-1) ?? 'Aalto OpenCS Course';
-        vscode.workspace.updateWorkspaceFolders(
-          folders.length,
-          0,
-          { uri: courseFolder, name: courseName },
-        );
-      }
-
+      await vscode.commands.executeCommand(
+        'workbench.view.extension.aaltoOpenCsIde',
+      );
       const file = mainFile ??
         await this.downloadService.getPreferredOpenFile(folder);
       const document = await vscode.workspace.openTextDocument(file);
       await vscode.window.showTextDocument(document, { preview: false });
-      await vscode.commands.executeCommand('workbench.view.explorer');
-      await vscode.commands.executeCommand('revealInExplorer', file);
     } catch {
       await vscode.window.showErrorMessage(
-        'The assignment was downloaded, but VS Code could not open it.',
+        'The assignment exists, but its main file could not be opened.',
       );
     }
   }

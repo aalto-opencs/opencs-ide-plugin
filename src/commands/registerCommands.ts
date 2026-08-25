@@ -171,6 +171,54 @@ export function registerCommands(
       developmentCompletionRepository?.isCompleted(userId, assignment) ??
         false,
   );
+  const openAssignmentFile = async (file: vscode.Uri): Promise<void> => {
+    try {
+      await vscode.commands.executeCommand(
+        'workbench.view.extension.aaltoOpenCsIde',
+      );
+      await vscode.commands.executeCommand('aaltoOpenCsIde.exercise.focus');
+      exerciseTreeProvider.refresh();
+      await exerciseTreeProvider.revealFile(file);
+      const document = await vscode.workspace.openTextDocument(file);
+      await vscode.window.showTextDocument(document, {
+        preview: false,
+        preserveFocus: false,
+      });
+    } catch {
+      await vscode.window.showErrorMessage(
+        'The exercise is selected, but its main file could not be opened.',
+      );
+    }
+  };
+  const openCurrentExercise = async (): Promise<void> => {
+    const session = await authService.getCurrentSession();
+    const assignment = session
+      ? currentAssignmentRepository.get(session.student.id)
+      : undefined;
+    const root = session
+      ? assignmentFolderRepository.getRoot(session.student.id)
+      : undefined;
+    if (!session || !assignment || !root) {
+      return;
+    }
+    const metadata = await assignmentFileRepository
+      .getDownloadedAssignmentMetadata(
+        root,
+        session.student.email,
+        assignment,
+      ).catch(() => undefined);
+    if (!metadata) {
+      return;
+    }
+    const folder = assignmentFileRepository.getAssignmentFolder(
+      root,
+      session.student.email,
+      assignment,
+    );
+    await openAssignmentFile(
+      await assignmentFileRepository.getPreferredOpenFile(folder),
+    );
+  };
   const submissionService = new SubmissionService(
     submissionRepository,
     new SubmissionFileRepository(),
@@ -288,6 +336,7 @@ export function registerCommands(
     submissionTreeProvider.refresh();
     await assignmentHandoutViewProvider.refresh();
     await localPythonExecutionController.updateRunContext();
+    await exerciseTreeProvider.updateActiveEditorContext();
     await courseController.showSelectedInstanceEndWarning();
   };
   const assignmentDeepLinkController = new AssignmentDeepLinkController(
@@ -301,7 +350,11 @@ export function registerCommands(
     ),
     () => authController.signIn(),
     refreshUiState,
-    (exerciseUuid) => courseTreeProvider.revealAssignment(exerciseUuid),
+    async (exerciseUuid) => {
+      const revealed = await courseTreeProvider.revealAssignment(exerciseUuid);
+      await openCurrentExercise();
+      return revealed;
+    },
   );
   const extensionUriHandler = vscode.window.registerUriHandler(
     new ExtensionUriRouter(authController, assignmentDeepLinkController),
@@ -315,8 +368,14 @@ export function registerCommands(
     if (!session || !assignment) {
       return;
     }
+    const previous = currentAssignmentRepository.get(session.student.id);
+    const changed = previous?.exerciseUuid !== assignment.exerciseUuid ||
+      previous.courseInstanceId !== assignment.courseInstanceId;
     await currentAssignmentRepository.save(session.student.id, assignment);
     await refreshUiState();
+    if (changed) {
+      await openCurrentExercise();
+    }
   };
 
   if (
@@ -414,6 +473,10 @@ export function registerCommands(
     'aaltoOpenCsIde.refreshExercise',
     () => exerciseTreeProvider.refresh(),
   );
+  const openCurrentExerciseCommand = vscode.commands.registerCommand(
+    'aaltoOpenCsIde.openCurrentExercise',
+    () => openCurrentExercise(),
+  );
 
   const showAssignmentHandoutCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.showAssignmentHandout',
@@ -475,7 +538,7 @@ export function registerCommands(
       await makeCurrent(item?.assignment);
       await assignmentController.downloadAssignment(
         item?.assignment,
-        async () => {
+        async (downloaded) => {
           const session = await authService.getCurrentSession();
           if (session && item?.assignment) {
             await currentAssignmentRepository.save(
@@ -484,6 +547,7 @@ export function registerCommands(
             );
           }
           await refreshUiState();
+          await openAssignmentFile(downloaded.mainFile);
         },
       );
     },
@@ -506,7 +570,10 @@ export function registerCommands(
         : undefined;
       await assignmentController.downloadAssignment(
         assignment,
-        async () => refreshUiState(),
+        async (downloaded) => {
+          await refreshUiState();
+          await openAssignmentFile(downloaded.mainFile);
+        },
       );
     },
   );
@@ -526,7 +593,7 @@ export function registerCommands(
       await makeCurrent(item?.assignment);
       await assignmentController.redownloadAssignment(
         item?.assignment,
-        async () => {
+        async (downloaded) => {
           const session = await authService.getCurrentSession();
           if (session && item?.assignment) {
             await currentAssignmentRepository.save(
@@ -535,6 +602,7 @@ export function registerCommands(
             );
           }
           await refreshUiState();
+          await openAssignmentFile(downloaded.mainFile);
         },
       );
     },
@@ -581,6 +649,7 @@ export function registerCommands(
     signOutCommand,
     refreshCoursesCommand,
     refreshExerciseCommand,
+    openCurrentExerciseCommand,
     showAssignmentHandoutCommand,
     runCurrentAssignmentCommand,
     checkCurrentAssignmentSyntaxCommand,

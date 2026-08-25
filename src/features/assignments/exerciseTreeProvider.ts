@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import * as path from 'path';
 import { AuthService } from '../auth/authService';
 import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
@@ -11,6 +12,7 @@ class ExerciseFileTreeItem extends vscode.TreeItem {
   public constructor(
     public readonly uri: vscode.Uri,
     public readonly type: vscode.FileType,
+    public readonly parent?: ExerciseFileTreeItem,
   ) {
     super(
       uri.path.split('/').filter(Boolean).at(-1) ?? uri.fsPath,
@@ -36,6 +38,12 @@ export class ExerciseTreeProvider implements
   private watcher?: vscode.FileSystemWatcher;
   private watchedFolder?: string;
   private treeView?: vscode.TreeView<vscode.TreeItem>;
+  private activeFileOutsideCurrentExercise = false;
+  private activeEditorSequence = 0;
+  private readonly activeEditorListener =
+    vscode.window.onDidChangeActiveTextEditor(
+      () => void this.updateActiveEditorContext(),
+    );
 
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
@@ -59,13 +67,19 @@ export class ExerciseTreeProvider implements
     return element;
   }
 
+  public getParent(element: vscode.TreeItem): vscode.TreeItem | undefined {
+    return element instanceof ExerciseFileTreeItem
+      ? element.parent
+      : undefined;
+  }
+
   public async getChildren(
     element?: vscode.TreeItem,
   ): Promise<vscode.TreeItem[]> {
     if (element) {
       return element instanceof ExerciseFileTreeItem &&
           element.type === vscode.FileType.Directory
-        ? this.readDirectory(element.uri)
+        ? this.readDirectory(element.uri, element)
         : [];
     }
 
@@ -101,6 +115,9 @@ export class ExerciseTreeProvider implements
     );
     this.watch(folder);
     return [
+      ...(this.activeFileOutsideCurrentExercise
+        ? [createDifferentExerciseWarningItem()]
+        : []),
       createHandoutItem(assignment.name),
       ...(assignment.courseSlug === PYTHON_COURSE_SLUG
         ? [createSyntaxCheckItem(assignment.name)]
@@ -112,10 +129,40 @@ export class ExerciseTreeProvider implements
 
   public dispose(): void {
     this.disposeWatcher();
+    this.activeEditorListener.dispose();
     this.changeEmitter.dispose();
   }
 
-  private async readDirectory(uri: vscode.Uri): Promise<vscode.TreeItem[]> {
+  public async revealFile(file: vscode.Uri): Promise<void> {
+    if (!this.treeView) {
+      return;
+    }
+    const item = await this.findFileItem(await this.getChildren(), file);
+    if (!item) {
+      return;
+    }
+    await this.treeView.reveal(item, {
+      select: true,
+      focus: false,
+      expand: true,
+    });
+  }
+
+  public async updateActiveEditorContext(): Promise<void> {
+    const sequence = ++this.activeEditorSequence;
+    const outside = await this.isActiveFileOutsideCurrentExercise();
+    if (sequence !== this.activeEditorSequence ||
+        outside === this.activeFileOutsideCurrentExercise) {
+      return;
+    }
+    this.activeFileOutsideCurrentExercise = outside;
+    this.refresh();
+  }
+
+  private async readDirectory(
+    uri: vscode.Uri,
+    parent?: ExerciseFileTreeItem,
+  ): Promise<vscode.TreeItem[]> {
     const entries = await vscode.workspace.fs.readDirectory(uri);
     return entries
       .filter(([name]) => name !== METADATA_FILENAME)
@@ -129,7 +176,56 @@ export class ExerciseTreeProvider implements
       .map(([name, type]) => new ExerciseFileTreeItem(
         vscode.Uri.joinPath(uri, name),
         type,
+        parent,
       ));
+  }
+
+  private async findFileItem(
+    items: vscode.TreeItem[],
+    file: vscode.Uri,
+  ): Promise<ExerciseFileTreeItem | undefined> {
+    for (const item of items) {
+      if (!(item instanceof ExerciseFileTreeItem)) {
+        continue;
+      }
+      if (item.uri.toString() === file.toString()) {
+        return item;
+      }
+      if (item.type === vscode.FileType.Directory) {
+        const found = await this.findFileItem(
+          await this.getChildren(item),
+          file,
+        );
+        if (found) {
+          return found;
+        }
+      }
+    }
+    return undefined;
+  }
+
+  private async isActiveFileOutsideCurrentExercise(): Promise<boolean> {
+    const activeFile = vscode.window.activeTextEditor?.document.uri;
+    if (!activeFile || activeFile.scheme !== 'file') {
+      return false;
+    }
+    const session = await this.authService.getCurrentSession();
+    const assignment = session
+      ? this.currentAssignmentRepository.get(session.student.id)
+      : undefined;
+    const root = session
+      ? this.folderRepository.getRoot(session.student.id)
+      : undefined;
+    if (!session || !assignment || !root || root.scheme !== 'file' ||
+        !isEqualOrChild(activeFile, root)) {
+      return false;
+    }
+    const assignmentFolder = this.fileRepository.getAssignmentFolder(
+      root,
+      session.student.email,
+      assignment,
+    );
+    return !isEqualOrChild(activeFile, assignmentFolder);
   }
 
   private watch(folder: vscode.Uri): void {
@@ -161,6 +257,28 @@ export class ExerciseTreeProvider implements
       this.treeView.description = description;
     }
   }
+}
+
+function createDifferentExerciseWarningItem(): vscode.TreeItem {
+  const item = new vscode.TreeItem('Different exercise file open');
+  item.description = 'Open current exercise';
+  item.iconPath = new vscode.ThemeIcon('warning');
+  item.command = {
+    command: 'aaltoOpenCsIde.openCurrentExercise',
+    title: 'Open Current Exercise',
+  };
+  item.tooltip = 'The active editor belongs to another exercise. Open the current exercise instead.';
+  item.accessibilityInformation = {
+    label: 'Warning: a different exercise file is open. Open the current exercise.',
+  };
+  return item;
+}
+
+function isEqualOrChild(candidate: vscode.Uri, folder: vscode.Uri): boolean {
+  const relative = path.relative(folder.fsPath, candidate.fsPath);
+  return relative === '' ||
+    (!relative.startsWith(`..${path.sep}`) &&
+      relative !== '..' && !path.isAbsolute(relative));
 }
 
 function createHandoutItem(assignmentName: string): vscode.TreeItem {
