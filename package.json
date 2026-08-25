@@ -2,7 +2,7 @@
   "name": "aalto-opencs-ide",
   "displayName": "Aalto OpenCS IDE",
   "description": "Browse Aalto OpenCS courses, download programming assignments, and view grader feedback in compatible IDEs.",
-  "version": "0.1.0",
+  "version": "0.2.0-beta.1",
   "publisher": "aalto-opencs",
   "author": {
     "name": "Aalto OpenCS IDE extension contributors"

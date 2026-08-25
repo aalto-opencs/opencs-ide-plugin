@@ -4,6 +4,16 @@ All notable changes to Aalto OpenCS IDE will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.2.0-beta.1] - 2026-08-25
+
+- Automatically opened and revealed the preferred file for the current
+  downloaded exercise without switching to the native Explorer.
+- Added an Exercise-view warning and recovery action when a file from another
+  exercise is active.
+- Added **Run Current Exercise** to the Exercise view for runnable Introduction
+  to Programming downloads.
+- Increased the Exercise-tree test timeout for slower Windows CI hosts.
+
 ## [0.1.0] - 2026-08-24
 
 - Added native Account, Courses, and Submissions workflows.
