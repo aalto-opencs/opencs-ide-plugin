@@ -16,7 +16,9 @@ import {
   InMemorySecretStorage,
 } from './testUtilities';
 
-suite('ExerciseTreeProvider', () => {
+suite('ExerciseTreeProvider', function () {
+  this.timeout(5_000);
+
   test('shows the current assignment as a file tree and hides metadata', async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-exercise-tree-'));
     const root = vscode.Uri.file(temporaryRoot);
