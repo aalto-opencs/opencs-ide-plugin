@@ -4,7 +4,10 @@ import { AuthService } from '../auth/authService';
 import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
 import { CurrentAssignmentRepository } from './currentAssignmentRepository';
-import { PYTHON_COURSE_SLUG } from '../localExecution/localPythonExecutionService';
+import {
+  PYTHON_COURSE_SLUG,
+  PYTHON_ENTRYPOINT,
+} from '../localExecution/localPythonExecutionService';
 
 const METADATA_FILENAME = '.aalto-opencs-assignment.json';
 
@@ -113,12 +116,16 @@ export class ExerciseTreeProvider implements
       session.student.email,
       assignment,
     );
+    const runnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
+      assignment.courseSlug === PYTHON_COURSE_SLUG &&
+      await this.hasRunnableEntrypoint(folder);
     this.watch(folder);
     return [
       ...(this.activeFileOutsideCurrentExercise
         ? [createDifferentExerciseWarningItem()]
         : []),
       createHandoutItem(assignment.name),
+      ...(runnable ? [createRunItem(assignment.name)] : []),
       ...(assignment.courseSlug === PYTHON_COURSE_SLUG
         ? [createSyntaxCheckItem(assignment.name)]
         : []),
@@ -228,6 +235,17 @@ export class ExerciseTreeProvider implements
     return !isEqualOrChild(activeFile, assignmentFolder);
   }
 
+  private async hasRunnableEntrypoint(folder: vscode.Uri): Promise<boolean> {
+    try {
+      const stat = await vscode.workspace.fs.stat(
+        vscode.Uri.joinPath(folder, PYTHON_ENTRYPOINT),
+      );
+      return Boolean(stat.type & vscode.FileType.File);
+    } catch {
+      return false;
+    }
+  }
+
   private watch(folder: vscode.Uri): void {
     if (!this.watchFiles) {
       return;
@@ -307,6 +325,21 @@ function createSubmitItem(assignmentName: string): vscode.TreeItem {
   item.tooltip = 'Review and submit the files in the current exercise.';
   item.accessibilityInformation = {
     label: `Submit current exercise: ${assignmentName}`,
+  };
+  return item;
+}
+
+function createRunItem(assignmentName: string): vscode.TreeItem {
+  const item = new vscode.TreeItem('Run Current Exercise');
+  item.description = assignmentName;
+  item.iconPath = new vscode.ThemeIcon('play');
+  item.command = {
+    command: 'aaltoOpenCsIde.runCurrentAssignment',
+    title: 'Run Current Exercise',
+  };
+  item.tooltip = 'Run main.py for the current exercise in an interactive terminal.';
+  item.accessibilityInformation = {
+    label: `Run current exercise: ${assignmentName}`,
   };
   return item;
 }

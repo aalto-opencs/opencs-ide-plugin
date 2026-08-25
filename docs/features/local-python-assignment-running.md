@@ -16,7 +16,8 @@ run is a local convenience and does not replace platform grading.
 
 1. The student selects and downloads an Introduction to Programming exercise
    whose assignment root contains `main.py`.
-2. The **Run Assignment** editor-title action becomes visible and usable.
+2. **Run Current Exercise** appears in the Exercise view, and the editor-title
+   run action becomes visible and usable.
 3. When the student chooses it, the extension saves every unsaved document
    inside the current assignment folder.
 4. The extension snapshots the files selected by the assignment's submission
@@ -42,11 +43,13 @@ run is a local convenience and does not replace platform grading.
 
 ### Exercise view
 
-- The Exercise view does not currently provide a **Run Assignment** row or
-  title action.
-- For a downloaded assignment, that view provides the handout, the assignment
-  files, submission, and—only for Introduction to Programming—syntax checking.
-  Running remains available from the editor title.
+- The Exercise view shows **Run Current Exercise** only when the remembered
+  current exercise is runnable: it is a recognized downloaded Introduction to
+  Programming exercise in a desktop IDE and contains root-level `main.py`.
+- The row runs the remembered current exercise, regardless of which editor tab
+  is active.
+- Unsupported courses, web IDE hosts, missing downloads, and assignments
+  without root-level `main.py` do not show the row.
 
 ### Execution
 
@@ -93,7 +96,8 @@ run is a local convenience and does not replace platform grading.
 ## Edge Cases
 
 - A downloaded assignment from an unsupported course still makes the
-  editor-title action visible, but the action is disabled.
+  editor-title action visible but disabled, while the Exercise-view run row is
+  hidden.
 - An Introduction to Programming download without root-level `main.py` also
   leaves the editor-title action visible but disabled.
 - Only dirty documents inside the current assignment folder are saved. Files
@@ -129,7 +133,6 @@ run is a local convenience and does not replace platform grading.
 - Providing local execution for WSD, `test-course`, or other courses.
 - Running the active editor file or allowing the student to select an entry
   point.
-- Providing a Run button inside the Exercise view.
 - Reproducing the platform grader, tests, sandbox, or execution environment.
 - Inferring correctness, completion, or points from local execution.
 
