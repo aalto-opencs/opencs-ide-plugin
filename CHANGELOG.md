@@ -4,7 +4,7 @@ All notable changes to Aalto OpenCS IDE will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
-## [0.2.0-beta.1] - 2026-08-25
+## [0.2.0-beta] - 2026-08-25
 
 - Automatically opened and revealed the preferred file for the current
   downloaded exercise without switching to the native Explorer.
