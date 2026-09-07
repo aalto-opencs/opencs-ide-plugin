@@ -174,15 +174,6 @@ export class AssignmentController {
     }
   }
 
-  public async showAssignmentFolder(
-    assignment?: ProgrammingAssignment,
-  ): Promise<void> {
-    const location = await this.getDownloadedAssignmentLocation(assignment);
-    if (location) {
-      await vscode.commands.executeCommand('revealFileInOS', location.folder);
-    }
-  }
-
   public async redownloadAssignment(
     assignment?: ProgrammingAssignment,
     onDownloaded: (downloaded: DownloadedAssignment) => void | Promise<void> =

@@ -578,14 +578,6 @@ export function registerCommands(
     },
   );
 
-  const showAssignmentFolderCommand = vscode.commands.registerCommand(
-    'aaltoOpenCsIde.showAssignmentFolder',
-    async (item?: { assignment?: ProgrammingAssignment }) => {
-      await makeCurrent(item?.assignment);
-      await assignmentController.showAssignmentFolder(item?.assignment);
-    },
-  );
-
   const redownloadAssignmentCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.redownloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
@@ -662,7 +654,6 @@ export function registerCommands(
     downloadAssignmentCommand,
     selectAssignmentCommand,
     downloadCurrentAssignmentCommand,
-    showAssignmentFolderCommand,
     redownloadAssignmentCommand,
     submitAssignmentCommand,
     submitCurrentAssignmentCommand,

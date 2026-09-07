@@ -42,7 +42,6 @@
     "onCommand:aaltoOpenCsIde.selectCourse",
     "onCommand:aaltoOpenCsIde.selectAssignmentFolder",
     "onCommand:aaltoOpenCsIde.downloadAssignment",
-    "onCommand:aaltoOpenCsIde.showAssignmentFolder",
     "onCommand:aaltoOpenCsIde.redownloadAssignment",
     "onCommand:aaltoOpenCsIde.submitAssignment",
     "onCommand:aaltoOpenCsIde.runCurrentAssignment",
@@ -207,12 +206,6 @@
         "icon": "$(cloud-upload)"
       },
       {
-        "command": "aaltoOpenCsIde.showAssignmentFolder",
-        "title": "Aalto OpenCS IDE: Show Local Assignment Folder",
-        "shortTitle": "Show Local Folder",
-        "icon": "$(folder-opened)"
-      },
-      {
         "command": "aaltoOpenCsIde.redownloadAssignment",
         "title": "Aalto OpenCS IDE: Redownload Assignment",
         "shortTitle": "Redownload Assignment",
@@ -317,16 +310,6 @@
           "group": "navigation"
         },
         {
-          "command": "aaltoOpenCsIde.showAssignmentFolder",
-          "when": "view == aaltoOpenCsIde.courseParts && viewItem == completedDownloadedProgrammingExercise",
-          "group": "inline@1"
-        },
-        {
-          "command": "aaltoOpenCsIde.showAssignmentFolder",
-          "when": "view == aaltoOpenCsIde.courseParts && (viewItem == downloadedProgrammingExercise || viewItem == completedDownloadedProgrammingExercise)",
-          "group": "navigation@1"
-        },
-        {
           "command": "aaltoOpenCsIde.redownloadAssignment",
           "when": "view == aaltoOpenCsIde.courseParts && (viewItem == downloadedProgrammingExercise || viewItem == completedDownloadedProgrammingExercise)",
           "group": "navigation@2"
@@ -360,10 +343,6 @@
         },
         {
           "command": "aaltoOpenCsIde.submitCurrentAssignment",
-          "when": "false"
-        },
-        {
-          "command": "aaltoOpenCsIde.showAssignmentFolder",
           "when": "false"
         },
         {
