@@ -418,6 +418,7 @@
   },
   "scripts": {
     "vscode:prepublish": "npm run package",
+    "prepare:release": "npm run package && node scripts/prepare-release-package.js",
     "compile": "npm run check-types && npm run lint && node esbuild.js",
     "watch": "npm-run-all -p watch:*",
     "watch:esbuild": "node esbuild.js --watch",
