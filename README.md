@@ -1,9 +1,19 @@
 # Aalto OpenCS IDE
 
-Aalto OpenCS IDE is an extension for VS Code-compatible desktop editors,
-including VS Code and VSCodium. It lets students sign in to OpenCS, browse
-programming exercises, work on downloaded assignments locally, submit their
-files, and inspect grading results from the editor.
+Aalto OpenCS IDE is a student extension for VS Code-compatible desktop editors, including VS Code and VSCodium.
+It brings the OpenCS assignment workflow into the editor, from sign-in through grading results.
+Students work on local files while the OpenCS platform remains authoritative for course and grading data.
+
+## Quick navigation
+
+- [Overview](#overview)
+- [Student workflow](#student-workflow)
+- [Structure](#structure)
+- [How to use this repository](#how-to-use-this-repository)
+- [Configuration](#configuration)
+- [Development](#development)
+
+## Overview
 
 The OpenCS platform remains authoritative for authentication, enrolments,
 course structure, submissions, grading, points, and completion. The extension
@@ -23,10 +33,34 @@ is currently published as a preview.
 Only exercises whose platform type is `programming-exercise` are displayed and
 downloaded.
 
-## Documentation
+## Structure
 
-Current behavioral specifications are indexed in
-[Feature Documentation](docs/features/README.md). They cover:
+The source is organized by feature:
+
+```text
+src/
+├── commands/
+├── config/
+├── features/
+├── infrastructure/
+├── lifecycle/
+├── views/
+└── extension.ts
+```
+
+- Controllers own editor interactions.
+- Services coordinate workflows.
+- Repositories own API, persistence, and filesystem access.
+- Models define feature contracts and persisted data.
+- `src/commands/registerCommands.ts` wires the concrete implementation.
+
+## How to use this repository
+
+Start with the [feature documentation](docs/features/README.md) for current
+behavior. Then inspect the relevant folder under `src/features/` and its tests
+under `src/test/`.
+
+The feature documentation covers:
 
 - authentication and account management;
 - course selection and exercise navigation;
@@ -87,28 +121,6 @@ Real-platform integration tests are opt-in:
 
 They use the gitignored `.env.test.local`. Confirm the passing and pending
 counts because missing configuration causes integration cases to skip.
-
-## Architecture
-
-The source is organized by feature:
-
-```text
-src/
-├── commands/
-├── config/
-├── features/
-├── infrastructure/
-├── lifecycle/
-├── views/
-└── extension.ts
-```
-
-- Controllers own editor interactions.
-- Services coordinate workflows.
-- Repositories own API, persistence, and filesystem access.
-- Models define feature contracts and persisted data.
-- `src/commands/registerCommands.ts` is the composition root and chooses real
-  or mock implementations.
 
 ## Security and data boundaries
 
