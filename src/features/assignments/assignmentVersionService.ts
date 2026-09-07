@@ -1,5 +1,5 @@
 import { PlatformStatusService } from '../platformStatus/platformStatusService';
-import { DownloadedAssignmentMetadata } from './assignmentModels';
+import { AssignmentMetadata } from './assignmentModels';
 import { AssignmentRepository } from './assignmentRepository';
 
 export type AssignmentVersionStatus =
@@ -16,12 +16,8 @@ export class AssignmentVersionService {
 
   public async check(
     exerciseUuid: string,
-    metadata: DownloadedAssignmentMetadata,
+    metadata: AssignmentMetadata,
   ): Promise<AssignmentVersionStatus> {
-    if (metadata.schemaVersion === 1) {
-      return 'unverified';
-    }
-
     try {
       const currentHash = await this.assignmentRepository.getContentHash(
         exerciseUuid,

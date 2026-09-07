@@ -145,9 +145,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
         assignment,
       ),
       userId: session.student.id,
-      submissionFiles: metadata.schemaVersion === 3
-        ? metadata.submissionFiles
-        : undefined,
+      submissionFiles: metadata.submissionFiles,
     };
   }
 

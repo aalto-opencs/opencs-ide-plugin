@@ -52,11 +52,12 @@ suite('ExerciseTreeProvider', function () {
     await writeFile(
       vscode.Uri.joinPath(assignmentFolder, '.aalto-opencs-assignment.json').fsPath,
       JSON.stringify({
-        schemaVersion: 1,
+        schemaVersion: 3,
         exerciseUuid: assignment.exerciseUuid,
         exerciseType: assignment.type,
         courseSlug: assignment.courseSlug,
         courseInstanceId: assignment.courseInstanceId,
+        contentHash: '0123456789abcdef0123456789abcdef',
       }),
     );
     await writeFile(
@@ -130,11 +131,12 @@ suite('ExerciseTreeProvider', function () {
           '.aalto-opencs-assignment.json',
         ).fsPath,
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 3,
           exerciseUuid: pythonAssignment.exerciseUuid,
           exerciseType: pythonAssignment.type,
           courseSlug: pythonAssignment.courseSlug,
           courseInstanceId: pythonAssignment.courseInstanceId,
+          contentHash: '0123456789abcdef0123456789abcdef',
         }),
       );
       await writeFile(

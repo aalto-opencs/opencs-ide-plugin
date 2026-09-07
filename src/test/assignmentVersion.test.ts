@@ -1,8 +1,5 @@
 import * as assert from 'assert';
-import {
-  AssignmentMetadata,
-  LegacyAssignmentMetadata,
-} from '../features/assignments/assignmentModels';
+import { AssignmentMetadata } from '../features/assignments/assignmentModels';
 import { AssignmentRepository } from '../features/assignments/assignmentRepository';
 import { AssignmentVersionService } from '../features/assignments/assignmentVersionService';
 import { PlatformStatusRepository } from '../features/platformStatus/platformStatusRepository';
@@ -17,14 +14,6 @@ const metadata: AssignmentMetadata = {
   courseInstanceId: 42,
   contentHash,
 };
-const legacyMetadata: LegacyAssignmentMetadata = {
-  schemaVersion: 1,
-  exerciseUuid: metadata.exerciseUuid,
-  exerciseType: 'programming-exercise',
-  courseSlug: metadata.courseSlug,
-  courseInstanceId: metadata.courseInstanceId,
-};
-
 suite('Assignment version', () => {
   test('reports matching and changed assignment versions', async () => {
     const current = createService(async () => contentHash, true);
@@ -41,20 +30,6 @@ suite('Assignment version', () => {
       await changed.check(metadata.exerciseUuid, metadata),
       'changed',
     );
-  });
-
-  test('cannot verify legacy downloads without requesting the platform', async () => {
-    let hashRequests = 0;
-    const service = createService(async () => {
-      hashRequests += 1;
-      return contentHash;
-    }, true);
-
-    assert.strictEqual(
-      await service.check(metadata.exerciseUuid, legacyMetadata),
-      'unverified',
-    );
-    assert.strictEqual(hashRequests, 0);
   });
 
   test('distinguishes hash failures from platform unavailability', async () => {

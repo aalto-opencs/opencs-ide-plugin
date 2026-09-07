@@ -106,9 +106,7 @@ export class SubmissionController {
         },
         () => this.service.prepare(
           folder,
-          metadata.schemaVersion === 3
-            ? metadata.submissionFiles
-            : undefined,
+          metadata.submissionFiles,
         ),
       );
       const filePaths = Object.keys(prepared.files).sort();

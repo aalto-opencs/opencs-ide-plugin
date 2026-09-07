@@ -66,7 +66,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
       }
       const prepared = await this.submissionService.prepare(
         resolved.folder,
-        metadata.schemaVersion === 3 ? metadata.submissionFiles : undefined,
+        metadata.submissionFiles,
       );
       const result = await vscode.window.withProgress(
         {

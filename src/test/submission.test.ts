@@ -62,11 +62,12 @@ suite('Assignment submission', () => {
       await writeFile(
         join(folder.fsPath, '.aalto-opencs-assignment.json'),
         JSON.stringify({
-          schemaVersion: 1,
+          schemaVersion: 3,
           exerciseUuid: assignment.exerciseUuid,
           exerciseType: assignment.type,
           courseSlug: assignment.courseSlug,
           courseInstanceId: assignment.courseInstanceId,
+          contentHash: '0123456789abcdef0123456789abcdef',
         }),
       );
 
@@ -86,6 +87,27 @@ suite('Assignment submission', () => {
         ),
         false,
       );
+      for (const schemaVersion of [1, 2]) {
+        await writeFile(
+          join(folder.fsPath, '.aalto-opencs-assignment.json'),
+          JSON.stringify({
+            schemaVersion,
+            exerciseUuid: assignment.exerciseUuid,
+            exerciseType: assignment.type,
+            courseSlug: assignment.courseSlug,
+            courseInstanceId: assignment.courseInstanceId,
+            contentHash: '0123456789abcdef0123456789abcdef',
+          }),
+        );
+        assert.strictEqual(
+          await repository.isDownloadedAssignment(
+            vscode.Uri.file(root),
+            'student@example.com',
+            assignment,
+          ),
+          false,
+        );
+      }
     } finally {
       await rm(root, { recursive: true, force: true });
     }

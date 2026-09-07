@@ -87,9 +87,8 @@ copy while protecting the old copy if preparation or installation fails.
 
 ## Edge Cases
 
-- Legacy metadata schemas remain recognizable when their required fields match
-  the current exercise. Only current metadata carries both content hash and the
-  optional submission allowlist.
+- Only schema version 3 metadata is recognized. It carries both the content hash
+  and the optional submission allowlist.
 - Folder-name sanitization can make display names differ from local directory
   names; identity comes from metadata rather than the path alone.
 - Redownload does not create a persistent backup or use the operating-system

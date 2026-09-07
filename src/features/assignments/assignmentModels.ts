@@ -21,35 +21,15 @@ export interface ProgrammingExerciseStarter {
   submission_files?: string[] | null;
 }
 
-export interface LegacyAssignmentMetadata {
-  schemaVersion: 1;
-  exerciseUuid: string;
-  exerciseType: typeof PROGRAMMING_EXERCISE_TYPE;
-  courseSlug: string;
-  courseInstanceId: number | null;
-}
-
-export interface VersionedAssignmentMetadata {
-  schemaVersion: 2;
+export interface AssignmentMetadata {
+  schemaVersion: 3;
   exerciseUuid: string;
   exerciseType: typeof PROGRAMMING_EXERCISE_TYPE;
   courseSlug: string;
   courseInstanceId: number | null;
   contentHash: string;
-}
-
-export interface AssignmentMetadata extends Omit<
-  VersionedAssignmentMetadata,
-  'schemaVersion'
-> {
-  schemaVersion: 3;
   submissionFiles?: string[];
 }
-
-export type DownloadedAssignmentMetadata =
-  | AssignmentMetadata
-  | VersionedAssignmentMetadata
-  | LegacyAssignmentMetadata;
 
 export interface DownloadedAssignment {
   folder: vscode.Uri;

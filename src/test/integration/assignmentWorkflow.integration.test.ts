@@ -134,7 +134,7 @@ suite('Assignment workflow backend integration', () => {
           'Expected the handout to describe the configured assignment',
         );
         assert.deepStrictEqual(metadata, {
-          schemaVersion: 2,
+          schemaVersion: 3,
           exerciseUuid: configuration.exerciseUuid,
           exerciseType: PROGRAMMING_EXERCISE_TYPE,
           courseSlug: configuration.courseSlug,

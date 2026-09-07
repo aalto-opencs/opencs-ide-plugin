@@ -32,8 +32,7 @@ replacing local work.
 
 - The authenticated exercise `HEAD` response must provide a quoted, lowercase,
   32-character hexadecimal ETag.
-- Current metadata schemas store the validated hash. Legacy schema version 1
-  has no hash and is unverified without making a hash request.
+- Current metadata stores the validated hash.
 - A changed hash is advisory before submission because redownload would replace
   student work.
 - If the hash request fails but the public platform-status request succeeds,

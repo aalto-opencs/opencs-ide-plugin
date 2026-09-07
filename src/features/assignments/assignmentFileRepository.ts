@@ -3,7 +3,6 @@ import JSZip = require('jszip');
 import * as vscode from 'vscode';
 import {
   AssignmentMetadata,
-  DownloadedAssignmentMetadata,
   DownloadedAssignment,
   PROGRAMMING_EXERCISE_TYPE,
   ProgrammingAssignment,
@@ -269,7 +268,7 @@ export class AssignmentFileRepository {
     root: vscode.Uri,
     userEmail: string,
     assignment: ProgrammingAssignment,
-  ): Promise<DownloadedAssignmentMetadata | undefined> {
+  ): Promise<AssignmentMetadata | undefined> {
     const folder = this.getAssignmentFolder(root, userEmail, assignment);
 
     try {
@@ -391,18 +390,16 @@ function getSourceFilePriority(segments: string[]): number {
 function isMatchingMetadata(
   value: unknown,
   assignment: ProgrammingAssignment,
-): value is DownloadedAssignmentMetadata {
+): value is AssignmentMetadata {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) {
     return false;
   }
 
   const metadata = value as Record<string, unknown>;
-  const versionIsValid = metadata.schemaVersion === 1 ||
-    ((metadata.schemaVersion === 2 || metadata.schemaVersion === 3) &&
-      typeof metadata.contentHash === 'string' &&
-      /^[0-9a-f]{32}$/.test(metadata.contentHash) &&
-      (metadata.schemaVersion !== 3 ||
-        isSubmissionFiles(metadata.submissionFiles)));
+  const versionIsValid = metadata.schemaVersion === 3 &&
+    typeof metadata.contentHash === 'string' &&
+    /^[0-9a-f]{32}$/.test(metadata.contentHash) &&
+    isSubmissionFiles(metadata.submissionFiles);
 
   return versionIsValid &&
     metadata.exerciseUuid === assignment.exerciseUuid &&
