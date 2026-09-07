@@ -48,11 +48,11 @@ Search editor settings for **Aalto OpenCS IDE**.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | OpenCS API base URL. |
-| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Website used for browser sign-in. |
+| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | Development-only API base URL override. |
+| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Development-only website URL override. |
 | `aaltoOpenCsIde.pythonCommand` | empty | Local Python command; empty uses the operating-system default. |
 
-Local platform configuration:
+Local platform configuration for development builds:
 
 ```json
 {
@@ -87,6 +87,15 @@ Real-platform integration tests are opt-in:
 
 They use the gitignored `.env.test.local`. Confirm the passing and pending
 counts because missing configuration causes integration cases to skip.
+
+Prepare a release package with production URLs and without development URL
+settings:
+
+```bash
+./scripts/prepare-release.sh
+```
+
+The script creates the VSIX in `release/`.
 
 ## Architecture
 

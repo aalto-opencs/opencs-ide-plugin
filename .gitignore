@@ -5,3 +5,4 @@ node_modules
 *.vsix
 DEVELOPMENT_DIARY.md
 .env.test.local
+release/

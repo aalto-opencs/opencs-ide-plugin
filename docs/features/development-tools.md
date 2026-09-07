@@ -26,6 +26,10 @@ Host, the **Aalto OpenCS Test Tools** status item can:
   production API and website URLs.
 - **Current Development Layout** reuses the existing Extension Development Host
   profile and layout.
+- Development builds expose machine settings for overriding the API and website
+  URLs. The release package does not contribute those settings.
+- Run `./scripts/prepare-release.sh` to build a production bundle and create a
+  VSIX without development URL settings.
 
 ## Rules & Conditions
 
@@ -33,6 +37,8 @@ Host, the **Aalto OpenCS Test Tools** status item can:
   override the API and website URLs, but there is no mock API setting.
 - The production development profile overrides local URL settings only in a
   development-tools build when its profile environment value is active.
+- Production builds always use the production API and website URLs, even if old
+  URL values remain in editor settings.
 - Development completion overrides are stored only in memory and are scoped by
   student, course, course instance, and exercise.
 - Completion overrides affect Course Parts display only; they do not create
