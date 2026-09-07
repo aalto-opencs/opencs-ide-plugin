@@ -4,6 +4,15 @@ All notable changes to Aalto OpenCS IDE will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.3.0-beta] - 2026-09-07
+
+- Removed the obsolete local assignment-folder command from Course Parts.
+- Added release packaging that removes development URL settings and tools.
+- Require HTTPS for configured API and platform endpoints, except exact local
+  development hosts: `localhost`, `127.0.0.1`, and `[::1]`.
+- Reject malformed, credential-bearing, query, fragment, and non-HTTP(S)
+  endpoint values before authentication or API requests.
+
 ## [0.2.0-beta] - 2026-08-25
 
 - Automatically opened and revealed the preferred file for the current
