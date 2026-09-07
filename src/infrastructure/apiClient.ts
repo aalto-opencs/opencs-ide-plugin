@@ -1,4 +1,5 @@
 import { ApiError } from './apiError';
+import { validateEndpointUrl } from './endpointUrl';
 
 export type AuthenticationTokenProvider = () => Promise<
   string | undefined
@@ -12,12 +13,16 @@ export type AuthenticationTokenProvider = () => Promise<
  * expects the raw session token in Authorization, not a Bearer token.
  */
 export class ApiClient {
+  private readonly baseUrl: string;
+
   constructor(
-    private readonly baseUrl: string,
+    baseUrl: string,
     private readonly authenticationTokenProvider:
       AuthenticationTokenProvider = async () => undefined,
     private readonly timeoutMs = 10_000,
-  ) {}
+  ) {
+    this.baseUrl = validateEndpointUrl('API endpoint', baseUrl);
+  }
 
   public async get<TResponse>(path: string): Promise<TResponse> {
     return this.request<TResponse>(path, 'GET');

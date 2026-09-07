@@ -14,7 +14,15 @@ export async function activate(
   );
   await lifecycleService.initialize();
 
-  registerCommands(context);
+  try {
+    registerCommands(context);
+  } catch (error: unknown) {
+    await vscode.window.showErrorMessage(
+      error instanceof Error
+        ? error.message
+        : 'Extension endpoint configuration is invalid.',
+    );
+  }
 }
 
 export function deactivate(): void {

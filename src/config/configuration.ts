@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import { validateEndpointUrl } from '../infrastructure/endpointUrl';
+
+export { validateEndpointUrl } from '../infrastructure/endpointUrl';
 
 const CONFIGURATION_SECTION = 'aaltoOpenCsIde';
 const PRODUCTION_API_BASE_URL = 'https://opencs.aalto.fi/api';
@@ -15,17 +18,22 @@ export function getApiBaseUrl(): string {
   if (useProductionBaseUrls()) {
     return PRODUCTION_API_BASE_URL;
   }
-  return vscode.workspace
-    .getConfiguration(CONFIGURATION_SECTION)
-    .get<string>('apiBaseUrl', PRODUCTION_API_BASE_URL);
+  return validateEndpointUrl(
+    'aaltoOpenCsIde.apiBaseUrl',
+    vscode.workspace
+      .getConfiguration(CONFIGURATION_SECTION)
+      .get<string>('apiBaseUrl', PRODUCTION_API_BASE_URL),
+  );
 }
 
 export function getPlatformBaseUrl(): string {
   if (useProductionBaseUrls()) {
     return PRODUCTION_PLATFORM_BASE_URL;
   }
-  return vscode.workspace
-    .getConfiguration(CONFIGURATION_SECTION)
-    .get<string>('platformBaseUrl', PRODUCTION_PLATFORM_BASE_URL)
-    .replace(/\/+$/, '');
+  return validateEndpointUrl(
+    'aaltoOpenCsIde.platformBaseUrl',
+    vscode.workspace
+      .getConfiguration(CONFIGURATION_SECTION)
+      .get<string>('platformBaseUrl', PRODUCTION_PLATFORM_BASE_URL),
+  );
 }

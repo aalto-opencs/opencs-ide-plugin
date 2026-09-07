@@ -82,8 +82,8 @@ Search editor settings for **Aalto OpenCS IDE**.
 
 | Setting | Default | Purpose |
 | --- | --- | --- |
-| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | Development-only API base URL override. |
-| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Development-only website URL override. |
+| `aaltoOpenCsIde.apiBaseUrl` | `https://opencs.aalto.fi/api` | Development-only API base URL override. HTTPS required; HTTP allowed only for localhost, `127.0.0.1`, or `[::1]`. |
+| `aaltoOpenCsIde.platformBaseUrl` | `https://opencs.aalto.fi` | Development-only website URL override. HTTPS required; HTTP allowed only for localhost, `127.0.0.1`, or `[::1]`. |
 | `aaltoOpenCsIde.pythonCommand` | empty | Local Python command; empty uses the operating-system default. |
 
 Local platform configuration for development builds:
@@ -94,6 +94,10 @@ Local platform configuration for development builds:
   "aaltoOpenCsIde.platformBaseUrl": "http://localhost:7799"
 }
 ```
+
+Endpoint overrides must be valid HTTP(S) base URLs without credentials, query
+strings, or fragments. Invalid values stop extension initialization and show the
+invalid setting name. Release builds always use the HTTPS production defaults.
 
 ## Development
 

@@ -4,6 +4,22 @@ import { ApiError } from '../infrastructure/apiError';
 import { startTestHttpServer } from './testUtilities';
 
 suite('ApiClient', () => {
+  test('rejects unsafe base URL before reading the session token', () => {
+    let tokenRead = false;
+
+    assert.throws(
+      () => new ApiClient(
+        'http://platform.example.test/api',
+        async () => {
+          tokenRead = true;
+          return 'raw-session-token';
+        },
+      ),
+      /API endpoint/,
+    );
+    assert.strictEqual(tokenRead, false);
+  });
+
   test('preserves a backend JSON error message', async () => {
     const server = await startTestHttpServer((_request, response) => {
       response.writeHead(401, { 'Content-Type': 'application/json' });

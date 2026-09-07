@@ -75,6 +75,7 @@ export function registerCommands(
   context: vscode.ExtensionContext,
 ): void {
   const apiBaseUrl = getApiBaseUrl();
+  const platformBaseUrl = getPlatformBaseUrl();
   // The session repository must exist before the authenticated client because
   // the token provider reads SecretStorage again for every request.
   const sessionRepository = new SessionRepository(context.secrets);
@@ -258,7 +259,7 @@ export function registerCommands(
 
   const authController = new AuthController(
     authService,
-    getPlatformBaseUrl(),
+    platformBaseUrl,
     context.extension.id,
   );
   const accountController = new AccountController(

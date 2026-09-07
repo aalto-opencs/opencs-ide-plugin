@@ -28,6 +28,9 @@ Host, the **Aalto OpenCS Test Tools** status item can:
   profile and layout.
 - Development builds expose machine settings for overriding the API and website
   URLs. The release package does not contribute those settings.
+- Endpoint overrides must use HTTPS. HTTP is allowed only for exact local hosts:
+  `localhost`, `127.0.0.1`, or `[::1]`. URLs with credentials, query strings,
+  fragments, invalid syntax, or other schemes are rejected before initialization.
 - Run `./scripts/prepare-release.sh` to build a production bundle and create a
   VSIX without development URL settings.
 
