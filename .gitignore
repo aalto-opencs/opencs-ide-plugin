@@ -1,6 +1,7 @@
 out
 dist
 node_modules
+.DS_Store
 .vscode-test/
 *.vsix
 DEVELOPMENT_DIARY.md
@@ -8,5 +9,5 @@ DEVELOPMENT_DIARY.md
 release/
 .agents
 AGENTS.md
-skills-llock.json     
+skills-lock.json
 docs/agents/
