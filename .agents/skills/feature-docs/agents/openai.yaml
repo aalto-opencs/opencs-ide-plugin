@@ -1,4 +1,0 @@
-interface:
-  display_name: "Feature Docs"
-  short_description: "Maintain living behavioral feature documentation"
-  default_prompt: "Use $feature-docs to document the current behavior of the feature we just changed."
