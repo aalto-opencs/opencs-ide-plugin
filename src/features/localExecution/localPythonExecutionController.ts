@@ -5,6 +5,7 @@ import { AssignmentActivityRepository } from '../assignmentActivity/assignmentAc
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
+import { PublicTestRunner } from '../assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 import { AuthService } from '../auth/authService';
 import { LocalPythonExecutionService } from './localPythonExecutionService';
@@ -38,7 +39,10 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       vscode.env.uiKind === vscode.UIKind.Desktop &&
       vscode.workspace.isTrusted &&
       resolved && this.service.supports(resolved.assignment) &&
-      await this.service.hasEntrypoint(resolved.folder),
+      await this.service.hasEntrypoint(
+        resolved.folder,
+        resolved.publicTestRunner,
+      ),
     );
     if (sequence !== this.contextSequence) {
       return;
@@ -54,7 +58,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     const clickedAt = new Date().toISOString();
     if (vscode.env.uiKind !== vscode.UIKind.Desktop) {
       await vscode.window.showInformationMessage(
-        'Local Python execution is available only in the desktop IDE.',
+        'Local code execution is available only in the desktop IDE.',
       );
       return;
     }
@@ -74,7 +78,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     }
     if (!this.service.supports(resolved.assignment)) {
       await vscode.window.showInformationMessage(
-        'Local running is currently supported only for Introduction to Programming assignments.',
+        'Local running is not available for this assignment.',
       );
       return;
     }
@@ -94,6 +98,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       const run = await this.service.prepare(
         resolved.assignment,
         resolved.folder,
+        resolved.publicTestRunner,
       );
       const terminal = vscode.window.createTerminal({
         name: `Aalto OpenCS: ${resolved.assignment.name}`,
@@ -123,6 +128,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     folder: vscode.Uri;
     userId: number;
     submissionFiles?: string[];
+    publicTestRunner?: PublicTestRunner;
   } | undefined> {
     const session = await this.authService.getCurrentSession();
     if (!session) {
@@ -153,6 +159,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       ),
       userId: session.student.id,
       submissionFiles: metadata.submissionFiles,
+      publicTestRunner: metadata.publicTestRunner,
     };
   }
 

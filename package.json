@@ -248,7 +248,7 @@
         "title": "Aalto OpenCS IDE: Check Assignment Syntax",
         "shortTitle": "Check Syntax",
         "icon": "$(check)",
-        "enablement": "aaltoOpenCsIde.currentAssignmentRunnable"
+        "enablement": "aaltoOpenCsIde.currentAssignmentSyntaxRunnable"
       },
       {
         "command": "aaltoOpenCsIde.runCurrentPublicTests",

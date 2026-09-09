@@ -8,11 +8,12 @@ import { CollectedSubmission } from '../submissions/submissionModels';
 import { SubmissionService } from '../submissions/submissionService';
 import {
   PythonSyntaxCheckResult,
-  PythonSyntaxCheckService,
 } from './pythonSyntaxCheckService';
+import { SyntaxCheckService } from './syntaxCheckService';
 import { isEqualOrChild } from './localPythonExecutionController';
 
 export type SubmissionSyntaxDecision = 'passed' | 'continue' | 'cancel';
+const SYNTAX_CHECK_CONTEXT = 'aaltoOpenCsIde.currentAssignmentSyntaxRunnable';
 
 /** Owns syntax-check UI, source diagnostics, and error navigation. */
 export class PythonSyntaxCheckController implements vscode.Disposable {
@@ -24,13 +25,23 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
   );
 
   public constructor(
-    private readonly service: PythonSyntaxCheckService,
+    private readonly service: SyntaxCheckService,
     private readonly submissionService: SubmissionService,
     private readonly authService: AuthService,
     private readonly folderRepository: AssignmentFolderRepository,
     private readonly assignmentFileRepository: AssignmentFileRepository,
     private readonly currentAssignmentRepository: CurrentAssignmentRepository,
   ) {}
+
+  public async updateSyntaxContext(): Promise<void> {
+    const resolved = await this.resolveCurrentAssignment();
+    await vscode.commands.executeCommand(
+      'setContext',
+      SYNTAX_CHECK_CONTEXT,
+      vscode.env.uiKind === vscode.UIKind.Desktop &&
+        Boolean(resolved && this.service.supports(resolved.assignment)),
+    );
+  }
 
   public async checkCurrentAssignment(): Promise<void> {
     if (vscode.env.uiKind !== vscode.UIKind.Desktop) {
@@ -48,7 +59,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
     }
     if (!this.service.supports(resolved.assignment)) {
       await vscode.window.showInformationMessage(
-        'Syntax checking is currently available only for Introduction to Programming assignments.',
+        'Syntax checking is not available for this assignment.',
       );
       return;
     }
@@ -141,7 +152,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
     this.setDiagnostics(prepared, result);
     if (result.status === 'passed') {
       await vscode.window.showInformationMessage(
-        `Syntax check passed. No Python syntax errors were found in ${result.checkedFiles} ${result.checkedFiles === 1 ? 'file' : 'files'}.`,
+        `Syntax check passed. No ${this.service.languageLabel} syntax errors were found in ${result.checkedFiles} ${result.checkedFiles === 1 ? 'file' : 'files'}.`,
       );
     } else if (result.status === 'errors') {
       await this.revealFirstError(prepared, result);
@@ -165,10 +176,14 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
     for (const error of result.errors) {
       const line = Math.max(0, error.line - 1);
       const column = Math.max(0, error.column - 1);
-      const diagnostic = new vscode.Diagnostic(
+        const diagnostic = new vscode.Diagnostic(
         new vscode.Range(line, column, line, column + 1),
-        error.message,
-        vscode.DiagnosticSeverity.Error,
+          error.message,
+          error.severity === 'warning'
+            ? vscode.DiagnosticSeverity.Warning
+            : error.severity === 'info'
+            ? vscode.DiagnosticSeverity.Information
+            : vscode.DiagnosticSeverity.Error,
       );
       diagnostic.source = 'Aalto OpenCS Syntax Check';
       const existing = grouped.get(error.filePath) ?? [];

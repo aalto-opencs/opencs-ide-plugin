@@ -1,5 +1,10 @@
 import * as vscode from 'vscode';
-import { ProgrammingAssignment } from '../assignments/assignmentModels';
+import {
+  isPublicTestRunner,
+  ProgrammingAssignment,
+  PublicTestRunner,
+} from '../assignments/assignmentModels';
+import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from '../assignments/publicTestRunnerDetector';
 
 export const PYTHON_COURSE_SLUG = 'introduction-to-programming';
 export const PYTHON_ENTRYPOINT = 'main.py';
@@ -16,15 +21,22 @@ export class LocalPythonExecutionService {
   ) {}
 
   public supports(assignment: ProgrammingAssignment): boolean {
-    return assignment.courseSlug === PYTHON_COURSE_SLUG;
+    return assignment.courseSlug === PYTHON_COURSE_SLUG ||
+      assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
   }
 
-  public async hasEntrypoint(folder: vscode.Uri): Promise<boolean> {
+  public async hasEntrypoint(
+    folder: vscode.Uri,
+    publicTestRunner?: PublicTestRunner,
+  ): Promise<boolean> {
+    if (publicTestRunner && isPublicTestRunner(publicTestRunner)) {
+      if (publicTestRunner === 'dart-main-test') {
+        return this.hasFile(folder, 'main.dart');
+      }
+      return this.hasFile(folder, 'pubspec.yaml');
+    }
     try {
-      const stat = await vscode.workspace.fs.stat(
-        vscode.Uri.joinPath(folder, PYTHON_ENTRYPOINT),
-      );
-      return Boolean(stat.type & vscode.FileType.File);
+      return await this.hasFile(folder, PYTHON_ENTRYPOINT);
     } catch {
       return false;
     }
@@ -33,11 +45,32 @@ export class LocalPythonExecutionService {
   public async prepare(
     assignment: ProgrammingAssignment,
     folder: vscode.Uri,
+    publicTestRunner?: PublicTestRunner,
   ): Promise<LocalPythonRun> {
     if (!this.supports(assignment)) {
       throw new Error(
-        'Local running is currently supported only for Introduction to Programming assignments.',
+        'Local running is not available for this assignment.',
       );
+    }
+    if (assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) {
+      if (!publicTestRunner || !isPublicTestRunner(publicTestRunner)) {
+        throw new Error(
+          'Redownload the assignment before running its Dart or Flutter code.',
+        );
+      }
+      if (!await this.hasEntrypoint(folder, publicTestRunner)) {
+        throw new Error(
+          'The downloaded assignment does not contain the required Dart or Flutter entrypoint.',
+        );
+      }
+      return {
+        cwd: folder,
+        command: publicTestRunner === 'flutter-test'
+          ? 'flutter run'
+          : publicTestRunner === 'dart-main-test'
+          ? 'dart run main.dart'
+          : 'dart run',
+      };
     }
     if (!await this.hasEntrypoint(folder)) {
       throw new Error('The downloaded assignment does not contain main.py.');
@@ -53,6 +86,17 @@ export class LocalPythonExecutionService {
       cwd: folder,
       command: `${pythonCommand} ${PYTHON_ENTRYPOINT}`,
     };
+  }
+
+  private async hasFile(folder: vscode.Uri, fileName: string): Promise<boolean> {
+    try {
+      const stat = await vscode.workspace.fs.stat(
+        vscode.Uri.joinPath(folder, fileName),
+      );
+      return Boolean(stat.type & vscode.FileType.File);
+    } catch {
+      return false;
+    }
   }
 }
 

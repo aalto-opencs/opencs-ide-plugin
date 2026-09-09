@@ -12,6 +12,9 @@ import {
   PublicTestExecutionService,
 } from '../features/localExecution/publicTestExecutionService';
 import {
+  DartFlutterSyntaxCheckService,
+} from '../features/localExecution/dartFlutterSyntaxCheckService';
+import {
   parsePythonCommand,
   PythonSyntaxCheckService,
 } from '../features/localExecution/pythonSyntaxCheckService';
@@ -22,6 +25,13 @@ const pythonAssignment: ProgrammingAssignment = {
   type: 'programming-exercise',
   courseSlug: 'introduction-to-programming',
   courseInstanceId: 1,
+};
+
+const crossPlatformAssignment: ProgrammingAssignment = {
+  ...pythonAssignment,
+  exerciseUuid: 'dart-exercise',
+  name: 'Dart exercise',
+  courseSlug: 'cross-platform-development',
 };
 
 suite('LocalPythonExecutionService', () => {
@@ -71,6 +81,41 @@ suite('LocalPythonExecutionService', () => {
       await assert.rejects(
         () => service.prepare(pythonAssignment, vscode.Uri.file(temporaryRoot)),
         /valid Python command/,
+      );
+    } finally {
+      await rm(temporaryRoot, { recursive: true, force: true });
+    }
+  });
+
+  test('prepares Dart and Flutter run commands from the public-test runner', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-dart-run-'));
+    try {
+      await writeFile(join(temporaryRoot, 'main.dart'), 'void main() {}\n');
+      await writeFile(join(temporaryRoot, 'pubspec.yaml'), 'name: sample\n');
+      const service = new LocalPythonExecutionService(() => 'python3');
+      assert.strictEqual(
+        (await service.prepare(
+          crossPlatformAssignment,
+          vscode.Uri.file(temporaryRoot),
+          'dart-main-test',
+        )).command,
+        'dart run main.dart',
+      );
+      assert.strictEqual(
+        (await service.prepare(
+          crossPlatformAssignment,
+          vscode.Uri.file(temporaryRoot),
+          'dart-test',
+        )).command,
+        'dart run',
+      );
+      assert.strictEqual(
+        (await service.prepare(
+          crossPlatformAssignment,
+          vscode.Uri.file(temporaryRoot),
+          'flutter-test',
+        )).command,
+        'flutter run',
       );
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true });
@@ -183,5 +228,69 @@ suite('PythonSyntaxCheckService', () => {
       parsePythonCommand('C:\\Python311\\python.exe -u'),
       ['C:\\Python311\\python.exe', '-u'],
     );
+  });
+});
+
+suite('DartFlutterSyntaxCheckService', () => {
+  test('runs Dart analyze and maps machine diagnostics to source files', async () => {
+    let invocation: { executable: string; args: string[]; cwd: string } | undefined;
+    const service = new DartFlutterSyntaxCheckService(
+      async (executable, args, cwd) => {
+        invocation = { executable, args, cwd };
+        return {
+          exitCode: 1,
+          stdout: [
+            'ERROR|COMPILE_TIME_ERROR|UNDEFINED_IDENTIFIER|/assignment/lib/main.dart|4|5|3|Undefined name.|',
+          ].join('\n'),
+        };
+      },
+    );
+    const result = await service.check(crossPlatformAssignment, {
+      folder: vscode.Uri.file('/assignment'),
+      files: {
+        'pubspec.yaml': 'name: sample\n',
+        'lib/main.dart': 'void main() {}\n',
+      },
+    });
+
+    assert.deepStrictEqual(invocation, {
+      executable: 'dart',
+      args: ['analyze', '--format', 'machine', 'lib/main.dart'],
+      cwd: '/assignment',
+    });
+    assert.deepStrictEqual(result, {
+      status: 'errors',
+      checkedFiles: 1,
+      errors: [{
+        filePath: 'lib/main.dart',
+        line: 4,
+        column: 5,
+        message: 'Undefined name.',
+        severity: 'error',
+      }],
+    });
+  });
+
+  test('uses Flutter analyze for Flutter projects', async () => {
+    let executable = '';
+    let args: string[] = [];
+    const service = new DartFlutterSyntaxCheckService(
+      async (actualExecutable, actualArgs) => {
+        executable = actualExecutable;
+        args = actualArgs;
+        return { exitCode: 0, stdout: '' };
+      },
+    );
+    const result = await service.check(crossPlatformAssignment, {
+      folder: vscode.Uri.file('/assignment'),
+      files: {
+        'pubspec.yaml': 'dependencies:\n  flutter:\n    sdk: flutter\n',
+        'lib/main.dart': 'void main() {}\n',
+      },
+    });
+
+    assert.strictEqual(executable, 'flutter');
+    assert.deepStrictEqual(args, ['analyze', '--machine', 'lib/main.dart']);
+    assert.deepStrictEqual(result, { status: 'passed', checkedFiles: 1 });
   });
 });

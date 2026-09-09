@@ -251,13 +251,14 @@ suite('ExerciseTreeProvider', function () {
       const children = await provider.getChildren();
       assert.deepStrictEqual(children.map((item) => String(item.label)), [
         'Show Assignment Handout',
+        'Check Syntax',
         'Run Public Tests',
         'Submit Current Exercise',
         'assignment-handout.md',
         'main_test.dart',
       ]);
       assert.strictEqual(
-        children[1].command?.command,
+        children[2].command?.command,
         'aaltoOpenCsIde.runCurrentPublicTests',
       );
     } finally {

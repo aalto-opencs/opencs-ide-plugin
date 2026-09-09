@@ -8,6 +8,7 @@ import {
   PYTHON_COURSE_SLUG,
   PYTHON_ENTRYPOINT,
 } from '../localExecution/localPythonExecutionService';
+import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from './publicTestRunnerDetector';
 
 const METADATA_FILENAME = '.aalto-opencs-assignment.json';
 
@@ -118,8 +119,13 @@ export class ExerciseTreeProvider implements
     );
     const runnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
       vscode.workspace.isTrusted &&
-      assignment.courseSlug === PYTHON_COURSE_SLUG &&
-      await this.hasRunnableEntrypoint(folder);
+      await this.hasRunnableEntrypoint(
+        folder,
+        assignment.courseSlug,
+        metadata.publicTestRunner,
+      );
+    const syntaxCheckRunnable = assignment.courseSlug === PYTHON_COURSE_SLUG ||
+      assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
     const publicTestRunnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
       vscode.workspace.isTrusted && Boolean(metadata.publicTestRunner);
     this.watch(folder);
@@ -129,7 +135,7 @@ export class ExerciseTreeProvider implements
         : []),
       createHandoutItem(assignment.name),
       ...(runnable ? [createRunItem(assignment.name)] : []),
-      ...(assignment.courseSlug === PYTHON_COURSE_SLUG
+      ...(syntaxCheckRunnable
         ? [createSyntaxCheckItem(assignment.name)]
         : []),
       ...(publicTestRunnable ? [createPublicTestItem(assignment.name)] : []),
@@ -239,10 +245,28 @@ export class ExerciseTreeProvider implements
     return !isEqualOrChild(activeFile, assignmentFolder);
   }
 
-  private async hasRunnableEntrypoint(folder: vscode.Uri): Promise<boolean> {
+  private async hasRunnableEntrypoint(
+    folder: vscode.Uri,
+    courseSlug: string,
+    publicTestRunner?: string,
+  ): Promise<boolean> {
+    if (courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) {
+      return publicTestRunner === 'dart-main-test'
+        ? await this.hasFile(folder, 'main.dart')
+        : (publicTestRunner === 'dart-test' ||
+            publicTestRunner === 'flutter-test') &&
+          await this.hasFile(folder, 'pubspec.yaml');
+    }
+    if (courseSlug !== PYTHON_COURSE_SLUG) {
+      return false;
+    }
+    return this.hasFile(folder, PYTHON_ENTRYPOINT);
+  }
+
+  private async hasFile(folder: vscode.Uri, fileName: string): Promise<boolean> {
     try {
       const stat = await vscode.workspace.fs.stat(
-        vscode.Uri.joinPath(folder, PYTHON_ENTRYPOINT),
+        vscode.Uri.joinPath(folder, fileName),
       );
       return Boolean(stat.type & vscode.FileType.File);
     } catch {

@@ -65,6 +65,8 @@ import { PublicTestExecutionController } from '../features/localExecution/public
 import { PublicTestExecutionService } from '../features/localExecution/publicTestExecutionService';
 import { PythonSyntaxCheckController } from '../features/localExecution/pythonSyntaxCheckController';
 import { PythonSyntaxCheckService } from '../features/localExecution/pythonSyntaxCheckService';
+import { DartFlutterSyntaxCheckService } from '../features/localExecution/dartFlutterSyntaxCheckService';
+import { CompositeSyntaxCheckService } from '../features/localExecution/syntaxCheckService';
 
 /**
  * Extension composition root.
@@ -227,7 +229,10 @@ export function registerCommands(
     new SubmissionFileRepository(),
   );
   const pythonSyntaxCheckController = new PythonSyntaxCheckController(
-    new PythonSyntaxCheckService(),
+    new CompositeSyntaxCheckService([
+      new PythonSyntaxCheckService(),
+      new DartFlutterSyntaxCheckService(),
+    ]),
     submissionService,
     authService,
     assignmentFolderRepository,
@@ -348,6 +353,7 @@ export function registerCommands(
     submissionTreeProvider.refresh();
     await assignmentHandoutViewProvider.refresh();
     await localPythonExecutionController.updateRunContext();
+    await pythonSyntaxCheckController.updateSyntaxContext();
     await publicTestExecutionController.updateRunContext();
     await exerciseTreeProvider.updateActiveEditorContext();
     await courseController.showSelectedInstanceEndWarning();
@@ -518,6 +524,7 @@ export function registerCommands(
   const workspaceTrustListener = vscode.workspace.onDidGrantWorkspaceTrust(
     () => {
       void localPythonExecutionController.updateRunContext();
+      void pythonSyntaxCheckController.updateSyntaxContext();
       void publicTestExecutionController.updateRunContext();
       exerciseTreeProvider.refresh();
     },

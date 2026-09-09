@@ -5,18 +5,14 @@ import { dirname, join } from 'path';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
 import { CollectedSubmission } from '../submissions/submissionModels';
 import { getPythonCommand, PYTHON_COURSE_SLUG } from './localPythonExecutionService';
+import {
+  SyntaxCheckError,
+  SyntaxCheckResult,
+  SyntaxCheckService,
+} from './syntaxCheckService';
 
-export interface PythonSyntaxError {
-  filePath: string;
-  line: number;
-  column: number;
-  message: string;
-}
-
-export type PythonSyntaxCheckResult =
-  | { status: 'passed'; checkedFiles: number }
-  | { status: 'errors'; checkedFiles: number; errors: PythonSyntaxError[] }
-  | { status: 'unavailable'; message: string };
+export type PythonSyntaxError = SyntaxCheckError;
+export type PythonSyntaxCheckResult = SyntaxCheckResult;
 
 interface PythonProcessResult {
   exitCode: number;
@@ -29,7 +25,9 @@ type PythonExecutor = (
 ) => Promise<PythonProcessResult>;
 
 /** Checks submitted Python source without running student programs. */
-export class PythonSyntaxCheckService {
+export class PythonSyntaxCheckService implements SyntaxCheckService {
+  public readonly languageLabel = 'Python';
+
   public constructor(
     private readonly pythonCommandProvider: () => string = getPythonCommand,
     private readonly execute: PythonExecutor = executePythonCheck,
