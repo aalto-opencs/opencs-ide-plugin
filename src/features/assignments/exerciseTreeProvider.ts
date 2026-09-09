@@ -100,13 +100,13 @@ export class ExerciseTreeProvider implements
       return [];
     }
 
-    const downloaded = await this.fileRepository.isDownloadedAssignment(
+    const metadata = await this.fileRepository.getDownloadedAssignmentMetadata(
       root,
       session.student.email,
       assignment,
     );
     this.setDescription(assignment.name);
-    if (!downloaded) {
+    if (!metadata) {
       this.disposeWatcher();
       return [];
     }
@@ -117,8 +117,11 @@ export class ExerciseTreeProvider implements
       assignment,
     );
     const runnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
+      vscode.workspace.isTrusted &&
       assignment.courseSlug === PYTHON_COURSE_SLUG &&
       await this.hasRunnableEntrypoint(folder);
+    const publicTestRunnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
+      vscode.workspace.isTrusted && Boolean(metadata.publicTestRunner);
     this.watch(folder);
     return [
       ...(this.activeFileOutsideCurrentExercise
@@ -129,6 +132,7 @@ export class ExerciseTreeProvider implements
       ...(assignment.courseSlug === PYTHON_COURSE_SLUG
         ? [createSyntaxCheckItem(assignment.name)]
         : []),
+      ...(publicTestRunnable ? [createPublicTestItem(assignment.name)] : []),
       createSubmitItem(assignment.name),
       ...await this.readDirectory(folder),
     ];
@@ -355,6 +359,21 @@ function createSyntaxCheckItem(assignmentName: string): vscode.TreeItem {
   item.tooltip = 'Check submitted Python files for syntax errors without running them.';
   item.accessibilityInformation = {
     label: `Check syntax for current exercise: ${assignmentName}`,
+  };
+  return item;
+}
+
+function createPublicTestItem(assignmentName: string): vscode.TreeItem {
+  const item = new vscode.TreeItem('Run Public Tests');
+  item.description = assignmentName;
+  item.iconPath = new vscode.ThemeIcon('beaker');
+  item.command = {
+    command: 'aaltoOpenCsIde.runCurrentPublicTests',
+    title: 'Run Public Tests',
+  };
+  item.tooltip = 'Run the supplied public tests locally without submitting code.';
+  item.accessibilityInformation = {
+    label: `Run public tests for current exercise: ${assignmentName}`,
   };
   return item;
 }

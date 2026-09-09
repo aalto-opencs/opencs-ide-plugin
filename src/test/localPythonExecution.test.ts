@@ -9,6 +9,9 @@ import {
   LocalPythonExecutionService,
 } from '../features/localExecution/localPythonExecutionService';
 import {
+  PublicTestExecutionService,
+} from '../features/localExecution/publicTestExecutionService';
+import {
   parsePythonCommand,
   PythonSyntaxCheckService,
 } from '../features/localExecution/pythonSyntaxCheckService';
@@ -72,6 +75,27 @@ suite('LocalPythonExecutionService', () => {
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true });
     }
+  });
+});
+
+suite('PublicTestExecutionService', () => {
+  const folder = vscode.Uri.file('/assignment');
+
+  test('prepares each supported fixed runner command', () => {
+    const service = new PublicTestExecutionService();
+
+    assert.deepStrictEqual(service.prepare(folder, 'dart-test'), {
+      cwd: folder,
+      command: 'dart test',
+    });
+    assert.deepStrictEqual(service.prepare(folder, 'dart-main-test'), {
+      cwd: folder,
+      command: 'dart run main_test.dart',
+    });
+    assert.deepStrictEqual(service.prepare(folder, 'flutter-test'), {
+      cwd: folder,
+      command: 'flutter test',
+    });
   });
 });
 

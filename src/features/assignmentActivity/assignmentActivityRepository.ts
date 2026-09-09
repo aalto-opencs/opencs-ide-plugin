@@ -92,7 +92,8 @@ function isAssignmentActivityEvent(
     /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i.test(event.id) &&
     typeof event.timestamp === 'string' &&
     !Number.isNaN(Date.parse(event.timestamp)) &&
-    (event.action === 'run' || event.action === 'submit') &&
+    (event.action === 'run' || event.action === 'public-test' ||
+      event.action === 'submit') &&
     isTextFileMap(event.files);
 }
 

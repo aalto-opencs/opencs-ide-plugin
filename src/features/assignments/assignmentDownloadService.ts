@@ -6,6 +6,7 @@ import {
 } from './assignmentModels';
 import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentRepository } from './assignmentRepository';
+import { detectPublicTestRunner } from './publicTestRunnerDetector';
 
 export class AssignmentDownloadService {
   public constructor(
@@ -56,6 +57,11 @@ export class AssignmentDownloadService {
       );
     }
 
+    const publicTestRunner = await detectPublicTestRunner(
+      assignment.courseSlug,
+      archive,
+    );
+
     return this.fileRepository.writeAssignment(
       root,
       userEmail,
@@ -64,6 +70,7 @@ export class AssignmentDownloadService {
       contentHash,
       archive,
       overwrite,
+      publicTestRunner,
     );
   }
 

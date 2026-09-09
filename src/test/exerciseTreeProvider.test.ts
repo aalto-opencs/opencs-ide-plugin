@@ -186,4 +186,83 @@ suite('ExerciseTreeProvider', function () {
       await rm(temporaryRoot, { recursive: true, force: true });
     }
   });
+
+  test('shows public tests when the download metadata has a supported runner', async () => {
+    const temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-public-test-tree-'));
+    const root = vscode.Uri.file(temporaryRoot);
+    const state = new InMemoryMemento();
+    const folders = new AssignmentFolderRepository(state);
+    const current = new CurrentAssignmentRepository(state);
+    const files = new AssignmentFileRepository();
+    const secrets = new InMemorySecretStorage();
+    const sessions = new SessionRepository(secrets);
+    const session: AuthSession = {
+      token: 'session-token',
+      student: { id: 42, email: 'ada@example.com' },
+    };
+    const assignment: ProgrammingAssignment = {
+      exerciseUuid: 'exercise-public-test',
+      name: 'Dart exercise',
+      type: 'programming-exercise',
+      courseSlug: 'cross-platform-development',
+      courseInstanceId: 2,
+    };
+    const assignmentFolder = files.getAssignmentFolder(
+      root,
+      session.student.email,
+      assignment,
+    );
+    await mkdir(assignmentFolder.fsPath, { recursive: true });
+    await writeFile(
+      vscode.Uri.joinPath(assignmentFolder, '.aalto-opencs-assignment.json').fsPath,
+      JSON.stringify({
+        schemaVersion: 3,
+        exerciseUuid: assignment.exerciseUuid,
+        exerciseType: assignment.type,
+        courseSlug: assignment.courseSlug,
+        courseInstanceId: assignment.courseInstanceId,
+        contentHash: '0123456789abcdef0123456789abcdef',
+        publicTestRunner: 'dart-main-test',
+      }),
+    );
+    await writeFile(
+      vscode.Uri.joinPath(assignmentFolder, 'assignment-handout.md').fsPath,
+      '# Dart exercise',
+    );
+    await writeFile(
+      vscode.Uri.joinPath(assignmentFolder, 'main_test.dart').fsPath,
+      'void main() {}\n',
+    );
+    await sessions.save(session);
+    await folders.setRoot(session.student.id, root);
+    await current.save(session.student.id, assignment);
+    const provider = new ExerciseTreeProvider(
+      new AuthService(
+        { exchangeAuthorizationCode: async () => session },
+        sessions,
+      ),
+      folders,
+      files,
+      current,
+      false,
+    );
+
+    try {
+      const children = await provider.getChildren();
+      assert.deepStrictEqual(children.map((item) => String(item.label)), [
+        'Show Assignment Handout',
+        'Run Public Tests',
+        'Submit Current Exercise',
+        'assignment-handout.md',
+        'main_test.dart',
+      ]);
+      assert.strictEqual(
+        children[1].command?.command,
+        'aaltoOpenCsIde.runCurrentPublicTests',
+      );
+    } finally {
+      provider.dispose();
+      await rm(temporaryRoot, { recursive: true, force: true });
+    }
+  });
 });

@@ -234,6 +234,13 @@ suite('Assignment submission', () => {
           'src/app.js': 'console.log("student work");\n',
         },
         activityEvents: [{
+          id: '44444444-4444-4444-8444-444444444444',
+          timestamp: '2026-08-14T10:29:00.000Z',
+          action: 'public-test',
+          files: {
+            'src/app.js': 'console.log("student work");\n',
+          },
+        }, {
           id: '33333333-3333-4333-8333-333333333333',
           timestamp: '2026-08-14T10:30:00.000Z',
           action: 'submit',
@@ -260,6 +267,13 @@ suite('Assignment submission', () => {
       assert.deepStrictEqual(
         JSON.parse(String(submittedForm?.get('activityEvents'))),
         [{
+          id: '44444444-4444-4444-8444-444444444444',
+          timestamp: '2026-08-14T10:29:00.000Z',
+          action: 'public-test',
+          files: {
+            'src/app.js': 'console.log("student work");\n',
+          },
+        }, {
           id: '33333333-3333-4333-8333-333333333333',
           timestamp: '2026-08-14T10:30:00.000Z',
           action: 'submit',

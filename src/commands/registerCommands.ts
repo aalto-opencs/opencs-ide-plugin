@@ -61,6 +61,8 @@ import {
 } from '../features/coursePoints/coursePointsRepository';
 import { LocalPythonExecutionController } from '../features/localExecution/localPythonExecutionController';
 import { LocalPythonExecutionService } from '../features/localExecution/localPythonExecutionService';
+import { PublicTestExecutionController } from '../features/localExecution/publicTestExecutionController';
+import { PublicTestExecutionService } from '../features/localExecution/publicTestExecutionService';
 import { PythonSyntaxCheckController } from '../features/localExecution/pythonSyntaxCheckController';
 import { PythonSyntaxCheckService } from '../features/localExecution/pythonSyntaxCheckService';
 
@@ -256,6 +258,15 @@ export function registerCommands(
     new SubmissionFileRepository(),
     assignmentActivityRepository,
   );
+  const publicTestExecutionController = new PublicTestExecutionController(
+    new PublicTestExecutionService(),
+    authService,
+    assignmentFolderRepository,
+    assignmentFileRepository,
+    currentAssignmentRepository,
+    new SubmissionFileRepository(),
+    assignmentActivityRepository,
+  );
 
   const authController = new AuthController(
     authService,
@@ -337,6 +348,7 @@ export function registerCommands(
     submissionTreeProvider.refresh();
     await assignmentHandoutViewProvider.refresh();
     await localPythonExecutionController.updateRunContext();
+    await publicTestExecutionController.updateRunContext();
     await exerciseTreeProvider.updateActiveEditorContext();
     await courseController.showSelectedInstanceEndWarning();
   };
@@ -492,11 +504,22 @@ export function registerCommands(
     'aaltoOpenCsIde.checkCurrentAssignmentSyntax',
     () => pythonSyntaxCheckController.checkCurrentAssignment(),
   );
+  const runCurrentPublicTestsCommand = vscode.commands.registerCommand(
+    'aaltoOpenCsIde.runCurrentPublicTests',
+    () => publicTestExecutionController.runCurrentAssignment(),
+  );
   const pythonConfigurationListener = vscode.workspace.onDidChangeConfiguration(
     (event) => {
       if (event.affectsConfiguration('aaltoOpenCsIde.pythonCommand')) {
         void localPythonExecutionController.updateRunContext();
       }
+    },
+  );
+  const workspaceTrustListener = vscode.workspace.onDidGrantWorkspaceTrust(
+    () => {
+      void localPythonExecutionController.updateRunContext();
+      void publicTestExecutionController.updateRunContext();
+      exerciseTreeProvider.refresh();
     },
   );
 
@@ -646,8 +669,11 @@ export function registerCommands(
     showAssignmentHandoutCommand,
     runCurrentAssignmentCommand,
     checkCurrentAssignmentSyntaxCommand,
+    runCurrentPublicTestsCommand,
     pythonConfigurationListener,
+    workspaceTrustListener,
     localPythonExecutionController,
+    publicTestExecutionController,
     pythonSyntaxCheckController,
     refreshSubmissionsCommand,
     selectCourseCommand,

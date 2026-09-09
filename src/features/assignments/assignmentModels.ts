@@ -2,6 +2,15 @@ import * as vscode from 'vscode';
 
 export const PROGRAMMING_EXERCISE_TYPE = 'programming-exercise';
 
+export type PublicTestRunner = 'dart-test' | 'dart-main-test' | 'flutter-test';
+
+export function isPublicTestRunner(
+  value: unknown,
+): value is PublicTestRunner {
+  return value === 'dart-test' || value === 'dart-main-test' ||
+    value === 'flutter-test';
+}
+
 export interface ProgrammingAssignment {
   exerciseUuid: string;
   name: string;
@@ -29,6 +38,7 @@ export interface AssignmentMetadata {
   courseInstanceId: number | null;
   contentHash: string;
   submissionFiles?: string[];
+  publicTestRunner?: PublicTestRunner;
 }
 
 export interface DownloadedAssignment {

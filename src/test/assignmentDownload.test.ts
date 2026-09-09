@@ -15,6 +15,7 @@ import {
   ApiAssignmentRepository,
   AssignmentRepository,
 } from '../features/assignments/assignmentRepository';
+import { detectPublicTestRunner } from '../features/assignments/publicTestRunnerDetector';
 import { ApiClient } from '../infrastructure/apiClient';
 import {
   InMemoryMemento,
@@ -31,6 +32,12 @@ const assignment: ProgrammingAssignment = {
   courseInstanceName: 'Summer 2026',
 };
 const userEmail = 'Ada.Student+OpenCS@example.com';
+const crossPlatformAssignment: ProgrammingAssignment = {
+  ...assignment,
+  exerciseUuid: '22222222-2222-4222-8222-222222222222',
+  name: 'Dart exercise',
+  courseSlug: 'cross-platform-development',
+};
 
 suite('Assignment download', () => {
   test('restores the selected assignment root', async () => {
@@ -197,6 +204,97 @@ suite('Assignment download', () => {
           submissionFiles: ['src/index.ts', 'reports/summary.txt'],
         },
       );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('classifies supported public-test starter layouts', async () => {
+    const standalone = new JSZip();
+    standalone.file('main.dart', 'void main() {}\n');
+    standalone.file('main_test.dart', 'void main() {}\n');
+    const dartPackage = new JSZip();
+    dartPackage.file('pubspec.yaml', 'dev_dependencies:\n  test: ^1.0.0\n');
+    dartPackage.file('test/example_test.dart', 'void main() {}\n');
+    const flutter = new JSZip();
+    flutter.file('pubspec.yaml', 'dev_dependencies:\n  flutter_test:\n    sdk: flutter\n');
+    flutter.file('test/widget_test.dart', 'void main() {}\n');
+
+    assert.strictEqual(
+      await detectPublicTestRunner(
+        crossPlatformAssignment.courseSlug,
+        await standalone.generateAsync({ type: 'uint8array' }),
+      ),
+      'dart-main-test',
+    );
+    assert.strictEqual(
+      await detectPublicTestRunner(
+        crossPlatformAssignment.courseSlug,
+        await dartPackage.generateAsync({ type: 'uint8array' }),
+      ),
+      'dart-test',
+    );
+    assert.strictEqual(
+      await detectPublicTestRunner(
+        crossPlatformAssignment.courseSlug,
+        await flutter.generateAsync({ type: 'uint8array' }),
+      ),
+      'flutter-test',
+    );
+  });
+
+  test('does not classify unsupported or ambiguous public-test layouts', async () => {
+    const unsupported = new JSZip();
+    unsupported.file('test/example_test.dart', 'void main() {}\n');
+    const ambiguous = new JSZip();
+    ambiguous.file('main_test.dart', 'void main() {}\n');
+    ambiguous.file('pubspec.yaml', 'dev_dependencies:\n  test: ^1.0.0\n');
+    ambiguous.file('test/example_test.dart', 'void main() {}\n');
+
+    assert.strictEqual(
+      await detectPublicTestRunner(
+        'web-software-development',
+        await unsupported.generateAsync({ type: 'uint8array' }),
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      await detectPublicTestRunner(
+        crossPlatformAssignment.courseSlug,
+        await ambiguous.generateAsync({ type: 'uint8array' }),
+      ),
+      undefined,
+    );
+  });
+
+  test('persists the public-test runner from the original starter archive', async () => {
+    const root = await createTemporaryRoot();
+    const archive = new JSZip();
+    archive.file('pubspec.yaml', 'dev_dependencies:\n  test: ^1.0.0\n');
+    archive.file('test/example_test.dart', 'void main() {}\n');
+
+    try {
+      const service = new AssignmentDownloadService(
+        createAssignmentRepository(
+          await archive.generateAsync({ type: 'uint8array' }),
+          null,
+          crossPlatformAssignment,
+        ),
+        new AssignmentFileRepository(),
+      );
+      await service.download(
+        crossPlatformAssignment,
+        vscode.Uri.file(root),
+        userEmail,
+      );
+      const metadata = await new AssignmentFileRepository()
+        .getDownloadedAssignmentMetadata(
+          vscode.Uri.file(root),
+          userEmail,
+          crossPlatformAssignment,
+        );
+
+      assert.strictEqual(metadata?.publicTestRunner, 'dart-test');
     } finally {
       await rm(root, { recursive: true, force: true });
     }
@@ -460,13 +558,14 @@ function createAssignmentRepository(
     'src/index.ts',
     'reports/summary.txt',
   ],
+  assignmentToUse: ProgrammingAssignment = assignment,
 ): AssignmentRepository {
   return {
     getContentHash: async () => '0123456789abcdef0123456789abcdef',
     getStarter: async () => ({
-      uuid: assignment.exerciseUuid,
+      uuid: assignmentToUse.exerciseUuid,
       type: 'programming-exercise',
-      name: assignment.name,
+      name: assignmentToUse.name,
       handout: '# Hello Web\n\nImplement the starter.',
       prerequisites_met: true,
       submission_files: submissionFiles,

@@ -1,4 +1,4 @@
-export type AssignmentActivityAction = 'run' | 'submit';
+export type AssignmentActivityAction = 'run' | 'public-test' | 'submit';
 
 export interface AssignmentActivityEvent {
   id: string;
