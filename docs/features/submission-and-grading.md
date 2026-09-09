@@ -76,6 +76,8 @@ its grading state, and presents the backend's authoritative outcome.
   bypassed explicitly, or cancel before final confirmation.
 - [Assignment Activity History](./assignment-activity-history.md) accompanies
   the accepted request.
+- [Local Public-Test Execution](./local-public-test-execution.md) may add
+  advisory `public-test` snapshots to the queued activity.
 - [Submission History and Result Details](./submission-history-and-results.md)
   retains and displays the outcome.
 

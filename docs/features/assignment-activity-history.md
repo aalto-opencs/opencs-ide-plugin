@@ -3,9 +3,9 @@
 ## Purpose
 
 Assignment activity history gives the platform the recent source snapshots that
-led to a submission. The extension records local run attempts and confirmed
-submission attempts for the current assignment, then attaches those events to
-the next submission accepted by the platform.
+led to a submission. The extension records local run attempts, public-test
+attempts, and confirmed submission attempts for the current assignment, then
+attaches those events to the next submission accepted by the platform.
 
 ## Actors
 
@@ -35,10 +35,20 @@ the next submission accepted by the platform.
 5. Once the platform returns a valid submission identifier, the extension
    removes only the events included in that accepted request.
 
+### Public tests
+
+1. The student chooses **Run Public Tests** for a supported downloaded
+   assignment.
+2. The extension saves dirty files, snapshots the selected source files, and
+   records a `public-test` event.
+3. The fixed Dart or Flutter command runs in a new local terminal. The event
+   remains queued until a later submission.
+
 ## Rules & Conditions
 
-- Every event has a unique identifier, a UTC timestamp, an action of `run` or
-  `submit`, and a map of relative file paths to UTF-8 source text.
+- Every event has a unique identifier, a UTC timestamp, an action of `run`,
+  `public-test`, or `submit`, and a map of relative file paths to UTF-8 source
+  text.
 - Snapshots use the same file selection as submission preparation. A version 3
   assignment manifest is an exact allowlist; older downloads use the fallback
   text-file discovery policy.

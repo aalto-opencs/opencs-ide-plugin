@@ -35,6 +35,7 @@ run is a local convenience and does not replace platform grading.
   is usable.
 - The visible action is usable only when all of the following are true:
   - the extension is running in a desktop IDE host;
+  - the assignment workspace is trusted;
   - the current assignment is a valid extension-managed download;
   - the assignment belongs to the `introduction-to-programming` course; and
   - `main.py` exists as a file at the assignment root.
@@ -49,7 +50,8 @@ run is a local convenience and does not replace platform grading.
 - The row runs the remembered current exercise, regardless of which editor tab
   is active.
 - Unsupported courses, web IDE hosts, missing downloads, and assignments
-  without root-level `main.py` do not show the row.
+  without root-level `main.py` do not show the row. An untrusted workspace also
+  hides the local run row and explains the trust requirement for direct calls.
 
 ### Execution
 

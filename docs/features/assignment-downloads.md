@@ -48,7 +48,13 @@ copy while protecting the old copy if preparation or installation fails.
 - The archive cannot provide `.aalto-opencs-assignment.json` or
   `assignment-handout.md`; the extension owns both files.
 - Generated metadata records the exercise, course, course instance, content
-  hash, schema version, and any validated submission-file allowlist.
+  hash, schema version, any validated submission-file allowlist, and—when a
+  supported Cross-Platform Development starter is detected—one closed public
+  test runner value.
+- Public-test runner detection uses the original starter archive. Supported
+  shapes are root-level `main_test.dart`, Dart package tests under `test/`, and
+  Flutter tests under `test/`; ambiguous or unsupported layouts receive no
+  runner. See [Local Public-Test Execution](./local-public-test-execution.md).
 - A first download never overwrites an existing assignment folder.
 - A completed exercise requires **Download Anyway** confirmation before a new
   local copy is created.
@@ -88,7 +94,10 @@ copy while protecting the old copy if preparation or installation fails.
 ## Edge Cases
 
 - Only schema version 3 metadata is recognized. It carries both the content hash
-  and the optional submission allowlist.
+  and the optional submission allowlist and public-test runner.
+- Existing schema version 3 downloads without a public-test runner remain valid
+  for editing and submission, but public tests appear only after explicit
+  redownload derives the runner from the original archive.
 - Folder-name sanitization can make display names differ from local directory
   names; identity comes from metadata rather than the path alone.
 - Redownload does not create a persistent backup or use the operating-system

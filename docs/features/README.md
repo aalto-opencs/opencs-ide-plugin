@@ -97,6 +97,13 @@ Programming assignments and its role in the submission flow.
 Describes when the current assignment can be run locally, where the action is
 available, and how execution and run activity behave.
 
+## Local Public-Test Execution
+
+[Local Public-Test Execution](./local-public-test-execution.md)
+
+Describes starter-derived Dart and Flutter public-test runners, local-only
+execution, workspace trust, debounce behavior, and advisory activity.
+
 ## Development Tools
 
 [Development Tools](./development-tools.md)
