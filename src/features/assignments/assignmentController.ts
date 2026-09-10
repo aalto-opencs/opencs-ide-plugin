@@ -7,9 +7,16 @@ import {
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
 import {
   DownloadedAssignment,
+  AssignmentLockExercise,
   ProgrammingAssignment,
 } from './assignmentModels';
+import { AssignmentLockedError } from './assignmentRepository';
 import { SubmissionRepository } from '../submissions/submissionRepository';
+
+export type AssignmentPrerequisiteNavigator = (
+  assignment: ProgrammingAssignment,
+  prerequisite: AssignmentLockExercise,
+) => void | Promise<void>;
 
 export class AssignmentController {
   public constructor(
@@ -17,6 +24,7 @@ export class AssignmentController {
     private readonly folderRepository: AssignmentFolderRepository,
     private readonly authService: AuthService,
     private readonly submissionRepository: SubmissionRepository,
+    private readonly navigateToPrerequisite?: AssignmentPrerequisiteNavigator,
   ) {}
 
   public async selectAssignmentFolder(): Promise<vscode.Uri | undefined> {
@@ -154,6 +162,11 @@ export class AssignmentController {
         `Downloaded ${assignment.name}.`,
       );
     } catch (error: unknown) {
+      if (error instanceof AssignmentLockedError) {
+        await this.handleLockedAssignment(error, assignment);
+        return;
+      }
+
       if (error instanceof AssignmentAlreadyExistsError) {
         const action = await vscode.window.showWarningMessage(
           'This assignment folder already exists. Existing files were not changed.',
@@ -216,6 +229,11 @@ export class AssignmentController {
         ),
       );
     } catch (error: unknown) {
+      if (error instanceof AssignmentLockedError) {
+        await this.handleLockedAssignment(error, assignment);
+        return;
+      }
+
       await vscode.window.showErrorMessage(
         error instanceof Error
           ? error.message
@@ -228,6 +246,29 @@ export class AssignmentController {
     await vscode.window.showInformationMessage(
       `Redownloaded ${assignment.name}.`,
     );
+  }
+
+  private async handleLockedAssignment(
+    error: AssignmentLockedError,
+    assignment: ProgrammingAssignment,
+  ): Promise<void> {
+    const prerequisite = error.reason === 'lockedByExercises' &&
+        error.exercises?.length === 1
+      ? error.exercises[0]
+      : undefined;
+    const action = await vscode.window.showWarningMessage(
+      'Assignment is locked',
+      {
+        modal: true,
+        detail: error.message,
+      },
+      ...(prerequisite && this.navigateToPrerequisite
+        ? ['Go to prerequisite']
+        : []),
+    );
+    if (action === 'Go to prerequisite' && prerequisite) {
+      await this.navigateToPrerequisite?.(assignment, prerequisite);
+    }
   }
 
   private async getDownloadedAssignmentLocation(

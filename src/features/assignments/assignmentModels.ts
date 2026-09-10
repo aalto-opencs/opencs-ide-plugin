@@ -26,8 +26,36 @@ export interface ProgrammingExerciseStarter {
   type: string;
   name: string;
   handout: string | null;
-  prerequisites_met?: boolean;
   submission_files?: string[] | null;
+}
+
+export type AssignmentLockReason =
+  | 'lockedByProgress'
+  | 'lockedByExercises'
+  | 'lockedAfterExercises'
+  | 'lockedAfterProgress'
+  | 'lockedByInstanceSelection';
+
+export interface AssignmentLockExercise {
+  uuid: string;
+  name: string | null;
+  maxPoints?: number;
+  userPoints?: number | null;
+}
+
+export interface AssignmentLockProgress {
+  courseSlug: string;
+  requiredPointPercentage: number;
+  currentPointPercentage: number;
+  parts: string[];
+}
+
+export interface AssignmentLock {
+  reason: AssignmentLockReason;
+  message: string;
+  exercises: AssignmentLockExercise[] | null;
+  progress: AssignmentLockProgress | null;
+  code?: string;
 }
 
 export interface AssignmentMetadata {

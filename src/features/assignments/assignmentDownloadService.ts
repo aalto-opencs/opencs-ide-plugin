@@ -38,12 +38,6 @@ export class AssignmentDownloadService {
       throw new Error('The platform returned an invalid assignment starter.');
     }
 
-    if (starter.prerequisites_met === false) {
-      throw new Error(
-        'This assignment is locked until its prerequisites are completed.',
-      );
-    }
-
     const archive = await this.assignmentRepository.getStarterFiles(
       assignment.exerciseUuid,
     );

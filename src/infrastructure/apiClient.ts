@@ -160,9 +160,10 @@ export class ApiClient {
             const fallbackMessage =
               `API request failed with status ${response.status}.`;
             let message = fallbackMessage;
+            let errorBody: unknown;
 
             try {
-              const errorBody = await response.json() as unknown;
+              errorBody = await response.json() as unknown;
 
               if (
                 typeof errorBody === 'object' &&
@@ -180,6 +181,7 @@ export class ApiClient {
             throw new ApiError(
               response.status,
               message,
+              errorBody,
             );
           }
 

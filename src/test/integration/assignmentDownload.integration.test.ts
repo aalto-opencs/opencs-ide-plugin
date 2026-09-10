@@ -46,12 +46,6 @@ suite('Assignment download backend integration', () => {
           starter.handout.trim().length > 0,
         'Expected the programming assignment to have a non-empty handout',
       );
-      assert.strictEqual(
-        starter.prerequisites_met,
-        true,
-        'Expected the configured test user to meet the prerequisites',
-      );
-
       const archiveBytes = await assignmentRepository.getStarterFiles(
         configuration.exerciseUuid,
       );

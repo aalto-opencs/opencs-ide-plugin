@@ -13,6 +13,7 @@ import { AssignmentFolderRepository } from '../features/assignments/assignmentFo
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
 import {
   ApiAssignmentRepository,
+  AssignmentLockedError,
   AssignmentRepository,
 } from '../features/assignments/assignmentRepository';
 import { detectPublicTestRunner } from '../features/assignments/publicTestRunnerDetector';
@@ -95,7 +96,6 @@ suite('Assignment download', () => {
         type: 'programming-exercise',
         name: assignment.name,
         handout: '# Handout',
-        prerequisites_met: true,
       }));
     });
 
@@ -123,6 +123,151 @@ suite('Assignment download', () => {
         'raw-session-token',
         'raw-session-token',
       ]);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('normalizes prerequisite locks from metadata and file endpoints', async () => {
+    const lock = {
+      locked: true,
+      lockedByProgress: false,
+      lockedByExercises: true,
+      lockedAfterExercises: false,
+      lockedAfterProgress: false,
+      lockedByInstanceSelection: false,
+      progress: null,
+      exercises: [{
+        uuid: '22222222-2222-4222-8222-222222222222',
+        name: 'Complete this first',
+        max_points: 2,
+        user_points: null,
+      }],
+      message: 'Complete this prerequisite before opening assignment.',
+      code: null,
+    };
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(403, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(lock));
+    });
+
+    try {
+      const repository = new ApiAssignmentRepository(
+        new ApiClient(server.baseUrl),
+      );
+
+      const metadataError = await getRejectedError(
+        repository.getStarter(assignment.exerciseUuid),
+      );
+      const filesError = await getRejectedError(
+        repository.getStarterFiles(assignment.exerciseUuid),
+      );
+
+      assert.ok(metadataError instanceof AssignmentLockedError);
+      assert.ok(filesError instanceof AssignmentLockedError);
+      assert.deepStrictEqual((metadataError as AssignmentLockedError).lock, {
+        reason: 'lockedByExercises',
+        message: lock.message,
+        exercises: [{
+          uuid: '22222222-2222-4222-8222-222222222222',
+          name: 'Complete this first',
+          maxPoints: 2,
+          userPoints: null,
+        }],
+        progress: null,
+      });
+      assert.deepStrictEqual(
+        (filesError as AssignmentLockedError).lock,
+        (metadataError as AssignmentLockedError).lock,
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('keeps malformed locks and unrelated forbidden responses generic', async () => {
+    let responseBody: object = {
+      locked: true,
+      lockedByExercises: true,
+      message: 'Incomplete lock',
+    };
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(403, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(responseBody));
+    });
+
+    try {
+      const repository = new ApiAssignmentRepository(
+        new ApiClient(server.baseUrl),
+      );
+
+      await assert.rejects(
+        repository.getStarter(assignment.exerciseUuid),
+        (error: unknown) => {
+          assert.ok(!(error instanceof AssignmentLockedError));
+          assert.strictEqual((error as { status?: number }).status, 403);
+          return true;
+        },
+      );
+
+      responseBody = { message: 'Forbidden for another reason' };
+      await assert.rejects(
+        repository.getStarterFiles(assignment.exerciseUuid),
+        (error: unknown) => {
+          assert.ok(!(error instanceof AssignmentLockedError));
+          assert.strictEqual((error as { status?: number }).status, 403);
+          return true;
+        },
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('normalizes progress details and an optional platform code', async () => {
+    const lock = {
+      locked: true,
+      lockedByProgress: true,
+      lockedByExercises: false,
+      lockedAfterExercises: false,
+      lockedAfterProgress: false,
+      lockedByInstanceSelection: false,
+      progress: {
+        course_slug: 'web-software-development',
+        required_point_percentage: 80,
+        current_point_percentage: 25,
+        parts: ['Part 1', 'Part 2'],
+      },
+      exercises: null,
+      message: 'Complete more course work first.',
+      code: 'COURSE_PROGRESS_REQUIRED',
+    };
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(403, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify(lock));
+    });
+
+    try {
+      const repository = new ApiAssignmentRepository(
+        new ApiClient(server.baseUrl),
+      );
+      const error = await getRejectedError(
+        repository.getStarter(assignment.exerciseUuid),
+      );
+
+      assert.ok(error instanceof AssignmentLockedError);
+      assert.deepStrictEqual((error as AssignmentLockedError).lock, {
+        reason: 'lockedByProgress',
+        message: lock.message,
+        exercises: null,
+        progress: {
+          courseSlug: 'web-software-development',
+          requiredPointPercentage: 80,
+          currentPointPercentage: 25,
+          parts: ['Part 1', 'Part 2'],
+        },
+        code: 'COURSE_PROGRESS_REQUIRED',
+      });
     } finally {
       await server.close();
     }
@@ -567,7 +712,6 @@ function createAssignmentRepository(
       type: 'programming-exercise',
       name: assignmentToUse.name,
       handout: '# Hello Web\n\nImplement the starter.',
-      prerequisites_met: true,
       submission_files: submissionFiles,
     }),
     getStarterFiles: async () => archive,
@@ -582,4 +726,15 @@ async function createStarterArchive(): Promise<Uint8Array> {
 
 function createTemporaryRoot(): Promise<string> {
   return mkdtemp(join(tmpdir(), 'aalto-opencs-assignments-'));
+}
+
+async function getRejectedError(
+  promise: Promise<unknown>,
+): Promise<unknown> {
+  try {
+    await promise;
+  } catch (error: unknown) {
+    return error;
+  }
+  throw new Error('Expected promise to reject.');
 }

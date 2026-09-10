@@ -61,6 +61,11 @@ copy while protecting the old copy if preparation or installation fails.
   local copy is created.
 - The content hash must remain the same across the starter download. A change
   during download prevents installation.
+- A platform lock returned as structured HTTP 403 from starter metadata or
+  starter files stops the download before local installation. For one
+  incomplete exercise prerequisite, **Assignment is locked** shows the
+  platform message and offers **Go to prerequisite**. That action selects and
+  reveals the prerequisite in Courses; it never downloads the prerequisite.
 - Opening a downloaded exercise never closes editor tabs or discards unsaved
   work from another exercise.
 
@@ -84,6 +89,8 @@ copy while protecting the old copy if preparation or installation fails.
   unchanged and the student may open it.
 - Invalid starter metadata, submission paths, archive contents, or content
   hashes stop installation and show the error.
+- A cancelled assignment-lock warning leaves the selected assignment and local
+  files unchanged.
 - Temporary download folders are removed after failure when possible.
 - If a redownload cannot be prepared, the existing student folder remains
   untouched.

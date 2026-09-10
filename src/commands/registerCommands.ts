@@ -16,7 +16,10 @@ import { AssignmentDeepLinkService } from '../features/assignments/assignmentDee
 import { AssignmentDownloadService } from '../features/assignments/assignmentDownloadService';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
-import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
+import {
+  AssignmentLockExercise,
+  ProgrammingAssignment,
+} from '../features/assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
 import {
   ApiAssignmentRepository,
@@ -178,16 +181,6 @@ export function registerCommands(
       context.extensionMode === vscode.ExtensionMode.Development
     ? new DevelopmentCompletionRepository()
     : undefined;
-  const assignmentController = new AssignmentController(
-    new AssignmentDownloadService(
-      assignmentRepository,
-      assignmentFileRepository,
-    ),
-    assignmentFolderRepository,
-    authService,
-    submissionRepository,
-  );
-
   const {
     courseSelectionTreeProvider,
     courseTreeProvider,
@@ -494,6 +487,32 @@ export function registerCommands(
       await openCurrentExercise();
     }
   };
+
+  const navigateToPrerequisite = async (
+    blockedAssignment: ProgrammingAssignment,
+    prerequisite: AssignmentLockExercise,
+  ): Promise<void> => {
+    const assignment: ProgrammingAssignment = {
+      ...blockedAssignment,
+      exerciseUuid: prerequisite.uuid,
+      name: prerequisite.name || prerequisite.uuid,
+    };
+    await makeCurrent(assignment);
+    await vscode.commands.executeCommand(
+      'workbench.view.extension.aaltoOpenCsIde',
+    );
+    await courseTreeProvider.revealAssignment(assignment.exerciseUuid);
+  };
+  const assignmentController = new AssignmentController(
+    new AssignmentDownloadService(
+      assignmentRepository,
+      assignmentFileRepository,
+    ),
+    assignmentFolderRepository,
+    authService,
+    submissionRepository,
+    navigateToPrerequisite,
+  );
 
   if (
     __DEVELOPMENT_TOOLS__ &&

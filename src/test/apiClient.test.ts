@@ -400,6 +400,10 @@ suite('ApiClient', () => {
           assert.ok(error instanceof ApiError);
           assert.strictEqual(error.status, 401);
           assert.strictEqual(error.message, 'Invalid user identifier');
+          assert.deepStrictEqual(error.body, {
+            auth: false,
+            message: 'Invalid user identifier',
+          });
           return true;
         },
       );
