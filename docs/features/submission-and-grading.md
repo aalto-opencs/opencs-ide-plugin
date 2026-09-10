@@ -16,9 +16,11 @@ its grading state, and presents the backend's authoritative outcome.
 4. The student reviews the file list and explicitly confirms submission.
 5. The extension records a submit activity snapshot and uploads the payload,
    course-instance ID, exercise ID, and queued activity.
-6. The returned submission is stored locally as pending and the extension polls
-   until grading is processed, reports an error, or the polling limit is
-   reached.
+6. The returned submission is stored locally as pending. One status poller
+   observes the accepted submission immediately, then waits 2, 3, 5, and 8
+   seconds. It uses 10-second intervals during the first five minutes, waits
+   20 seconds once, then uses 30-second intervals. It stops on a terminal
+   result, cancellation, or repeated transient failure.
 7. The final state refreshes Submissions and, after a pass, course completion.
 
 ## Rules & Conditions
@@ -47,8 +49,11 @@ its grading state, and presents the backend's authoritative outcome.
 - A failed result reports the test summary and makes detailed failures
   available from submission history.
 - A grader error is distinct from an incorrect solution.
-- Reaching the polling limit leaves the accepted submission pending for later
-  synchronization rather than declaring failure.
+- Cancellation or repeated transient polling failures leave the accepted
+  submission pending for later synchronization rather than declaring failure.
+- Network failures and HTTP 5xx responses retry after 10, 20, and 30 seconds.
+- Authentication failures, other permanent HTTP failures, and malformed
+  grading responses stop polling immediately.
 
 ## Failure Behavior
 
