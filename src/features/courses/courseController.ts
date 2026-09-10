@@ -9,6 +9,11 @@ import {
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
 import { CourseCacheRepository } from './courseCacheRepository';
+import {
+  COURSE_ENROLMENT_FRESHNESS_MS,
+  CourseEnrolmentSnapshot,
+  CourseEnrolmentSyncService,
+} from './courseEnrolmentSyncService';
 
 interface CourseQuickPickItem extends vscode.QuickPickItem {
   enrolment: CourseEnrolment;
@@ -23,14 +28,28 @@ const FOURTEEN_DAYS_MS = 14 * DAY_MS;
 const SEVEN_DAYS_MS = 7 * DAY_MS;
 const VALIDATION_MAX_AGE_MS = DAY_MS;
 
+function isFresh(
+  snapshot: CourseEnrolmentSnapshot,
+  now: number,
+): boolean {
+  return snapshot.lastValidatedAt !== undefined &&
+    now - snapshot.lastValidatedAt < COURSE_ENROLMENT_FRESHNESS_MS;
+}
+
 export class CourseController {
+  private readonly enrolmentSyncService: CourseEnrolmentSyncService;
+
   public constructor(
     private readonly authService: AuthService,
     private readonly courseService: CourseService,
     private readonly selectionRepository: CourseSelectionRepository,
     private readonly cacheRepository?: CourseCacheRepository,
     private readonly now: () => Date = () => new Date(),
-  ) {}
+    enrolmentSyncService?: CourseEnrolmentSyncService,
+  ) {
+    this.enrolmentSyncService = enrolmentSyncService ??
+      new CourseEnrolmentSyncService(courseService, cacheRepository);
+  }
 
   public async selectCourseAndVersion(): Promise<boolean> {
     const session = await this.authService.getCurrentSession();
@@ -42,24 +61,12 @@ export class CourseController {
     }
 
     try {
-      let usingCache = false;
-      let enrolments: CourseEnrolment[];
-      try {
-        enrolments = await this.courseService.getEnrolments();
-        await this.cacheRepository?.saveEnrolments(
-          session.student.id,
-          enrolments,
-        ).catch(() => undefined);
-      } catch (error: unknown) {
-        const cachedEnrolments = this.cacheRepository?.getEnrolments(
-          session.student.id,
-        );
-        if (!cachedEnrolments) {
-          throw error;
-        }
-        enrolments = cachedEnrolments;
-        usingCache = true;
-      }
+      const enrolmentSnapshot = await this.enrolmentSyncService.read(
+        session.student.id,
+      );
+      const usingCache = enrolmentSnapshot.offline ||
+        !isFresh(enrolmentSnapshot, this.now().getTime());
+      const enrolments = enrolmentSnapshot.enrolments;
       if (!enrolments.length) {
         await vscode.window.showInformationMessage(
           'No course enrolments were found for your account.',
@@ -155,7 +162,13 @@ export class CourseController {
         selectedInstance.instance.id,
       );
 
-      const refreshedEnrolments = await this.courseService.getEnrolments();
+      const refreshedSnapshot = await this.enrolmentSyncService.refresh(
+        session.student.id,
+      );
+      if (refreshedSnapshot.offline) {
+        throw new Error('The platform did not confirm the selected course version.');
+      }
+      const refreshedEnrolments = refreshedSnapshot.enrolments;
       const refreshedCourse = refreshedEnrolments.find((enrolment) =>
         enrolment.courseSlug === selectedCourse.enrolment.courseSlug);
       if (refreshedCourse?.activeInstanceId !== selectedInstance.instance.id) {
@@ -163,11 +176,6 @@ export class CourseController {
           'The platform did not confirm the selected course version as active.',
         );
       }
-      await this.cacheRepository?.saveEnrolments(
-        session.student.id,
-        refreshedEnrolments,
-      ).catch(() => undefined);
-
       await this.selectionRepository.saveSelection(
         session.student.id,
         {
@@ -239,7 +247,13 @@ export class CourseController {
     }
 
     try {
-      const enrolments = await this.courseService.getEnrolments();
+      const enrolmentSnapshot = await this.enrolmentSyncService.refresh(
+        session.student.id,
+      );
+      if (enrolmentSnapshot.offline) {
+        throw new Error('The platform could not verify course enrolments.');
+      }
+      const enrolments = enrolmentSnapshot.enrolments;
       const enrolment = enrolments.find((candidate) =>
         candidate.courseSlug === selection.courseSlug);
       const instance = enrolment?.instances.find((candidate) =>
@@ -253,10 +267,6 @@ export class CourseController {
         );
         return false;
       }
-      await this.cacheRepository?.saveEnrolments(
-        session.student.id,
-        enrolments,
-      ).catch(() => undefined);
       await this.selectionRepository.saveSelection(
         session.student.id,
         updateSelectionMetadata(selection, instance, this.now()),

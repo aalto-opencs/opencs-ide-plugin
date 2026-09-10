@@ -3,14 +3,17 @@ import {
   CourseInstance,
 } from './courseModels';
 import { CourseRepository } from './courseRepository';
+import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 
 export class CourseService {
   public constructor(
     private readonly courseRepository: CourseRepository,
   ) {}
 
-  public async getEnrolments(): Promise<CourseEnrolment[]> {
-    return this.courseRepository.getEnrolments();
+  public async getEnrolments(
+    priority?: ApiRequestPriority,
+  ): Promise<CourseEnrolment[]> {
+    return this.courseRepository.getEnrolments(priority);
   }
 
   public async getCourseInstances(courseSlug: string): Promise<CourseInstance[]> {

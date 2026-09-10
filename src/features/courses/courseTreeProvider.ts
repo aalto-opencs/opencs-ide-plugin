@@ -21,6 +21,7 @@ import { CourseService } from './courseService';
 import { CourseExercisePoints } from '../coursePoints/coursePointsModels';
 import { CoursePointsService } from '../coursePoints/coursePointsService';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
+import { CourseEnrolmentSyncService } from './courseEnrolmentSyncService';
 
 class CourseTreeItem extends vscode.TreeItem {
   public constructor(
@@ -51,6 +52,9 @@ export class CourseTreeProvider implements
   private readonly changeEmitter = new vscode.EventEmitter<
     void
   >();
+  private readonly enrolmentSyncService: CourseEnrolmentSyncService;
+  private readonly ownsEnrolmentSyncService: boolean;
+  private readonly enrolmentSyncSubscription: vscode.Disposable;
   private treeView?: vscode.TreeView<CourseTreeItem>;
   private viewDescription?: string;
   private viewMessage?: string;
@@ -72,7 +76,15 @@ export class CourseTreeProvider implements
     ) => boolean = () => false,
     private readonly cacheRepository?: CourseCacheRepository,
     private readonly currentAssignmentRepository?: CurrentAssignmentRepository,
-  ) {}
+    enrolmentSyncService?: CourseEnrolmentSyncService,
+  ) {
+    this.ownsEnrolmentSyncService = enrolmentSyncService === undefined;
+    this.enrolmentSyncService = enrolmentSyncService ??
+      new CourseEnrolmentSyncService(courseService, cacheRepository);
+    this.enrolmentSyncSubscription = this.enrolmentSyncService.onDidChange(
+      () => this.refresh(),
+    );
+  }
 
   public refresh(): void {
     this.changeEmitter.fire();
@@ -200,7 +212,9 @@ export class CourseTreeProvider implements
       ].filter(Boolean).join(' · '));
       this.setMessage(usingCache
         ? 'Platform offline - retry later'
-        : undefined);
+        : enrolmentResult.refreshing
+          ? 'Refreshing course data...'
+          : undefined);
       return contentResult.items;
     } catch (error: unknown) {
       this.setDescription(undefined);
@@ -219,6 +233,10 @@ export class CourseTreeProvider implements
 
   public dispose(): void {
     this.changeEmitter.dispose();
+    this.enrolmentSyncSubscription.dispose();
+    if (this.ownsEnrolmentSyncService) {
+      this.enrolmentSyncService.dispose();
+    }
   }
 
   private async loadCourseContent(
@@ -474,19 +492,17 @@ export class CourseTreeProvider implements
 
   private async loadEnrolments(
     userId: number,
-  ): Promise<{ value: CourseEnrolment[]; cached: boolean }> {
-    try {
-      const value = await this.courseService.getEnrolments();
-      await this.cacheRepository?.saveEnrolments(userId, value)
-        .catch(() => undefined);
-      return { value, cached: false };
-    } catch (error: unknown) {
-      const cached = this.cacheRepository?.getEnrolments(userId);
-      if (cached) {
-        return { value: cached, cached: true };
-      }
-      throw error;
-    }
+  ): Promise<{
+    value: CourseEnrolment[];
+    cached: boolean;
+    refreshing: boolean;
+  }> {
+    const snapshot = await this.enrolmentSyncService.read(userId);
+    return {
+      value: snapshot.enrolments,
+      cached: snapshot.offline,
+      refreshing: snapshot.refreshing,
+    };
   }
 
   private async loadStructure(

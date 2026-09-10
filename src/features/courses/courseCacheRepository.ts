@@ -11,8 +11,13 @@ import {
 
 const CACHE_PREFIX = 'aaltoOpenCsIde.courseCache.v1';
 
+export interface CachedCourseEnrolments {
+  enrolments: CourseEnrolment[];
+  lastValidatedAt?: number;
+}
+
 /**
- * Persistent, per-student read cache used only when API reads fail.
+ * Persistent, per-student read cache used for startup rendering and API fallback.
  * globalState values are untrusted, so every getter validates its complete
  * nested structure before a tree provider may render it.
  */
@@ -20,20 +25,43 @@ export class CourseCacheRepository {
   public constructor(private readonly storage: vscode.Memento) {}
 
   public getEnrolments(userId: number): CourseEnrolment[] | undefined {
+    return this.getEnrolmentSnapshot(userId)?.enrolments;
+  }
+
+  public getEnrolmentSnapshot(
+    userId: number,
+  ): CachedCourseEnrolments | undefined {
     const value = this.storage.get<unknown>(
       `${CACHE_PREFIX}.enrolments.${userId}`,
     );
-    return isCourseEnrolments(value) ? value : undefined;
+    if (!isCourseEnrolments(value)) {
+      return undefined;
+    }
+    const timestamp = this.storage.get<unknown>(
+      `${CACHE_PREFIX}.enrolmentsValidatedAt.${userId}`,
+    );
+    return {
+      enrolments: value,
+      ...(typeof timestamp === 'number' && Number.isFinite(timestamp) &&
+        timestamp >= 0 ? { lastValidatedAt: timestamp } : {}),
+    };
   }
 
   public async saveEnrolments(
     userId: number,
     enrolments: CourseEnrolment[],
+    lastValidatedAt = Date.now(),
   ): Promise<void> {
-    await this.storage.update(
-      `${CACHE_PREFIX}.enrolments.${userId}`,
-      enrolments,
-    );
+    await Promise.all([
+      this.storage.update(
+        `${CACHE_PREFIX}.enrolments.${userId}`,
+        enrolments,
+      ),
+      this.storage.update(
+        `${CACHE_PREFIX}.enrolmentsValidatedAt.${userId}`,
+        lastValidatedAt,
+      ),
+    ]);
   }
 
   public getStructure(

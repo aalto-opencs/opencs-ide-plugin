@@ -35,6 +35,7 @@ import {
 } from '../features/courses/courseRepository';
 import { CourseService } from '../features/courses/courseService';
 import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
+import { CourseEnrolmentSyncService } from '../features/courses/courseEnrolmentSyncService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { DevelopmentCompletionController } from '../features/development/developmentCompletionController';
 import { DevelopmentCompletionRepository } from '../features/development/developmentCompletionRepository';
@@ -133,6 +134,10 @@ export function registerCommands(
   const courseCacheRepository = new CourseCacheRepository(
     context.globalState,
   );
+  const courseEnrolmentSyncService = new CourseEnrolmentSyncService(
+    courseService,
+    courseCacheRepository,
+  );
   const currentAssignmentRepository = new CurrentAssignmentRepository(
     context.globalState,
   );
@@ -141,6 +146,8 @@ export function registerCommands(
     courseService,
     courseSelectionRepository,
     courseCacheRepository,
+    undefined,
+    courseEnrolmentSyncService,
   );
   const assignmentFileRepository = new AssignmentFileRepository();
   const submissionHistoryRepository = new SubmissionHistoryRepository(
@@ -179,6 +186,7 @@ export function registerCommands(
     assignmentFileRepository,
     courseSelectionRepository,
     courseCacheRepository,
+    courseEnrolmentSyncService,
     currentAssignmentRepository,
     submissionRepository,
     coursePointsService,
@@ -485,6 +493,7 @@ export function registerCommands(
       await authController.signOut();
       if (session) {
         await assignmentActivityRepository.clearForUser(session.student.id);
+        courseEnrolmentSyncService.clear(session.student.id);
       }
       await refreshUiState();
     },
@@ -493,6 +502,11 @@ export function registerCommands(
   const refreshCoursesCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.refreshCourses',
     async () => {
+      const session = await authService.getCurrentSession();
+      if (session) {
+        await courseEnrolmentSyncService.refresh(session.student.id)
+          .catch(() => undefined);
+      }
       courseSelectionTreeProvider.refresh();
       courseTreeProvider.refresh();
       await courseController.showSelectedInstanceEndWarning();

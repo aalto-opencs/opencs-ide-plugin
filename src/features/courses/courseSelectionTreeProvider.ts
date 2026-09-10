@@ -3,11 +3,15 @@ import { AuthService } from '../auth/authService';
 import { CourseCacheRepository } from './courseCacheRepository';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
+import { CourseEnrolmentSyncService } from './courseEnrolmentSyncService';
 
 /** Shows the one course/version currently driving the assignment workspace. */
 export class CourseSelectionTreeProvider implements
   vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable {
   private readonly changeEmitter = new vscode.EventEmitter<void>();
+  private readonly enrolmentSyncService: CourseEnrolmentSyncService;
+  private readonly ownsEnrolmentSyncService: boolean;
+  private readonly enrolmentSyncSubscription: vscode.Disposable;
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
   public constructor(
@@ -15,7 +19,15 @@ export class CourseSelectionTreeProvider implements
     private readonly courseService: CourseService,
     private readonly selectionRepository: CourseSelectionRepository,
     private readonly cacheRepository: CourseCacheRepository,
-  ) {}
+    enrolmentSyncService?: CourseEnrolmentSyncService,
+  ) {
+    this.ownsEnrolmentSyncService = enrolmentSyncService === undefined;
+    this.enrolmentSyncService = enrolmentSyncService ??
+      new CourseEnrolmentSyncService(courseService, cacheRepository);
+    this.enrolmentSyncSubscription = this.enrolmentSyncService.onDidChange(
+      () => this.refresh(),
+    );
+  }
 
   public refresh(): void {
     this.changeEmitter.fire();
@@ -34,16 +46,13 @@ export class CourseSelectionTreeProvider implements
       return [];
     }
 
-    let enrolments;
+    let snapshot;
     try {
-      enrolments = await this.courseService.getEnrolments();
-      await this.cacheRepository.saveEnrolments(
-        session.student.id,
-        enrolments,
-      ).catch(() => undefined);
+      snapshot = await this.enrolmentSyncService.read(session.student.id);
     } catch {
-      enrolments = this.cacheRepository.getEnrolments(session.student.id) ?? [];
+      return [];
     }
+    const enrolments = snapshot.enrolments;
 
     const course = enrolments.find((candidate) =>
       candidate.courseSlug === selection.courseSlug);
@@ -67,5 +76,9 @@ export class CourseSelectionTreeProvider implements
 
   public dispose(): void {
     this.changeEmitter.dispose();
+    this.enrolmentSyncSubscription.dispose();
+    if (this.ownsEnrolmentSyncService) {
+      this.enrolmentSyncService.dispose();
+    }
   }
 }

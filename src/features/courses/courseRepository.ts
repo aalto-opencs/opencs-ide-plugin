@@ -1,11 +1,12 @@
 import { ApiClient } from '../../infrastructure/apiClient';
+import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import {
   CourseEnrolment,
   CourseInstance,
 } from './courseModels';
 
 export interface CourseRepository {
-  getEnrolments(): Promise<CourseEnrolment[]>;
+  getEnrolments(priority?: ApiRequestPriority): Promise<CourseEnrolment[]>;
   getCourseInstances?(courseSlug: string): Promise<CourseInstance[]>;
   activateCourseInstance?(courseInstanceId: number): Promise<void>;
 }
@@ -15,9 +16,12 @@ export class ApiCourseRepository implements CourseRepository {
     private readonly apiClient: ApiClient,
   ) {}
 
-  public async getEnrolments(): Promise<CourseEnrolment[]> {
+  public async getEnrolments(
+    priority: ApiRequestPriority = 'foreground',
+  ): Promise<CourseEnrolment[]> {
     return this.apiClient.get<CourseEnrolment[]>(
       '/users/ide-available-course-enrolments',
+      { priority },
     );
   }
 
@@ -44,7 +48,9 @@ export class ApiCourseRepository implements CourseRepository {
 }
 
 export class MockCourseRepository implements CourseRepository {
-  public async getEnrolments(): Promise<CourseEnrolment[]> {
+  public async getEnrolments(
+    _priority?: ApiRequestPriority,
+  ): Promise<CourseEnrolment[]> {
     return [{
       courseSlug: 'web-software-development',
       courseName: 'Web Software Development',
