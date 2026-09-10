@@ -51,6 +51,7 @@ import {
 } from '../features/submissions/submissionRepository';
 import { SubmissionService } from '../features/submissions/submissionService';
 import { ApiClient } from '../infrastructure/apiClient';
+import { ApiRequestScheduler } from '../infrastructure/apiRequestScheduler';
 import { ExtensionUriRouter } from '../infrastructure/extensionUriRouter';
 import { registerViews } from '../views/registerViews';
 import { AccountController } from '../features/account/accountController';
@@ -83,14 +84,22 @@ export function registerCommands(
   // The session repository must exist before the authenticated client because
   // the token provider reads SecretStorage again for every request.
   const sessionRepository = new SessionRepository(context.secrets);
+  const apiRequestScheduler = new ApiRequestScheduler();
   const apiClient = new ApiClient(
     apiBaseUrl,
     async () => (await sessionRepository.get())?.token,
+    10_000,
+    apiRequestScheduler,
   );
   // Status is deliberately public: never attach a student's session token to
   // the health-check endpoint or expose API failure details in its controller.
   const platformStatusService = new PlatformStatusService(
-    new ApiPlatformStatusRepository(new ApiClient(apiBaseUrl)),
+    new ApiPlatformStatusRepository(new ApiClient(
+      apiBaseUrl,
+      async () => undefined,
+      10_000,
+      apiRequestScheduler,
+    )),
   );
   const platformStatusController = new PlatformStatusController(
     platformStatusService,
