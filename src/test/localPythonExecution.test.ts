@@ -233,6 +233,7 @@ suite('PythonSyntaxCheckService', () => {
 
 suite('DartFlutterSyntaxCheckService', () => {
   test('runs Dart analyze and maps machine diagnostics to source files', async () => {
+    const folder = vscode.Uri.file('/assignment');
     let invocation: { executable: string; args: string[]; cwd: string } | undefined;
     const service = new DartFlutterSyntaxCheckService(
       async (executable, args, cwd) => {
@@ -246,7 +247,7 @@ suite('DartFlutterSyntaxCheckService', () => {
       },
     );
     const result = await service.check(crossPlatformAssignment, {
-      folder: vscode.Uri.file('/assignment'),
+      folder,
       files: {
         'pubspec.yaml': 'name: sample\n',
         'lib/main.dart': 'void main() {}\n',
@@ -256,7 +257,7 @@ suite('DartFlutterSyntaxCheckService', () => {
     assert.deepStrictEqual(invocation, {
       executable: 'dart',
       args: ['analyze', '--format', 'machine', 'lib/main.dart'],
-      cwd: '/assignment',
+      cwd: folder.fsPath,
     });
     assert.deepStrictEqual(result, {
       status: 'errors',
