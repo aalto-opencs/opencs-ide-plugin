@@ -1,4 +1,5 @@
 import { ApiClient } from '../../infrastructure/apiClient';
+import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import {
   AssignmentSubmission,
   ExerciseSubmissionHistoryEntry,
@@ -14,6 +15,7 @@ export interface SubmissionRepository {
   getHistory(
     exerciseUuid: string,
     courseInstanceId: number,
+    priority?: ApiRequestPriority,
   ): Promise<ExerciseSubmissionHistoryEntry[]>;
   hasPassed(
     exerciseUuid: string,
@@ -84,12 +86,14 @@ export class ApiSubmissionRepository implements SubmissionRepository {
   public async getHistory(
     exerciseUuid: string,
     courseInstanceId: number,
+    priority: ApiRequestPriority = 'foreground',
   ): Promise<ExerciseSubmissionHistoryEntry[]> {
     const query = new URLSearchParams({
       instanceId: String(courseInstanceId),
     });
     const submissions = await this.apiClient.get<unknown>(
       `/submissions/${encodeURIComponent(exerciseUuid)}?${query.toString()}`,
+      { priority },
     );
 
     if (!isExerciseSubmissionHistoryResponse(submissions)) {

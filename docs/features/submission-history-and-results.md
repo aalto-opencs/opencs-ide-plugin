@@ -8,13 +8,13 @@ when a later refresh is temporarily offline.
 
 ## Main Flow
 
-1. The Submissions view loads the selected course structure and requests
-   backend history for each programming exercise in that course instance.
-2. The extension maps exercise identifiers to readable assignment names,
-   merges the synchronized results into local history, and refreshes any
-   pending statuses.
-3. The view filters the local history to the current exercise and sorts it
-   newest first.
+1. The Submissions view immediately renders the validated local snapshot for
+   the current student, course instance, and exercise.
+2. At startup or after selecting an exercise, the submission-history
+   coordinator synchronizes only that exercise when its snapshot is stale.
+3. One history response updates every returned submission status, including
+   pending statuses, and replaces the rendered snapshot without individual
+   status requests.
 4. The two newest submissions appear directly; older rows are grouped under
    **Past Submissions**.
 5. Expanding a failed or grader-error row reveals detail entries that open as
@@ -24,8 +24,13 @@ when a later refresh is temporarily offline.
 
 - History is scoped by student, course slug, course instance, exercise, and
   submission identifier.
-- Synchronization covers only the currently selected course instance and only
-  programming exercises.
+- Synchronization covers only the current programming exercise in the selected
+  course instance.
+- A successful history response stays fresh for 30 seconds. Its timestamp is
+  persisted with the scope so a restart does not discard valid freshness.
+- Equivalent concurrent synchronizations share one history request.
+- Manual submission refresh bypasses freshness but still joins a matching
+  request already in progress.
 - Backend synchronization adds or updates matching submission identifiers but
   does not remove cached entries that are absent from a later response.
 - Duplicate submission identifiers are collapsed, and entries are sorted by
@@ -33,7 +38,10 @@ when a later refresh is temporarily offline.
 - The shared local history cache retains at most the newest 50 entries across
   students and course scopes.
 - The visible view shows only the remembered current exercise.
-- Pending entries are refreshed from the backend whenever the view loads.
+- Tree rendering, repeated child reads, and tree refresh events never initiate
+  backend requests.
+- Pending entries returned by history are merged as returned. History
+  synchronization does not follow them with individual status requests.
 - Result labels distinguish Pending, Passed, Failed, and Grading error.
 - Only failed tests are shown as child rows; passing-test counts contribute to
   the summary.
@@ -52,8 +60,8 @@ when a later refresh is temporarily offline.
 
 ## Failure Behavior
 
-- If synchronization or a pending-status refresh fails, valid cached rows stay
-  visible and the view reports **Platform offline - retry later**.
+- If synchronization fails, valid cached rows stay visible and the view reports
+  **Platform offline - retry later**.
 - If no cached rows exist, the view remains empty until a later successful
   refresh.
 - Invalid backend history or status data is rejected rather than persisted.
@@ -68,7 +76,7 @@ when a later refresh is temporarily offline.
 - Switching course instances separates histories even when exercise identifiers
   are shared.
 - An accepted submission can remain pending across restarts and be updated by a
-  later view refresh.
+  later normal or manual history synchronization.
 
 ## Interactions With Other Features
 
@@ -96,10 +104,11 @@ when a later refresh is temporarily offline.
 
 ## Open Questions
 
-- Automated tests cover persistence, synchronization, current-exercise
-  filtering, older-result grouping, offline fallback, pending refresh, and
-  failed/grader-error formatting. Broad extension-host coverage of view focus,
-  editor navigation, and accessibility announcements remains limited.
+- Automated tests cover persistence, 30-second freshness, coalescing, forced
+  refresh, scope isolation, offline recovery, zero-request tree rendering, and
+  one history request for multiple pending entries. Broad extension-host
+  coverage of view focus, editor navigation, and accessibility announcements
+  remains limited.
 - It remains undecided whether a successful backend synchronization should
   remove cached entries that the backend no longer returns for that course
   scope.

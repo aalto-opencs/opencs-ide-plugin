@@ -506,9 +506,11 @@ suite('Assignment submission', () => {
     );
   });
 
-  test('keeps cached submissions visible when status refresh is offline', async () => {
+  test('renders cached submissions without backend reads while offline', async () => {
     const state = new InMemoryMemento();
     const history = new SubmissionHistoryRepository(state);
+    const selections = new CourseSelectionRepository(state);
+    const currentAssignments = new CurrentAssignmentRepository(state);
     const sessionRepository = new SessionRepository(
       new InMemorySecretStorage(),
     );
@@ -520,6 +522,18 @@ suite('Assignment submission', () => {
       },
     };
     await sessionRepository.save(session);
+    const assignment: ProgrammingAssignment = {
+      exerciseUuid: '11111111-1111-4111-8111-111111111111',
+      name: 'Hello platform',
+      type: 'programming-exercise',
+      courseSlug: 'web-software-development',
+      courseInstanceId: 42,
+    };
+    await selections.saveSelection(session.student.id, {
+      courseSlug: assignment.courseSlug,
+      courseInstanceId: 42,
+    });
+    await currentAssignments.save(session.student.id, assignment);
     await history.add({
       schemaVersion: 1,
       userId: session.student.id,
@@ -535,29 +549,55 @@ suite('Assignment submission', () => {
         gradingData: null,
       },
     });
+    let historyRequests = 0;
+    let statusRequests = 0;
+    const submissionRepository = createStatusRepository(
+      async () => {
+        statusRequests += 1;
+        throw new Error('Status endpoint must not be called');
+      },
+      async () => {
+        historyRequests += 1;
+        throw new Error('Network unavailable');
+      },
+    );
+    const syncService = new SubmissionHistorySyncService(
+      selections,
+      submissionRepository,
+      history,
+    );
+    await syncService.synchronizeCurrentExercise(
+      session.student.id,
+      assignment,
+    ).catch(() => undefined);
+    historyRequests = 0;
     const provider = new SubmissionTreeProvider(
       new AuthService(
         { exchangeAuthorizationCode: async () => session },
         sessionRepository,
       ),
       history,
-      createStatusRepository(async () => {
-        throw new Error('Network unavailable');
-      }),
-      () => undefined,
+      syncService,
+      currentAssignments,
     );
 
     try {
-      const items = await provider.getChildren();
+      const first = await provider.getChildren();
+      provider.refresh();
+      const second = await provider.getChildren();
 
-      assert.strictEqual(items[0].label, 'Hello platform');
-      assert.strictEqual(items[0].description, 'Pending');
+      assert.strictEqual(first[0].label, 'Hello platform');
+      assert.strictEqual(first[0].description, 'Pending');
+      assert.strictEqual(second[0].label, 'Hello platform');
       assert.strictEqual(
         provider.message,
         'Platform offline - retry later',
       );
+      assert.strictEqual(historyRequests, 0);
+      assert.strictEqual(statusRequests, 0);
     } finally {
       provider.dispose();
+      syncService.dispose();
     }
   });
 
@@ -607,12 +647,6 @@ suite('Assignment submission', () => {
     const provider = new SubmissionTreeProvider(
       new AuthService(authRepository, sessionRepository),
       history,
-      createStatusRepository(async () => ({
-        correct: true,
-        gradingStatus: GRADING_STATUS_PROCESSED,
-        gradingData: null,
-      })),
-      () => undefined,
     );
 
     try {
@@ -715,12 +749,6 @@ suite('Assignment submission', () => {
         sessionRepository,
       ),
       history,
-      createStatusRepository(async () => ({
-        correct: true,
-        gradingStatus: GRADING_STATUS_PROCESSED,
-        gradingData: null,
-      })),
-      () => undefined,
       undefined,
       currentAssignments,
     );

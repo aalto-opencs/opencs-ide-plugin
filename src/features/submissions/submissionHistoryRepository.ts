@@ -5,6 +5,8 @@ import {
 } from './submissionModels';
 
 const STORAGE_KEY = 'aaltoOpenCsIde.submissionHistory.v1';
+const VALIDATED_AT_PREFIX =
+  'aaltoOpenCsIde.submissionHistoryValidatedAt.v1';
 const MAX_HISTORY_ENTRIES = 50;
 
 /**
@@ -58,8 +60,45 @@ export class SubmissionHistoryRepository {
     await this.state.update(STORAGE_KEY, entries);
   }
 
+  public getLastValidatedAt(
+    userId: number,
+    courseSlug: string,
+    courseInstanceId: number,
+    exerciseUuid: string,
+  ): number | undefined {
+    const value = this.state.get<unknown>(this.getValidationKey(
+      userId,
+      courseSlug,
+      courseInstanceId,
+      exerciseUuid,
+    ));
+    return typeof value === 'number' && Number.isFinite(value) && value >= 0
+      ? value
+      : undefined;
+  }
+
+  public async markValidated(
+    userId: number,
+    courseSlug: string,
+    courseInstanceId: number,
+    exerciseUuid: string,
+    timestamp: number,
+  ): Promise<void> {
+    await this.state.update(this.getValidationKey(
+      userId,
+      courseSlug,
+      courseInstanceId,
+      exerciseUuid,
+    ), timestamp);
+  }
+
   public async clearAll(): Promise<void> {
-    await this.state.update(STORAGE_KEY, undefined);
+    await Promise.all([
+      this.state.update(STORAGE_KEY, undefined),
+      ...this.state.keys()
+        .filter((key) => key.startsWith(`${VALIDATED_AT_PREFIX}.`))
+        .map((key) => this.state.update(key, undefined)),
+    ]);
   }
 
   private read(): SubmissionHistoryEntry[] {
@@ -67,6 +106,21 @@ export class SubmissionHistoryRepository {
     return Array.isArray(value)
       ? value.filter(isSubmissionHistoryEntry)
       : [];
+  }
+
+  private getValidationKey(
+    userId: number,
+    courseSlug: string,
+    courseInstanceId: number,
+    exerciseUuid: string,
+  ): string {
+    return [
+      VALIDATED_AT_PREFIX,
+      userId,
+      encodeURIComponent(courseSlug),
+      courseInstanceId,
+      encodeURIComponent(exerciseUuid),
+    ].join('.');
   }
 }
 

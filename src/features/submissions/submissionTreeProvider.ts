@@ -7,7 +7,6 @@ import {
 } from './submissionModels';
 import { SubmissionHistoryRepository } from './submissionHistoryRepository';
 import { SubmissionHistorySyncService } from './submissionHistorySyncService';
-import { SubmissionRepository } from './submissionRepository';
 import { SubmissionDetailsDocument } from './submissionDetailsProvider';
 import {
   SubmissionResultSummary,
@@ -26,9 +25,7 @@ class SubmissionTreeItem extends vscode.TreeItem {
 }
 
 /**
- * Renders backend-synchronized history with a cache-first offline fallback.
- * Pending cached entries are refreshed opportunistically; failures keep the
- * last known rows visible and mark the view offline rather than losing history.
+ * Renders backend-synchronized snapshots without initiating network requests.
  */
 export class SubmissionTreeProvider implements
   vscode.TreeDataProvider<SubmissionTreeItem>, vscode.Disposable {
@@ -40,8 +37,6 @@ export class SubmissionTreeProvider implements
   public constructor(
     private readonly authService: AuthService,
     private readonly historyRepository: SubmissionHistoryRepository,
-    private readonly submissionRepository: SubmissionRepository,
-    private readonly onAssignmentCompleted: () => void,
     private readonly historySyncService?: SubmissionHistorySyncService,
     private readonly currentAssignmentRepository?: CurrentAssignmentRepository,
   ) {}
@@ -85,69 +80,24 @@ export class SubmissionTreeProvider implements
     }
     this.setDescription(currentAssignment?.name);
 
-    let offline = false;
-    const selection = this.historySyncService?.getSelectedCourse(
-      session.student.id,
-    );
-    if (this.historySyncService) {
-      try {
-        if (currentAssignment) {
-          await this.historySyncService.synchronizeCurrentExercise(
-            session.student.id,
-            currentAssignment,
-          );
-        }
-      } catch {
-        offline = true;
-      }
-    }
-
-    let entries = this.historyRepository.getForUser(session.student.id);
-    if (selection) {
+    const snapshot = currentAssignment
+      ? this.historySyncService?.getSnapshot(
+        session.student.id,
+        currentAssignment,
+      )
+      : undefined;
+    let entries = this.historySyncService
+      ? snapshot?.entries ?? []
+      : this.historyRepository.getForUser(session.student.id);
+    if (!this.historySyncService && currentAssignment) {
       entries = entries.filter((entry) =>
-        entry.courseSlug === selection.courseSlug &&
-        entry.courseInstanceId === selection.courseInstanceId &&
-        (!currentAssignment ||
-          entry.exerciseUuid === currentAssignment.exerciseUuid));
-    } else if (currentAssignment) {
-      entries = entries.filter((entry) =>
+        entry.courseSlug === currentAssignment.courseSlug &&
+        entry.courseInstanceId === currentAssignment.courseInstanceId &&
         entry.exerciseUuid === currentAssignment.exerciseUuid);
     }
-    const statusRefreshes = await Promise.all(entries
-      .filter((entry) =>
-        entry.status.gradingStatus === GRADING_STATUS_PENDING)
-      .map(async (entry) => {
-        try {
-          const status = await this.submissionRepository.getStatus(
-            entry.submissionUuid,
-          );
-          await this.historyRepository.updateStatus(
-            entry.submissionUuid,
-            status,
-          );
-          if (status.correct === true) {
-            this.onAssignmentCompleted();
-          }
-          return true;
-        } catch {
-          return false;
-        }
-      }));
-    offline ||= statusRefreshes.includes(false);
-    this.setMessage(offline
+    this.setMessage(snapshot?.offline
       ? 'Platform offline - retry later'
-      : undefined);
-    entries = this.historyRepository.getForUser(session.student.id);
-    if (selection) {
-      entries = entries.filter((entry) =>
-        entry.courseSlug === selection.courseSlug &&
-        entry.courseInstanceId === selection.courseInstanceId &&
-        (!currentAssignment ||
-          entry.exerciseUuid === currentAssignment.exerciseUuid));
-    } else if (currentAssignment) {
-      entries = entries.filter((entry) =>
-        entry.exerciseUuid === currentAssignment.exerciseUuid);
-    }
+      : snapshot?.refreshing ? 'Refreshing submissions...' : undefined);
     if (entries.length === 0) {
       return [createMessageItem('No submissions for this exercise', 'info')];
     }

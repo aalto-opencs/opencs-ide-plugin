@@ -46,13 +46,17 @@ import { SubmissionController } from '../features/submissions/submissionControll
 import { AssignmentActivityRepository } from '../features/assignmentActivity/assignmentActivityRepository';
 import { SubmissionFileRepository } from '../features/submissions/submissionFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
+import { SubmissionHistorySyncService } from '../features/submissions/submissionHistorySyncService';
 import {
   ApiSubmissionRepository,
   SubmissionRepository,
 } from '../features/submissions/submissionRepository';
 import { SubmissionService } from '../features/submissions/submissionService';
 import { ApiClient } from '../infrastructure/apiClient';
-import { ApiRequestScheduler } from '../infrastructure/apiRequestScheduler';
+import {
+  ApiRequestPriority,
+  ApiRequestScheduler,
+} from '../infrastructure/apiRequestScheduler';
 import { ExtensionUriRouter } from '../infrastructure/extensionUriRouter';
 import { registerViews } from '../views/registerViews';
 import { AccountController } from '../features/account/accountController';
@@ -153,6 +157,11 @@ export function registerCommands(
   const submissionHistoryRepository = new SubmissionHistoryRepository(
     context.globalState,
   );
+  const submissionHistorySyncService = new SubmissionHistorySyncService(
+    courseSelectionRepository,
+    submissionRepository,
+    submissionHistoryRepository,
+  );
   const assignmentActivityRepository = new AssignmentActivityRepository(
     context.globalState,
   );
@@ -188,9 +197,9 @@ export function registerCommands(
     courseCacheRepository,
     courseEnrolmentSyncService,
     currentAssignmentRepository,
-    submissionRepository,
     coursePointsService,
     submissionHistoryRepository,
+    submissionHistorySyncService,
     (userId, assignment) =>
       developmentCompletionRepository?.isCompleted(userId, assignment) ??
         false,
@@ -377,6 +386,24 @@ export function registerCommands(
     await exerciseTreeProvider.updateActiveEditorContext();
     await courseController.showSelectedInstanceEndWarning();
   };
+  const synchronizeCurrentSubmissionHistory = async (
+    force = false,
+    priority: ApiRequestPriority = 'background',
+  ): Promise<void> => {
+    const session = await authService.getCurrentSession();
+    const assignment = session
+      ? currentAssignmentRepository.get(session.student.id)
+      : undefined;
+    if (!session || !assignment) {
+      return;
+    }
+    await submissionHistorySyncService.synchronizeCurrentExercise(
+      session.student.id,
+      assignment,
+      force,
+      priority,
+    );
+  };
   const assignmentDeepLinkController = new AssignmentDeepLinkController(
     authService,
     new AssignmentDeepLinkService(
@@ -387,7 +414,11 @@ export function registerCommands(
       courseCacheRepository,
     ),
     () => authController.signIn(),
-    refreshUiState,
+    async () => {
+      await refreshUiState();
+      await synchronizeCurrentSubmissionHistory(false, 'foreground')
+        .catch(() => undefined);
+    },
     async (exerciseUuid) => {
       const revealed = await courseTreeProvider.revealAssignment(exerciseUuid);
       await openCurrentExercise();
@@ -397,7 +428,9 @@ export function registerCommands(
   const extensionUriHandler = vscode.window.registerUriHandler(
     new ExtensionUriRouter(authController, assignmentDeepLinkController),
   );
-  void refreshUiState();
+  void refreshUiState()
+    .then(() => synchronizeCurrentSubmissionHistory())
+    .catch(() => undefined);
 
   const makeCurrent = async (
     assignment?: ProgrammingAssignment,
@@ -412,6 +445,8 @@ export function registerCommands(
     await currentAssignmentRepository.save(session.student.id, assignment);
     await refreshUiState();
     if (changed) {
+      await synchronizeCurrentSubmissionHistory(false, 'foreground')
+        .catch(() => undefined);
       await openCurrentExercise();
     }
   };
@@ -438,6 +473,7 @@ export function registerCommands(
           submissionHistoryRepository.clearAll(),
           assignmentActivityRepository.clearAll(),
         ]);
+        submissionHistorySyncService.clear();
         await refreshUiState();
       },
     );
@@ -472,6 +508,7 @@ export function registerCommands(
     async () => {
       if (await authController.signIn()) {
         await refreshUiState();
+        await synchronizeCurrentSubmissionHistory().catch(() => undefined);
       }
     },
   );
@@ -494,6 +531,7 @@ export function registerCommands(
       if (session) {
         await assignmentActivityRepository.clearForUser(session.student.id);
         courseEnrolmentSyncService.clear(session.student.id);
+        submissionHistorySyncService.clear(session.student.id);
       }
       await refreshUiState();
     },
@@ -557,7 +595,11 @@ export function registerCommands(
 
   const refreshSubmissionsCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.refreshSubmissions',
-    () => submissionTreeProvider.refresh(),
+    async () => {
+      await synchronizeCurrentSubmissionHistory(true, 'foreground')
+        .catch(() => undefined);
+      submissionTreeProvider.refresh();
+    },
   );
 
   const selectCourseCommand = vscode.commands.registerCommand(

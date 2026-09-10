@@ -8,7 +8,6 @@ import { CourseCacheRepository } from '../features/courses/courseCacheRepository
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
-import { SubmissionRepository } from '../features/submissions/submissionRepository';
 import { CoursePointsService } from '../features/coursePoints/coursePointsService';
 import { SubmissionTreeProvider } from '../features/submissions/submissionTreeProvider';
 import {
@@ -42,9 +41,9 @@ export function registerViews(
   courseCacheRepository: CourseCacheRepository,
   courseEnrolmentSyncService: CourseEnrolmentSyncService,
   currentAssignmentRepository: CurrentAssignmentRepository,
-  submissionRepository: SubmissionRepository,
   coursePointsService: CoursePointsService,
   submissionHistoryRepository: SubmissionHistoryRepository,
+  submissionHistorySyncService: SubmissionHistorySyncService,
   isDevelopmentCompleted: (
     userId: number,
     assignment: ProgrammingAssignment,
@@ -86,14 +85,11 @@ export function registerViews(
   const submissionTreeProvider = new SubmissionTreeProvider(
     authService,
     submissionHistoryRepository,
-    submissionRepository,
-    () => courseTreeProvider.refresh(),
-    new SubmissionHistorySyncService(
-      courseSelectionRepository,
-      submissionRepository,
-      submissionHistoryRepository,
-    ),
+    submissionHistorySyncService,
     currentAssignmentRepository,
+  );
+  const submissionHistoryListener = submissionHistorySyncService.onDidChange(
+    () => submissionTreeProvider.refresh(),
   );
   const submissionDetailsProvider = new SubmissionDetailsProvider();
   const assignmentHandoutViewProvider = new AssignmentHandoutViewProvider(
@@ -129,6 +125,8 @@ export function registerViews(
     courseSelectionTreeProvider,
     courseTreeProvider,
     courseEnrolmentSyncService,
+    submissionHistorySyncService,
+    submissionHistoryListener,
     exerciseTreeProvider,
     submissionTreeProvider,
     submissionDetailsProvider,
