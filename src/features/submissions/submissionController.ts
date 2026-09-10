@@ -39,7 +39,10 @@ export class SubmissionController {
     private readonly authService: AuthService,
     private readonly historyRepository: SubmissionHistoryRepository,
     private readonly treeProvider: SubmissionTreeProvider,
-    private readonly onAssignmentCompleted: () => void,
+    private readonly onAssignmentCompleted: (
+      userId: number,
+      assignment: ProgrammingAssignment,
+    ) => void | Promise<void>,
     private readonly syntaxCheckController?: PythonSyntaxCheckController,
     private readonly activityRepository?: AssignmentActivityRepository,
   ) {}
@@ -198,7 +201,7 @@ export class SubmissionController {
             );
             this.treeProvider.refresh();
             if (gradingStatus.correct === true) {
-              this.onAssignmentCompleted();
+              await this.onAssignmentCompleted(session.student.id, assignment);
             }
           },
         ),

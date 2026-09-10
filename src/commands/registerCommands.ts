@@ -288,7 +288,14 @@ export function registerCommands(
     authService,
     submissionHistoryRepository,
     submissionTreeProvider,
-    () => courseTreeProvider.refresh(),
+    async (userId, assignment) => {
+      if (assignment.courseInstanceId !== null) {
+        await courseSyncService.refreshExercisePoints(
+          userId,
+          assignment.courseInstanceId,
+        ).catch(() => undefined);
+      }
+    },
     pythonSyntaxCheckController,
     assignmentActivityRepository,
   );
@@ -415,6 +422,27 @@ export function registerCommands(
       priority,
     );
   };
+  const synchronizeCurrentCourse = async (
+    priority: ApiRequestPriority = 'background',
+  ): Promise<void> => {
+    const session = await authService.getCurrentSession();
+    if (!session) {
+      return;
+    }
+    const selection = courseSelectionRepository.getSelection(
+      session.student.id,
+    );
+    if (selection) {
+      await courseSyncService.readCourse(
+        session.student.id,
+        selection.courseSlug,
+        selection.courseInstanceId,
+        priority,
+      );
+      return;
+    }
+    await courseEnrolmentSyncService.read(session.student.id);
+  };
   const assignmentDeepLinkController = new AssignmentDeepLinkController(
     authService,
     new AssignmentDeepLinkService(
@@ -427,6 +455,7 @@ export function registerCommands(
     () => authController.signIn(),
     async () => {
       await refreshUiState();
+      await synchronizeCurrentCourse().catch(() => undefined);
       await synchronizeCurrentSubmissionHistory(false, 'foreground')
         .catch(() => undefined);
     },
@@ -440,11 +469,15 @@ export function registerCommands(
     new ExtensionUriRouter(authController, assignmentDeepLinkController),
   );
   void refreshUiState()
-    .then(() => synchronizeCurrentSubmissionHistory())
+    .then(async () => {
+      await synchronizeCurrentCourse().catch(() => undefined);
+      await synchronizeCurrentSubmissionHistory().catch(() => undefined);
+    })
     .catch(() => undefined);
 
   const makeCurrent = async (
     assignment?: ProgrammingAssignment,
+    synchronizeHistory = true,
   ): Promise<void> => {
     const session = await authService.getCurrentSession();
     if (!session || !assignment) {
@@ -455,7 +488,7 @@ export function registerCommands(
       previous.courseInstanceId !== assignment.courseInstanceId;
     await currentAssignmentRepository.save(session.student.id, assignment);
     await refreshUiState();
-    if (changed) {
+    if (changed && synchronizeHistory) {
       await synchronizeCurrentSubmissionHistory(false, 'foreground')
         .catch(() => undefined);
       await openCurrentExercise();
@@ -519,6 +552,7 @@ export function registerCommands(
     async () => {
       if (await authController.signIn()) {
         await refreshUiState();
+        await synchronizeCurrentCourse().catch(() => undefined);
         await synchronizeCurrentSubmissionHistory().catch(() => undefined);
       }
     },
@@ -654,7 +688,7 @@ export function registerCommands(
     'aaltoOpenCsIde.downloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       await courseController.showSelectedInstanceEndWarning();
-      await makeCurrent(item?.assignment);
+      await makeCurrent(item?.assignment, false);
       await assignmentController.downloadAssignment(
         item?.assignment,
         async (downloaded) => {
@@ -701,7 +735,7 @@ export function registerCommands(
     'aaltoOpenCsIde.redownloadAssignment',
     async (item?: { assignment?: ProgrammingAssignment }) => {
       await courseController.showSelectedInstanceEndWarning();
-      await makeCurrent(item?.assignment);
+      await makeCurrent(item?.assignment, false);
       await assignmentController.redownloadAssignment(
         item?.assignment,
         async (downloaded) => {

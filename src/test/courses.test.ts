@@ -367,13 +367,18 @@ suite('Courses', () => {
   });
 
   test('shows only the selected course and version', async () => {
-    const { provider, sessionRepository } = createProvider(
+    const { provider, sessionRepository, courseSyncService } = createProvider(
       { getEnrolments: async () => enrolments },
       { getStructure: async () => structure },
     );
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
 
       const parts = await provider.getChildren();
 
@@ -384,9 +389,40 @@ suite('Courses', () => {
     }
   });
 
-  test('shows course parts at the root and keeps nested children local', async () => {
+  test('does not request backend data while rendering without a snapshot', async () => {
+    let enrolmentRequests = 0;
     let structureRequests = 0;
     const { provider, sessionRepository } = createProvider(
+      {
+        getEnrolments: async () => {
+          enrolmentRequests += 1;
+          return enrolments;
+        },
+      },
+      {
+        getStructure: async () => {
+          structureRequests += 1;
+          return structure;
+        },
+      },
+    );
+
+    try {
+      await sessionRepository.save(session);
+
+      const children = await provider.getChildren();
+
+      assert.strictEqual(children[0].label, 'Course data is unavailable. Refresh to retry.');
+      assert.strictEqual(enrolmentRequests, 0);
+      assert.strictEqual(structureRequests, 0);
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('shows course parts at the root and keeps nested children local', async () => {
+    let structureRequests = 0;
+    const { provider, sessionRepository, courseSyncService } = createProvider(
       { getEnrolments: async () => enrolments },
       {
         getStructure: async (courseSlug) => {
@@ -399,6 +435,11 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
 
       const parts = await provider.getChildren();
       const chapters = await provider.getChildren(parts[0]);
@@ -456,6 +497,11 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
       const initialParts = await provider.getChildren();
       assert.strictEqual(initialParts[0].description, undefined);
 
@@ -517,7 +563,7 @@ suite('Courses', () => {
         }];
       },
     };
-    const { provider, sessionRepository } = createProvider(
+    const { provider, sessionRepository, courseSyncService } = createProvider(
       { getEnrolments: async () => enrolments },
       { getStructure: async () => structure },
       true,
@@ -527,6 +573,11 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
       const parts = await provider.getChildren();
       const chapters = await provider.getChildren(parts[0]);
       const exercises = await provider.getChildren(chapters[0]);
@@ -543,6 +594,7 @@ suite('Courses', () => {
       provider,
       sessionRepository,
       currentAssignmentRepository,
+      courseSyncService,
     } = createProvider(
       { getEnrolments: async () => enrolments },
       { getStructure: async () => structure },
@@ -567,6 +619,11 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
       await currentAssignmentRepository.save(session.student.id, {
         exerciseUuid: '11111111-1111-4111-8111-111111111111',
         name: 'Hello Web',
@@ -601,7 +658,7 @@ suite('Courses', () => {
   });
 
   test('applies an in-memory development completion override', async () => {
-    const { provider, sessionRepository } = createProvider(
+    const { provider, sessionRepository, courseSyncService } = createProvider(
       { getEnrolments: async () => enrolments },
       { getStructure: async () => structure },
       true,
@@ -615,6 +672,11 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
       const parts = await provider.getChildren();
       const chapters = await provider.getChildren(parts[0]);
       const exercises = await provider.getChildren(chapters[0]);
@@ -628,12 +690,17 @@ suite('Courses', () => {
   });
 
   test('shows an empty state for a user without enrolments', async () => {
-    const { provider, sessionRepository } = createProvider({
+    const { provider, sessionRepository, courseSyncService } = createProvider({
       getEnrolments: async () => [],
     });
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
 
       const children = await provider.getChildren();
 
@@ -666,6 +733,11 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
       const onlineParts = await provider.getChildren();
       assert.strictEqual(onlineParts[0].label, 'Web Applications and HTTP');
       assert.strictEqual(provider.message, undefined);
@@ -691,7 +763,7 @@ suite('Courses', () => {
   });
 
   test('shows a retry action when no cached course data exists', async () => {
-    const { provider, sessionRepository } = createProvider({
+    const { provider, sessionRepository, courseSyncService } = createProvider({
       getEnrolments: async () => {
         throw new Error('Network unavailable');
       },
@@ -699,9 +771,17 @@ suite('Courses', () => {
 
     try {
       await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      ).catch(() => undefined);
       const children = await provider.getChildren();
 
-      assert.strictEqual(children[0].label, 'Network unavailable');
+      assert.strictEqual(
+        children[0].label,
+        'Course data is unavailable. Refresh to retry.',
+      );
       assert.strictEqual(
         children[0].command?.command,
         'aaltoOpenCsIde.refreshCourses',

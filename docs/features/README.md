@@ -28,6 +28,13 @@ course-instance resolution, and safe exercise selection.
 Describes active course-instance selection, programming-exercise navigation,
 completion state, end warnings, and offline course data.
 
+## Snapshot Synchronization and Request Budget
+
+[Snapshot Synchronization and Request Budget](./synchronization-and-request-budget.md)
+
+Describes local snapshot rendering, freshness windows, targeted synchronization,
+progressive polling, transient failures, Pending recovery, and request budgets.
+
 ## Assignment Download and Redownload
 
 [Assignment Download and Redownload](./assignment-downloads.md)

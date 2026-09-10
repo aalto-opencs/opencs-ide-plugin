@@ -298,11 +298,28 @@ export class CourseSyncService implements vscode.Disposable {
     };
   }
 
+  public async refreshExercisePoints(
+    userId: number,
+    instanceId: number,
+  ): Promise<CourseResourceSnapshot<CourseExercisePoints[]>> {
+    await this.synchronizeExercisePoints(
+      userId,
+      instanceId,
+      true,
+      'foreground',
+    );
+    const snapshot = this.getExercisePointsSnapshot(userId, instanceId);
+    if (!snapshot) {
+      throw new Error('Failed to refresh exercise points.');
+    }
+    return snapshot;
+  }
+
   public getStructureSnapshot(
     userId: number,
     courseSlug: string,
   ): CourseResourceSnapshot<CoursePart[]> | undefined {
-    const state = this.structures.get(this.structureKey(userId, courseSlug));
+    const state = this.getOrHydrateStructure(userId, courseSlug);
     return state ? this.toSnapshot(state) : undefined;
   }
 
@@ -310,9 +327,7 @@ export class CourseSyncService implements vscode.Disposable {
     userId: number,
     instanceId: number,
   ): CourseResourceSnapshot<CourseExercisePoints[]> | undefined {
-    const state = this.exercisePoints.get(
-      this.exercisePointsKey(userId, instanceId),
-    );
+    const state = this.getOrHydrateExercisePoints(userId, instanceId);
     return state ? this.toSnapshot(state) : undefined;
   }
 
@@ -320,9 +335,7 @@ export class CourseSyncService implements vscode.Disposable {
     userId: number,
     courseSlug: string,
   ): CourseResourceSnapshot<CourseInstancePoints[]> | undefined {
-    const state = this.courseProgress.get(
-      this.courseProgressKey(userId, courseSlug),
-    );
+    const state = this.getOrHydrateCourseProgress(userId, courseSlug);
     return state ? this.toSnapshot(state) : undefined;
   }
 

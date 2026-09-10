@@ -17,7 +17,8 @@ copy while protecting the old copy if preparation or installation fails.
    then reads the hash again.
 4. It validates and extracts the archive into a temporary folder, generates the
    local handout and metadata, and installs the completed folder atomically.
-5. The exercise becomes current and the UI refreshes.
+5. The exercise becomes current and the UI refreshes local state. Downloading
+   does not synchronize course or submission snapshots.
 6. The extension keeps the OpenCS sidebar visible, opens the preferred starter
    file in the editor, and selects that file in the Exercise tree.
 

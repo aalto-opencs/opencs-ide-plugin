@@ -172,14 +172,29 @@ export class CourseTreeProvider implements
       return [];
     }
 
-    this.setMessage('Loading course data...');
+    const enrolmentSnapshot = this.enrolmentSyncService.getSnapshot(
+      session.student.id,
+    );
+    const structure = this.courseSyncService.getStructureSnapshot(
+      session.student.id,
+      selection.courseSlug,
+    );
+    const exercisePoints = this.courseSyncService.getExercisePointsSnapshot(
+      session.student.id,
+      selection.courseInstanceId,
+    );
+    if (!enrolmentSnapshot || !structure) {
+      this.setDescription(undefined);
+      this.setMessage('Course data is unavailable. Refresh to retry.');
+      return [this.createMessageItem(
+        'Course data is unavailable. Refresh to retry.',
+        'error',
+        'aaltoOpenCsIde.refreshCourses',
+      )];
+    }
+
     try {
-      const snapshot = await this.courseSyncService.readCourse(
-        session.student.id,
-        selection.courseSlug,
-        selection.courseInstanceId,
-      );
-      const enrolments = snapshot.enrolments.enrolments;
+      const enrolments = enrolmentSnapshot.enrolments;
 
       if (!enrolments.length) {
         this.setDescription(undefined);
@@ -207,11 +222,6 @@ export class CourseTreeProvider implements
         )];
       }
 
-      const structure = snapshot.structure;
-      const exercisePoints = snapshot.exercisePoints;
-      if (!structure) {
-        throw new Error('Course data is unavailable.');
-      }
       const contentResult = await this.loadCourseContent(
         enrolment.courseSlug,
         enrolment.courseName || enrolment.courseSlug,
@@ -228,11 +238,10 @@ export class CourseTreeProvider implements
           ]))
           : undefined,
       );
-      const refreshing = snapshot.enrolments.refreshing ||
-        structure.refreshing || exercisePoints?.refreshing === true ||
-        snapshot.courseProgress?.refreshing === true;
-      const usingCache = snapshot.enrolments.source === 'cache' ||
-        snapshot.enrolments.offline || structure.source === 'cache' ||
+      const refreshing = enrolmentSnapshot.refreshing ||
+        structure.refreshing || exercisePoints?.refreshing === true;
+      const usingCache = enrolmentSnapshot.source === 'cache' ||
+        enrolmentSnapshot.offline || structure.source === 'cache' ||
         structure.offline || exercisePoints === undefined ||
         exercisePoints.source === 'cache' || exercisePoints.offline;
       this.setDescription([

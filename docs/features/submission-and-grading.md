@@ -21,7 +21,8 @@ its grading state, and presents the backend's authoritative outcome.
    seconds. It uses 10-second intervals during the first five minutes, waits
    20 seconds once, then uses 30-second intervals. It stops on a terminal
    result, cancellation, or repeated transient failure.
-7. The final state refreshes Submissions and, after a pass, course completion.
+7. The final state refreshes Submissions and, after a pass, selected-instance
+   exercise points.
 
 ## Rules & Conditions
 
@@ -45,7 +46,8 @@ its grading state, and presents the backend's authoritative outcome.
 
 - Pending, passed, failed, and grader-error results are retained in local
   submission history and displayed in the Submissions view.
-- A passed result notifies the student and refreshes course completion.
+- A passed result notifies the student and refreshes selected-instance exercise
+  points. Course structure and enrolments are not refreshed.
 - A failed result reports the test summary and makes detailed failures
   available from submission history.
 - A grader error is distinct from an incorrect solution.

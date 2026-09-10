@@ -46,10 +46,8 @@ export class CourseSelectionTreeProvider implements
       return [];
     }
 
-    let snapshot;
-    try {
-      snapshot = await this.enrolmentSyncService.read(session.student.id);
-    } catch {
+    const snapshot = this.enrolmentSyncService.getSnapshot(session.student.id);
+    if (!snapshot) {
       return [];
     }
     const enrolments = snapshot.enrolments;

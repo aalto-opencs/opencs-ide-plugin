@@ -118,6 +118,45 @@ suite('Course synchronization', () => {
     assert.strictEqual(requestCount, 4);
   });
 
+  test('refreshes exercise points without refreshing other course resources', async () => {
+    let enrolmentRequests = 0;
+    let structureRequests = 0;
+    let exercisePointRequests = 0;
+    let progressRequests = 0;
+    const service = new CourseSyncService(
+      new CourseService({
+        getEnrolments: async () => {
+          enrolmentRequests += 1;
+          return [];
+        },
+      }),
+      new CourseMaterialService({
+        getStructure: async () => {
+          structureRequests += 1;
+          return [];
+        },
+      }),
+      new CoursePointsService({
+        getCourseProgress: async () => {
+          progressRequests += 1;
+          return [];
+        },
+        getExerciseProgress: async () => {
+          exercisePointRequests += 1;
+          return [];
+        },
+      }),
+      new CourseCacheRepository(new InMemoryMemento()),
+    );
+
+    await service.refreshExercisePoints(42, 12);
+
+    assert.strictEqual(enrolmentRequests, 0);
+    assert.strictEqual(structureRequests, 0);
+    assert.strictEqual(exercisePointRequests, 1);
+    assert.strictEqual(progressRequests, 0);
+  });
+
   test('renders stale structure cache while revalidating', async () => {
     const storage = new InMemoryMemento();
     const cache = new CourseCacheRepository(storage);
