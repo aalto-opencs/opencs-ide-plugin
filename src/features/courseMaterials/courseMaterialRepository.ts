@@ -3,9 +3,13 @@ import {
   CoursePart,
   CourseStructureResponse,
 } from './courseMaterialModels';
+import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 
 export interface CourseMaterialRepository {
-  getStructure(courseSlug: string): Promise<CoursePart[]>;
+  getStructure(
+    courseSlug: string,
+    priority?: ApiRequestPriority,
+  ): Promise<CoursePart[]>;
 }
 
 export class ApiCourseMaterialRepository implements
@@ -14,9 +18,13 @@ export class ApiCourseMaterialRepository implements
     private readonly apiClient: ApiClient,
   ) {}
 
-  public async getStructure(courseSlug: string): Promise<CoursePart[]> {
+  public async getStructure(
+    courseSlug: string,
+    priority: ApiRequestPriority = 'foreground',
+  ): Promise<CoursePart[]> {
     const response = await this.apiClient.get<CourseStructureResponse>(
       `/course-materials/${encodeURIComponent(courseSlug)}/structure`,
+      { priority },
     );
 
     return response.structure;
@@ -25,7 +33,10 @@ export class ApiCourseMaterialRepository implements
 
 export class MockCourseMaterialRepository implements
   CourseMaterialRepository {
-  public async getStructure(_courseSlug: string): Promise<CoursePart[]> {
+  public async getStructure(
+    _courseSlug: string,
+    _priority?: ApiRequestPriority,
+  ): Promise<CoursePart[]> {
     return [{
       slug: 'part-1',
       name: 'Getting Started with Web Development',

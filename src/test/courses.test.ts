@@ -30,6 +30,8 @@ import {
 import { CourseService } from '../features/courses/courseService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
+import { CourseEnrolmentSyncService } from '../features/courses/courseEnrolmentSyncService';
+import { CourseSyncService } from '../features/courses/courseSyncService';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 import {
   CoursePointsRepository,
@@ -424,11 +426,11 @@ suite('Courses', () => {
       );
 
       await provider.getChildren();
-      assert.strictEqual(structureRequests, 2);
+      assert.strictEqual(structureRequests, 1);
 
       provider.refresh();
       await provider.getChildren();
-      assert.strictEqual(structureRequests, 3);
+      assert.strictEqual(structureRequests, 1);
     } finally {
       provider.dispose();
     }
@@ -444,7 +446,7 @@ suite('Courses', () => {
         maxPoints: 2,
       }] : [],
     };
-    const { provider, sessionRepository } = createProvider(
+    const { provider, sessionRepository, courseSyncService } = createProvider(
       { getEnrolments: async () => enrolments },
       { getStructure: async () => structure },
       true,
@@ -458,6 +460,11 @@ suite('Courses', () => {
       assert.strictEqual(initialParts[0].description, undefined);
 
       passed = true;
+      await courseSyncService.refreshCourse(
+        session.student.id,
+        enrolments[0].courseSlug,
+        12,
+      );
       provider.refresh();
       const completedParts = await provider.getChildren();
       const completedChapters = await provider.getChildren(completedParts[0]);
@@ -638,7 +645,7 @@ suite('Courses', () => {
 
   test('falls back to cached course data while offline', async () => {
     let offline = false;
-    const { provider, sessionRepository } = createProvider(
+    const { provider, sessionRepository, courseSyncService } = createProvider(
       {
         getEnrolments: async () => {
           if (offline) {
@@ -664,6 +671,11 @@ suite('Courses', () => {
       assert.strictEqual(provider.message, undefined);
 
       offline = true;
+      await courseSyncService.refreshCourse(
+        session.student.id,
+        enrolments[0].courseSlug,
+        12,
+      ).catch(() => undefined);
       provider.refresh();
       const cachedParts = await provider.getChildren();
 
@@ -718,6 +730,7 @@ function createProvider(
   provider: CourseTreeProvider;
   sessionRepository: SessionRepository;
   currentAssignmentRepository: CurrentAssignmentRepository;
+  courseSyncService: CourseSyncService;
 } {
   const sessionRepository = new SessionRepository(
     new InMemorySecretStorage(),
@@ -745,6 +758,18 @@ function createProvider(
   const currentAssignmentRepository = new CurrentAssignmentRepository(
     new InMemoryMemento(),
   );
+  const courseEnrolmentSyncService = new CourseEnrolmentSyncService(
+    courseService,
+    courseCacheRepository,
+  );
+  const coursePointsService = new CoursePointsService(coursePointsRepository);
+  const courseSyncService = new CourseSyncService(
+    courseService,
+    courseMaterialService,
+    coursePointsService,
+    courseCacheRepository,
+    courseEnrolmentSyncService,
+  );
   if (folderSelected) {
     void assignmentFolderRepository.setRoot(
       session.student.id,
@@ -769,12 +794,15 @@ function createProvider(
       assignmentFolderRepository,
       new AssignmentFileRepository(),
       courseSelectionRepository,
-      new CoursePointsService(coursePointsRepository),
+      coursePointsService,
       isDevelopmentCompleted,
       courseCacheRepository,
       currentAssignmentRepository,
+      courseEnrolmentSyncService,
+      courseSyncService,
     ),
     sessionRepository,
     currentAssignmentRepository,
+    courseSyncService,
   };
 }

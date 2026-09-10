@@ -85,6 +85,15 @@ and their current, downloaded, and completed states.
 
 - Enrolments, selected-course structure, and completion states are cached per
   student after successful reads.
+- Enrolments and selected-course structure stay fresh for five minutes. Exercise
+  points and account course points stay fresh for 30 seconds.
+- Course Parts and Account read coordinated per-student snapshots. Opening or
+  refreshing a tree does not issue a backend request when its snapshot is fresh.
+- Cached content remains visible while stale data revalidates. The view shows a
+  refreshing message during revalidation and the cached/offline state after a
+  failed request.
+- Manual Course Parts refresh synchronizes enrolments, selected structure, and
+  selected-instance points once. Repeated refreshes join one in-flight request.
 - A failed refresh uses only structurally valid cached data and labels the view
   **Cached** with a visible offline message.
 - If neither live nor cached data is available, Course Parts shows an error row

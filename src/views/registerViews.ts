@@ -20,6 +20,7 @@ import { CurrentAssignmentRepository } from '../features/assignments/currentAssi
 import { ExerciseTreeProvider } from '../features/assignments/exerciseTreeProvider';
 import { CourseSelectionTreeProvider } from '../features/courses/courseSelectionTreeProvider';
 import { CourseEnrolmentSyncService } from '../features/courses/courseEnrolmentSyncService';
+import { CourseSyncService } from '../features/courses/courseSyncService';
 import {
   ASSIGNMENT_HANDOUT_VIEW_ID,
   AssignmentHandoutViewProvider,
@@ -40,6 +41,7 @@ export function registerViews(
   courseSelectionRepository: CourseSelectionRepository,
   courseCacheRepository: CourseCacheRepository,
   courseEnrolmentSyncService: CourseEnrolmentSyncService,
+  courseSyncService: CourseSyncService,
   currentAssignmentRepository: CurrentAssignmentRepository,
   coursePointsService: CoursePointsService,
   submissionHistoryRepository: SubmissionHistoryRepository,
@@ -75,6 +77,7 @@ export function registerViews(
     courseCacheRepository,
     currentAssignmentRepository,
     courseEnrolmentSyncService,
+    courseSyncService,
   );
   const exerciseTreeProvider = new ExerciseTreeProvider(
     authService,

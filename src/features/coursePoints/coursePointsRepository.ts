@@ -3,10 +3,17 @@ import {
   CourseExercisePoints,
   CourseInstancePoints,
 } from './coursePointsModels';
+import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 
 export interface CoursePointsRepository {
-  getCourseProgress(courseSlug: string): Promise<CourseInstancePoints[]>;
-  getExerciseProgress(instanceId: number): Promise<CourseExercisePoints[]>;
+  getCourseProgress(
+    courseSlug: string,
+    priority?: ApiRequestPriority,
+  ): Promise<CourseInstancePoints[]>;
+  getExerciseProgress(
+    instanceId: number,
+    priority?: ApiRequestPriority,
+  ): Promise<CourseExercisePoints[]>;
 }
 
 export class ApiCoursePointsRepository implements CoursePointsRepository {
@@ -14,9 +21,11 @@ export class ApiCoursePointsRepository implements CoursePointsRepository {
 
   public async getCourseProgress(
     courseSlug: string,
+    priority: ApiRequestPriority = 'foreground',
   ): Promise<CourseInstancePoints[]> {
     const response = await this.apiClient.get<unknown>(
       `/points/courses/${encodeURIComponent(courseSlug)}/progress`,
+      { priority },
     );
     if (!isRecord(response) || !Array.isArray(response.progress)) {
       throw new Error('The platform returned invalid course points.');
@@ -26,9 +35,11 @@ export class ApiCoursePointsRepository implements CoursePointsRepository {
 
   public async getExerciseProgress(
     instanceId: number,
+    priority: ApiRequestPriority = 'foreground',
   ): Promise<CourseExercisePoints[]> {
     const response = await this.apiClient.get<unknown>(
       `/points/exercises/instance/${encodeURIComponent(String(instanceId))}`,
+      { priority },
     );
     if (!isRecord(response) || !Array.isArray(response.progress)) {
       throw new Error('The platform returned invalid exercise points.');
@@ -38,11 +49,17 @@ export class ApiCoursePointsRepository implements CoursePointsRepository {
 }
 
 export class MockCoursePointsRepository implements CoursePointsRepository {
-  public async getCourseProgress(): Promise<CourseInstancePoints[]> {
+  public async getCourseProgress(
+    _courseSlug?: string,
+    _priority?: ApiRequestPriority,
+  ): Promise<CourseInstancePoints[]> {
     return [];
   }
 
-  public async getExerciseProgress(): Promise<CourseExercisePoints[]> {
+  public async getExerciseProgress(
+    _instanceId?: number,
+    _priority?: ApiRequestPriority,
+  ): Promise<CourseExercisePoints[]> {
     return [];
   }
 }

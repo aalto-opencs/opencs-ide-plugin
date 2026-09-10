@@ -14,6 +14,7 @@ import {
   CourseEnrolmentSnapshot,
   CourseEnrolmentSyncService,
 } from './courseEnrolmentSyncService';
+import { CourseSyncService } from './courseSyncService';
 
 interface CourseQuickPickItem extends vscode.QuickPickItem {
   enrolment: CourseEnrolment;
@@ -46,6 +47,7 @@ export class CourseController {
     private readonly cacheRepository?: CourseCacheRepository,
     private readonly now: () => Date = () => new Date(),
     enrolmentSyncService?: CourseEnrolmentSyncService,
+    private readonly courseSyncService?: CourseSyncService,
   ) {
     this.enrolmentSyncService = enrolmentSyncService ??
       new CourseEnrolmentSyncService(courseService, cacheRepository);
@@ -176,17 +178,26 @@ export class CourseController {
           'The platform did not confirm the selected course version as active.',
         );
       }
+      const nextSelection: CourseSelection = {
+        courseSlug: selectedCourse.enrolment.courseSlug,
+        courseInstanceId: selectedInstance.instance.id,
+        schemaVersion: 2,
+        instanceLabel: selectedInstance.instance.label,
+        instanceEndTime: selectedInstance.instance.endTime,
+        lastValidatedAt: this.now().toISOString(),
+        ...(warningState ? { endWarningsShown: warningState } : {}),
+      };
+      const previousSelection = this.selectionRepository.getSelection(
+        session.student.id,
+      );
       await this.selectionRepository.saveSelection(
         session.student.id,
-        {
-          courseSlug: selectedCourse.enrolment.courseSlug,
-          courseInstanceId: selectedInstance.instance.id,
-          schemaVersion: 2,
-          instanceLabel: selectedInstance.instance.label,
-          instanceEndTime: selectedInstance.instance.endTime,
-          lastValidatedAt: this.now().toISOString(),
-          ...(warningState ? { endWarningsShown: warningState } : {}),
-        },
+        nextSelection,
+      );
+      await this.courseSyncService?.synchronizeSelection(
+        session.student.id,
+        previousSelection,
+        nextSelection,
       );
       void vscode.window.showInformationMessage(
         `Selected ${selectedCourse.label} — ${selectedInstance.label}.`,

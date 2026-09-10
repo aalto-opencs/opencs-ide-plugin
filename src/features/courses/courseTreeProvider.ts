@@ -12,9 +12,6 @@ import {
   CoursePart,
 } from '../courseMaterials/courseMaterialModels';
 import { CourseMaterialService } from '../courseMaterials/courseMaterialService';
-import {
-  CourseEnrolment,
-} from './courseModels';
 import { CourseCacheRepository } from './courseCacheRepository';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
@@ -22,6 +19,7 @@ import { CourseExercisePoints } from '../coursePoints/coursePointsModels';
 import { CoursePointsService } from '../coursePoints/coursePointsService';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 import { CourseEnrolmentSyncService } from './courseEnrolmentSyncService';
+import { CourseSyncService } from './courseSyncService';
 
 class CourseTreeItem extends vscode.TreeItem {
   public constructor(
@@ -53,12 +51,14 @@ export class CourseTreeProvider implements
     void
   >();
   private readonly enrolmentSyncService: CourseEnrolmentSyncService;
+  private readonly courseSyncService: CourseSyncService;
   private readonly ownsEnrolmentSyncService: boolean;
+  private readonly ownsCourseSyncService: boolean;
   private readonly enrolmentSyncSubscription: vscode.Disposable;
+  private readonly courseSyncSubscription: vscode.Disposable;
   private treeView?: vscode.TreeView<CourseTreeItem>;
   private viewDescription?: string;
   private viewMessage?: string;
-  private usedCachedProgress = false;
 
   public readonly onDidChangeTreeData = this.changeEmitter.event;
 
@@ -77,11 +77,23 @@ export class CourseTreeProvider implements
     private readonly cacheRepository?: CourseCacheRepository,
     private readonly currentAssignmentRepository?: CurrentAssignmentRepository,
     enrolmentSyncService?: CourseEnrolmentSyncService,
+    courseSyncService?: CourseSyncService,
   ) {
     this.ownsEnrolmentSyncService = enrolmentSyncService === undefined;
     this.enrolmentSyncService = enrolmentSyncService ??
       new CourseEnrolmentSyncService(courseService, cacheRepository);
     this.enrolmentSyncSubscription = this.enrolmentSyncService.onDidChange(
+      () => this.refresh(),
+    );
+    this.ownsCourseSyncService = courseSyncService === undefined;
+    this.courseSyncService = courseSyncService ?? new CourseSyncService(
+      courseService,
+      courseMaterialService,
+      coursePointsService,
+      cacheRepository,
+      this.enrolmentSyncService,
+    );
+    this.courseSyncSubscription = this.courseSyncService.onDidChange(
       () => this.refresh(),
     );
   }
@@ -161,10 +173,13 @@ export class CourseTreeProvider implements
     }
 
     this.setMessage('Loading course data...');
-    this.usedCachedProgress = false;
     try {
-      const enrolmentResult = await this.loadEnrolments(session.student.id);
-      const enrolments = enrolmentResult.value;
+      const snapshot = await this.courseSyncService.readCourse(
+        session.student.id,
+        selection.courseSlug,
+        selection.courseInstanceId,
+      );
+      const enrolments = snapshot.enrolments.enrolments;
 
       if (!enrolments.length) {
         this.setDescription(undefined);
@@ -192,7 +207,11 @@ export class CourseTreeProvider implements
         )];
       }
 
-      const exerciseProgress = await this.loadExerciseProgress(instance.id);
+      const structure = snapshot.structure;
+      const exercisePoints = snapshot.exercisePoints;
+      if (!structure) {
+        throw new Error('Course data is unavailable.');
+      }
       const contentResult = await this.loadCourseContent(
         enrolment.courseSlug,
         enrolment.courseName || enrolment.courseSlug,
@@ -201,21 +220,32 @@ export class CourseTreeProvider implements
         assignmentRoot,
         session.student.id,
         session.student.email,
-        exerciseProgress,
+        structure.value,
+        exercisePoints
+          ? new Map(exercisePoints.value.map((entry) => [
+            entry.exerciseUuid,
+            entry,
+          ]))
+          : undefined,
       );
-      const usingCache = enrolmentResult.cached || contentResult.cached ||
-        this.usedCachedProgress;
+      const refreshing = snapshot.enrolments.refreshing ||
+        structure.refreshing || exercisePoints?.refreshing === true ||
+        snapshot.courseProgress?.refreshing === true;
+      const usingCache = snapshot.enrolments.source === 'cache' ||
+        snapshot.enrolments.offline || structure.source === 'cache' ||
+        structure.offline || exercisePoints === undefined ||
+        exercisePoints.source === 'cache' || exercisePoints.offline;
       this.setDescription([
         enrolment.abbreviation || enrolment.courseName || enrolment.courseSlug,
         instance.label,
         usingCache ? 'Cached' : undefined,
       ].filter(Boolean).join(' · '));
-      this.setMessage(usingCache
-        ? 'Platform offline - retry later'
-        : enrolmentResult.refreshing
-          ? 'Refreshing course data...'
+      this.setMessage(refreshing
+        ? 'Refreshing course data...'
+        : usingCache
+          ? 'Platform offline - retry later'
           : undefined);
-      return contentResult.items;
+      return contentResult;
     } catch (error: unknown) {
       this.setDescription(undefined);
       this.setMessage('Course data is unavailable. Refresh to retry.');
@@ -234,8 +264,12 @@ export class CourseTreeProvider implements
   public dispose(): void {
     this.changeEmitter.dispose();
     this.enrolmentSyncSubscription.dispose();
+    this.courseSyncSubscription.dispose();
     if (this.ownsEnrolmentSyncService) {
       this.enrolmentSyncService.dispose();
+    }
+    if (this.ownsCourseSyncService) {
+      this.courseSyncService.dispose();
     }
   }
 
@@ -247,10 +281,10 @@ export class CourseTreeProvider implements
     root: vscode.Uri,
     userId: number,
     userEmail: string,
+    structure: CoursePart[],
     exerciseProgress: Map<string, CourseExercisePoints> | undefined,
-  ): Promise<{ items: CourseTreeItem[]; cached: boolean }> {
-    const structureResult = await this.loadStructure(userId, courseSlug);
-    const programmingParts = structureResult.value
+  ): Promise<CourseTreeItem[]> {
+    const programmingParts = structure
         .map((part) => ({
           ...part,
           chapters: part.chapters
@@ -279,7 +313,7 @@ export class CourseTreeProvider implements
           'No programming assignments found.',
           'info',
         )];
-    return { items, cached: structureResult.cached };
+    return items;
   }
 
   private async createPartItem(
@@ -490,39 +524,6 @@ export class CourseTreeProvider implements
     return item;
   }
 
-  private async loadEnrolments(
-    userId: number,
-  ): Promise<{
-    value: CourseEnrolment[];
-    cached: boolean;
-    refreshing: boolean;
-  }> {
-    const snapshot = await this.enrolmentSyncService.read(userId);
-    return {
-      value: snapshot.enrolments,
-      cached: snapshot.offline,
-      refreshing: snapshot.refreshing,
-    };
-  }
-
-  private async loadStructure(
-    userId: number,
-    courseSlug: string,
-  ): Promise<{ value: CoursePart[]; cached: boolean }> {
-    try {
-      const value = await this.courseMaterialService.getStructure(courseSlug);
-      await this.cacheRepository?.saveStructure(userId, courseSlug, value)
-        .catch(() => undefined);
-      return { value, cached: false };
-    } catch (error: unknown) {
-      const cached = this.cacheRepository?.getStructure(userId, courseSlug);
-      if (cached) {
-        return { value: cached, cached: true };
-      }
-      throw error;
-    }
-  }
-
   private async loadPassedState(
     userId: number | undefined,
     assignment: ProgrammingAssignment,
@@ -549,19 +550,6 @@ export class CourseTreeProvider implements
       passed,
     ).catch(() => undefined);
     return passed;
-  }
-
-  private async loadExerciseProgress(
-    instanceId: number,
-  ): Promise<Map<string, CourseExercisePoints> | undefined> {
-    try {
-      const progress = await this.coursePointsService
-        .getInstanceExercisePoints(instanceId);
-      return new Map(progress.map((entry) => [entry.exerciseUuid, entry]));
-    } catch {
-      this.usedCachedProgress = true;
-      return undefined;
-    }
   }
 
   private setDescription(description: string | undefined): void {

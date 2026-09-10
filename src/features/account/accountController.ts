@@ -3,6 +3,7 @@ import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepos
 import { AuthService } from '../auth/authService';
 import { CoursePointsService } from '../coursePoints/coursePointsService';
 import { CourseSelectionRepository } from '../courses/courseSelectionRepository';
+import { CourseSyncService } from '../courses/courseSyncService';
 
 interface AccountAction extends vscode.QuickPickItem {
   action?: 'folder' | 'signOut';
@@ -15,6 +16,7 @@ export class AccountController {
     private readonly folderRepository: AssignmentFolderRepository,
     private readonly selectionRepository: CourseSelectionRepository,
     private readonly pointsService: CoursePointsService,
+    private readonly courseSyncService?: CourseSyncService,
   ) {}
 
   public async show(): Promise<void> {
@@ -27,10 +29,16 @@ export class AccountController {
     const root = this.folderRepository.getRoot(session.student.id);
     const selection = this.selectionRepository.getSelection(session.student.id);
     const points = selection
-      ? await this.pointsService.getInstancePoints(
-        selection.courseSlug,
-        selection.courseInstanceId,
-      ).catch(() => undefined)
+      ? this.courseSyncService
+        ? (await this.courseSyncService.readInstancePoints(
+          session.student.id,
+          selection.courseSlug,
+          selection.courseInstanceId,
+        ).catch(() => undefined))?.value
+        : await this.pointsService.getInstancePoints(
+          selection.courseSlug,
+          selection.courseInstanceId,
+        ).catch(() => undefined)
       : undefined;
     const information = [
       {

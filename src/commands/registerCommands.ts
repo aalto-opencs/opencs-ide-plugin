@@ -36,6 +36,7 @@ import {
 import { CourseService } from '../features/courses/courseService';
 import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
 import { CourseEnrolmentSyncService } from '../features/courses/courseEnrolmentSyncService';
+import { CourseSyncService } from '../features/courses/courseSyncService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { DevelopmentCompletionController } from '../features/development/developmentCompletionController';
 import { DevelopmentCompletionRepository } from '../features/development/developmentCompletionRepository';
@@ -142,6 +143,13 @@ export function registerCommands(
     courseService,
     courseCacheRepository,
   );
+  const courseSyncService = new CourseSyncService(
+    courseService,
+    courseMaterialService,
+    coursePointsService,
+    courseCacheRepository,
+    courseEnrolmentSyncService,
+  );
   const currentAssignmentRepository = new CurrentAssignmentRepository(
     context.globalState,
   );
@@ -152,6 +160,7 @@ export function registerCommands(
     courseCacheRepository,
     undefined,
     courseEnrolmentSyncService,
+    courseSyncService,
   );
   const assignmentFileRepository = new AssignmentFileRepository();
   const submissionHistoryRepository = new SubmissionHistoryRepository(
@@ -196,6 +205,7 @@ export function registerCommands(
     courseSelectionRepository,
     courseCacheRepository,
     courseEnrolmentSyncService,
+    courseSyncService,
     currentAssignmentRepository,
     coursePointsService,
     submissionHistoryRepository,
@@ -311,6 +321,7 @@ export function registerCommands(
     assignmentFolderRepository,
     courseSelectionRepository,
     coursePointsService,
+    courseSyncService,
   );
 
   // package.json welcome views and menu visibility are driven by these context
@@ -531,6 +542,7 @@ export function registerCommands(
       if (session) {
         await assignmentActivityRepository.clearForUser(session.student.id);
         courseEnrolmentSyncService.clear(session.student.id);
+        courseSyncService.clear(session.student.id);
         submissionHistorySyncService.clear(session.student.id);
       }
       await refreshUiState();
@@ -542,11 +554,20 @@ export function registerCommands(
     async () => {
       const session = await authService.getCurrentSession();
       if (session) {
-        await courseEnrolmentSyncService.refresh(session.student.id)
-          .catch(() => undefined);
+        const selection = courseSelectionRepository.getSelection(
+          session.student.id,
+        );
+        if (selection) {
+          await courseSyncService.refreshCourse(
+            session.student.id,
+            selection.courseSlug,
+            selection.courseInstanceId,
+          ).catch(() => undefined);
+        } else {
+          await courseEnrolmentSyncService.refresh(session.student.id)
+            .catch(() => undefined);
+        }
       }
-      courseSelectionTreeProvider.refresh();
-      courseTreeProvider.refresh();
       await courseController.showSelectedInstanceEndWarning();
     },
   );
