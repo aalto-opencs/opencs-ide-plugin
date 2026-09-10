@@ -91,9 +91,12 @@ export class SubmissionTreeProvider implements
     );
     if (this.historySyncService) {
       try {
-        await this.historySyncService.synchronizeSelectedCourse(
-          session.student.id,
-        );
+        if (currentAssignment) {
+          await this.historySyncService.synchronizeCurrentExercise(
+            session.student.id,
+            currentAssignment,
+          );
+        }
       } catch {
         offline = true;
       }

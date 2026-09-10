@@ -35,4 +35,38 @@ suite('Course points', () => {
       await server.close();
     }
   });
+
+  test('maps per-exercise progress including maximum points', async () => {
+    let requestedPath: string | undefined;
+    const server = await startTestHttpServer((request, response) => {
+      requestedPath = request.url;
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({
+        progress: [{
+          exerciseUuid: '11111111-1111-4111-8111-111111111111',
+          points: 2,
+          maxPoints: 5,
+        }],
+        partProgress: [],
+      }));
+    });
+
+    try {
+      const repository = new ApiCoursePointsRepository(
+        new ApiClient(server.baseUrl),
+      );
+
+      assert.deepStrictEqual(
+        await repository.getExerciseProgress(9),
+        [{
+          exerciseUuid: '11111111-1111-4111-8111-111111111111',
+          points: 2,
+          maxPoints: 5,
+        }],
+      );
+      assert.strictEqual(requestedPath, '/points/exercises/instance/9');
+    } finally {
+      await server.close();
+    }
+  });
 });

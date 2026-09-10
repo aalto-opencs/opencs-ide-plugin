@@ -9,6 +9,7 @@ import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
 import { SubmissionRepository } from '../features/submissions/submissionRepository';
+import { CoursePointsService } from '../features/coursePoints/coursePointsService';
 import { SubmissionTreeProvider } from '../features/submissions/submissionTreeProvider';
 import {
   SUBMISSION_DETAILS_SCHEME,
@@ -40,6 +41,7 @@ export function registerViews(
   courseCacheRepository: CourseCacheRepository,
   currentAssignmentRepository: CurrentAssignmentRepository,
   submissionRepository: SubmissionRepository,
+  coursePointsService: CoursePointsService,
   submissionHistoryRepository: SubmissionHistoryRepository,
   isDevelopmentCompleted: (
     userId: number,
@@ -66,7 +68,7 @@ export function registerViews(
     assignmentFolderRepository,
     assignmentFileRepository,
     courseSelectionRepository,
-    submissionRepository,
+    coursePointsService,
     isDevelopmentCompleted,
     courseCacheRepository,
     currentAssignmentRepository,
@@ -83,7 +85,6 @@ export function registerViews(
     submissionRepository,
     () => courseTreeProvider.refresh(),
     new SubmissionHistorySyncService(
-      courseMaterialService,
       courseSelectionRepository,
       submissionRepository,
       submissionHistoryRepository,

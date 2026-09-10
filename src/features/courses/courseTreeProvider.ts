@@ -18,7 +18,8 @@ import {
 import { CourseCacheRepository } from './courseCacheRepository';
 import { CourseSelectionRepository } from './courseSelectionRepository';
 import { CourseService } from './courseService';
-import { SubmissionRepository } from '../submissions/submissionRepository';
+import { CourseExercisePoints } from '../coursePoints/coursePointsModels';
+import { CoursePointsService } from '../coursePoints/coursePointsService';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 
 class CourseTreeItem extends vscode.TreeItem {
@@ -64,7 +65,7 @@ export class CourseTreeProvider implements
     private readonly assignmentFolderRepository: AssignmentFolderRepository,
     private readonly assignmentFileRepository: AssignmentFileRepository,
     private readonly courseSelectionRepository: CourseSelectionRepository,
-    private readonly submissionRepository: SubmissionRepository,
+    private readonly coursePointsService: CoursePointsService,
     private readonly isDevelopmentCompleted: (
       userId: number,
       assignment: ProgrammingAssignment,
@@ -179,6 +180,7 @@ export class CourseTreeProvider implements
         )];
       }
 
+      const exerciseProgress = await this.loadExerciseProgress(instance.id);
       const contentResult = await this.loadCourseContent(
         enrolment.courseSlug,
         enrolment.courseName || enrolment.courseSlug,
@@ -187,6 +189,7 @@ export class CourseTreeProvider implements
         assignmentRoot,
         session.student.id,
         session.student.email,
+        exerciseProgress,
       );
       const usingCache = enrolmentResult.cached || contentResult.cached ||
         this.usedCachedProgress;
@@ -226,6 +229,7 @@ export class CourseTreeProvider implements
     root: vscode.Uri,
     userId: number,
     userEmail: string,
+    exerciseProgress: Map<string, CourseExercisePoints> | undefined,
   ): Promise<{ items: CourseTreeItem[]; cached: boolean }> {
     const structureResult = await this.loadStructure(userId, courseSlug);
     const programmingParts = structureResult.value
@@ -251,6 +255,7 @@ export class CourseTreeProvider implements
           root,
           userId,
           userEmail,
+          exerciseProgress,
         )))
         : [this.createMessageItem(
           'No programming assignments found.',
@@ -268,6 +273,7 @@ export class CourseTreeProvider implements
     root: vscode.Uri | undefined,
     userId: number | undefined,
     userEmail: string,
+    exerciseProgress: Map<string, CourseExercisePoints> | undefined,
   ): Promise<CourseTreeItem> {
     const chapters = await Promise.all(part.chapters.map((chapter) =>
       this.createChapterItem(
@@ -279,6 +285,7 @@ export class CourseTreeProvider implements
         root,
         userId,
         userEmail,
+        exerciseProgress,
       )));
     const item = new CourseTreeItem(
       part.name,
@@ -314,6 +321,7 @@ export class CourseTreeProvider implements
     root: vscode.Uri | undefined,
     userId: number | undefined,
     userEmail: string,
+    exerciseProgress: Map<string, CourseExercisePoints> | undefined,
   ): Promise<CourseTreeItem> {
     const exercises = await Promise.all(chapter.exercises.map((exercise) =>
       this.createExerciseItem(
@@ -325,6 +333,7 @@ export class CourseTreeProvider implements
         root,
         userId,
         userEmail,
+        exerciseProgress,
       )));
     const item = new CourseTreeItem(
       chapter.name,
@@ -360,6 +369,7 @@ export class CourseTreeProvider implements
     root: vscode.Uri | undefined,
     userId: number | undefined,
     userEmail: string,
+    exerciseProgress: Map<string, CourseExercisePoints> | undefined,
   ): Promise<CourseTreeItem> {
     const item = new CourseTreeItem(
       exercise.name || exercise.exerciseUuid,
@@ -393,7 +403,7 @@ export class CourseTreeProvider implements
             assignment,
           )
           : false,
-        this.loadPassedState(userId, assignment),
+        this.loadPassedState(userId, assignment, exerciseProgress),
       ]);
       const passed = backendPassed ||
         (userId !== undefined &&
@@ -500,29 +510,41 @@ export class CourseTreeProvider implements
   private async loadPassedState(
     userId: number | undefined,
     assignment: ProgrammingAssignment,
+    exerciseProgress: Map<string, CourseExercisePoints> | undefined,
   ): Promise<boolean> {
     if (userId === undefined || assignment.courseInstanceId === null) {
       return false;
     }
-    try {
-      const passed = await this.submissionRepository.hasPassed(
-        assignment.exerciseUuid,
-        assignment.courseInstanceId,
-      );
-      await this.cacheRepository?.savePassed(
-        userId,
-        assignment.courseInstanceId,
-        assignment.exerciseUuid,
-        passed,
-      ).catch(() => undefined);
-      return passed;
-    } catch {
-      this.usedCachedProgress = true;
+    if (!exerciseProgress) {
       return this.cacheRepository?.getPassed(
         userId,
         assignment.courseInstanceId,
         assignment.exerciseUuid,
       ) ?? false;
+    }
+
+    const progress = exerciseProgress.get(assignment.exerciseUuid);
+    const passed = progress !== undefined &&
+      progress.points >= progress.maxPoints;
+    await this.cacheRepository?.savePassed(
+      userId,
+      assignment.courseInstanceId,
+      assignment.exerciseUuid,
+      passed,
+    ).catch(() => undefined);
+    return passed;
+  }
+
+  private async loadExerciseProgress(
+    instanceId: number,
+  ): Promise<Map<string, CourseExercisePoints> | undefined> {
+    try {
+      const progress = await this.coursePointsService
+        .getInstanceExercisePoints(instanceId);
+      return new Map(progress.map((entry) => [entry.exerciseUuid, entry]));
+    } catch {
+      this.usedCachedProgress = true;
+      return undefined;
     }
   }
 

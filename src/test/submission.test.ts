@@ -410,7 +410,7 @@ suite('Assignment submission', () => {
     }
   });
 
-  test('synchronizes programming submissions for the selected course', async () => {
+  test('synchronizes history for the current exercise', async () => {
     const state = new InMemoryMemento();
     const selections = new CourseSelectionRepository(state);
     const history = new SubmissionHistoryRepository(state);
@@ -439,36 +439,18 @@ suite('Assignment submission', () => {
       },
     );
     const service = new SubmissionHistorySyncService(
-      new CourseMaterialService({
-        getStructure: async () => [{
-          slug: 'part-1',
-          name: 'Part 1',
-          order: 1,
-          chapters: [{
-            name: 'Chapter 1',
-            order: 1,
-            exercises: [{
-              exerciseUuid: '11111111-1111-4111-8111-111111111111',
-              name: 'Hello platform',
-              type: 'programming-exercise',
-              maxPoints: 5,
-              order: 1,
-            }, {
-              exerciseUuid: '33333333-3333-4333-8333-333333333333',
-              name: 'Questionnaire',
-              type: 'quiz',
-              maxPoints: 1,
-              order: 2,
-            }],
-          }],
-        }],
-      }),
       selections,
       repository,
       history,
     );
 
-    await service.synchronizeSelectedCourse(7);
+    await service.synchronizeCurrentExercise(7, {
+      exerciseUuid: '11111111-1111-4111-8111-111111111111',
+      name: 'Hello platform',
+      type: 'programming-exercise',
+      courseSlug: 'web-software-development',
+      courseInstanceId: 42,
+    });
 
     assert.deepStrictEqual(requestedExercises, [
       '11111111-1111-4111-8111-111111111111',

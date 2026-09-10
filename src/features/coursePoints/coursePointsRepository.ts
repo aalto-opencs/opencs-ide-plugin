@@ -1,8 +1,12 @@
 import { ApiClient } from '../../infrastructure/apiClient';
-import { CourseInstancePoints } from './coursePointsModels';
+import {
+  CourseExercisePoints,
+  CourseInstancePoints,
+} from './coursePointsModels';
 
 export interface CoursePointsRepository {
   getCourseProgress(courseSlug: string): Promise<CourseInstancePoints[]>;
+  getExerciseProgress(instanceId: number): Promise<CourseExercisePoints[]>;
 }
 
 export class ApiCoursePointsRepository implements CoursePointsRepository {
@@ -19,10 +23,26 @@ export class ApiCoursePointsRepository implements CoursePointsRepository {
     }
     return response.progress.map(mapCoursePoints);
   }
+
+  public async getExerciseProgress(
+    instanceId: number,
+  ): Promise<CourseExercisePoints[]> {
+    const response = await this.apiClient.get<unknown>(
+      `/points/exercises/instance/${encodeURIComponent(String(instanceId))}`,
+    );
+    if (!isRecord(response) || !Array.isArray(response.progress)) {
+      throw new Error('The platform returned invalid exercise points.');
+    }
+    return response.progress.map(mapExercisePoints);
+  }
 }
 
 export class MockCoursePointsRepository implements CoursePointsRepository {
   public async getCourseProgress(): Promise<CourseInstancePoints[]> {
+    return [];
+  }
+
+  public async getExerciseProgress(): Promise<CourseExercisePoints[]> {
     return [];
   }
 }
@@ -40,6 +60,18 @@ function mapCoursePoints(value: unknown): CourseInstancePoints {
     throw new Error('The platform returned invalid course points.');
   }
   return { instanceId, points, maxPoints, progress };
+}
+
+function mapExercisePoints(value: unknown): CourseExercisePoints {
+  if (!isRecord(value) || typeof value.exerciseUuid !== 'string') {
+    throw new Error('The platform returned invalid exercise points.');
+  }
+  const points = toFiniteNumber(value.points);
+  const maxPoints = toFiniteNumber(value.maxPoints);
+  if (points < 0 || maxPoints < 0) {
+    throw new Error('The platform returned invalid exercise points.');
+  }
+  return { exerciseUuid: value.exerciseUuid, points, maxPoints };
 }
 
 function toFiniteNumber(value: unknown): number {

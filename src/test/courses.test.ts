@@ -31,11 +31,12 @@ import { CourseService } from '../features/courses/courseService';
 import { CourseSelectionRepository } from '../features/courses/courseSelectionRepository';
 import { CourseCacheRepository } from '../features/courses/courseCacheRepository';
 import { CourseTreeProvider } from '../features/courses/courseTreeProvider';
-import { ApiClient } from '../infrastructure/apiClient';
 import {
-  MockSubmissionRepository,
-  SubmissionRepository,
-} from '../features/submissions/submissionRepository';
+  CoursePointsRepository,
+  MockCoursePointsRepository,
+} from '../features/coursePoints/coursePointsRepository';
+import { CoursePointsService } from '../features/coursePoints/coursePointsService';
+import { ApiClient } from '../infrastructure/apiClient';
 import {
   InMemorySecretStorage,
   InMemoryMemento,
@@ -435,22 +436,20 @@ suite('Courses', () => {
 
   test('marks a chapter and part completed after the last assignment passes', async () => {
     let passed = false;
-    const submissionRepository: SubmissionRepository = {
-      submit: async () => ({ submissionUuid: 'submission-1' }),
-      getStatus: async () => ({
-        correct: passed,
-        gradingStatus: 'PROCESSED',
-        gradingData: null,
-      }),
-      getHistory: async () => [],
-      hasPassed: async () => passed,
+    const coursePointsRepository: CoursePointsRepository = {
+      getCourseProgress: async () => [],
+      getExerciseProgress: async () => passed ? [{
+        exerciseUuid: '11111111-1111-4111-8111-111111111111',
+        points: 2,
+        maxPoints: 2,
+      }] : [],
     };
     const { provider, sessionRepository } = createProvider(
       { getEnrolments: async () => enrolments },
       { getStructure: async () => structure },
       true,
       true,
-      submissionRepository,
+      coursePointsRepository,
     );
 
     try {
@@ -492,6 +491,41 @@ suite('Courses', () => {
         (completedChapters[0].iconPath as vscode.ThemeIcon).id,
         'pass',
       );
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('loads all exercise completion points with one instance request', async () => {
+    let progressRequests = 0;
+    const coursePointsRepository: CoursePointsRepository = {
+      getCourseProgress: async () => [],
+      getExerciseProgress: async (instanceId) => {
+        progressRequests += 1;
+        assert.strictEqual(instanceId, 12);
+        return [{
+          exerciseUuid: '11111111-1111-4111-8111-111111111111',
+          points: 2,
+          maxPoints: 2,
+        }];
+      },
+    };
+    const { provider, sessionRepository } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+      true,
+      true,
+      coursePointsRepository,
+    );
+
+    try {
+      await sessionRepository.save(session);
+      const parts = await provider.getChildren();
+      const chapters = await provider.getChildren(parts[0]);
+      const exercises = await provider.getChildren(chapters[0]);
+
+      assert.strictEqual(exercises[0].description, 'Completed • 2 pts');
+      assert.strictEqual(progressRequests, 1);
     } finally {
       provider.dispose();
     }
@@ -565,7 +599,7 @@ suite('Courses', () => {
       { getStructure: async () => structure },
       true,
       true,
-      new MockSubmissionRepository(),
+      undefined,
       (userId, assignment) =>
         userId === session.student.id &&
         assignment.exerciseUuid === structure[0].chapters[0]
@@ -674,7 +708,8 @@ function createProvider(
   },
   folderSelected = true,
   courseSelected = true,
-  submissionRepository: SubmissionRepository = new MockSubmissionRepository(),
+  coursePointsRepository: CoursePointsRepository =
+    new MockCoursePointsRepository(),
   isDevelopmentCompleted: (
     userId: number,
     assignment: ProgrammingAssignment,
@@ -734,7 +769,7 @@ function createProvider(
       assignmentFolderRepository,
       new AssignmentFileRepository(),
       courseSelectionRepository,
-      submissionRepository,
+      new CoursePointsService(coursePointsRepository),
       isDevelopmentCompleted,
       courseCacheRepository,
       currentAssignmentRepository,

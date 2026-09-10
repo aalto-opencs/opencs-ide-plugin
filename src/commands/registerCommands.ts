@@ -105,6 +105,7 @@ export function registerCommands(
     new ApiSubmissionRepository(apiClient);
   const coursePointsRepository: CoursePointsRepository =
     new ApiCoursePointsRepository(apiClient);
+  const coursePointsService = new CoursePointsService(coursePointsRepository);
 
   const authService = new AuthService(
     authRepository,
@@ -171,6 +172,7 @@ export function registerCommands(
     courseCacheRepository,
     currentAssignmentRepository,
     submissionRepository,
+    coursePointsService,
     submissionHistoryRepository,
     (userId, assignment) =>
       developmentCompletionRepository?.isCompleted(userId, assignment) ??
@@ -282,7 +284,7 @@ export function registerCommands(
     authService,
     assignmentFolderRepository,
     courseSelectionRepository,
-    new CoursePointsService(coursePointsRepository),
+    coursePointsService,
   );
 
   // package.json welcome views and menu visibility are driven by these context

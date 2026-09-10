@@ -4,3 +4,9 @@ export interface CourseInstancePoints {
   maxPoints: number;
   progress: number;
 }
+
+export interface CourseExercisePoints {
+  exerciseUuid: string;
+  points: number;
+  maxPoints: number;
+}
