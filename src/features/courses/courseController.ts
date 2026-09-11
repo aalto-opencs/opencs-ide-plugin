@@ -63,7 +63,7 @@ export class CourseController {
     }
 
     try {
-      const enrolmentSnapshot = await this.enrolmentSyncService.read(
+      const enrolmentSnapshot = await this.enrolmentSyncService.refresh(
         session.student.id,
       );
       const usingCache = enrolmentSnapshot.offline ||

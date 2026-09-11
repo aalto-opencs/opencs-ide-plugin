@@ -9,8 +9,9 @@ and their current, downloaded, and completed states.
 ## Main Flow
 
 1. A signed-in student with an assignment folder chooses **Select Course**.
-2. The extension loads the student's IDE-available enrolments and asks for a
-   course, then loads and asks for one of that course's versions.
+2. The extension refreshes the student's IDE-available enrolments from the
+   platform and asks for a course, then loads and asks for one of that course's
+   versions.
 3. The extension activates the chosen instance on the platform and verifies
    that the refreshed enrolment reports it as active.
 4. Only after verification does it save the per-student local selection.
@@ -85,6 +86,9 @@ and their current, downloaded, and completed states.
 
 - Enrolments, selected-course structure, and completion states are cached per
   student after successful reads.
+- Opening **Select Course** always requests current enrolments so a newly added
+  platform enrolment appears immediately. Other views may still use the
+  enrolment cache for startup rendering and offline fallback.
 - Enrolments and selected-course structure stay fresh for five minutes. Exercise
   points and account course points stay fresh for 30 seconds.
 - Course Parts and Account read coordinated per-student snapshots. Opening or

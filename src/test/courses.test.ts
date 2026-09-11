@@ -20,6 +20,7 @@ import {
   CourseSelection,
 } from '../features/courses/courseModels';
 import {
+  CourseController,
   getDueCachedWarning,
   getSelectionEndWarning,
 } from '../features/courses/courseController';
@@ -119,6 +120,72 @@ suite('Courses', () => {
       courseInstanceId: 25,
     });
     assert.strictEqual(repository.getSelection(126), undefined);
+  });
+
+  test('reloads enrolments before opening the course picker', async () => {
+    const storage = new InMemoryMemento();
+    const cacheRepository = new CourseCacheRepository(storage);
+    await cacheRepository.saveEnrolments(
+      session.student.id,
+      enrolments,
+      Date.now(),
+    );
+    const newlyEnrolledCourse: CourseEnrolment = {
+      courseSlug: 'new-course',
+      courseName: 'New Course',
+      abbreviation: 'NEW',
+      activeInstanceId: 91,
+      instances: [{
+        id: 91,
+        label: 'Default Instance',
+        startTime: null,
+        endTime: null,
+        pointsComparisonEnabled: false,
+      }],
+    };
+    let enrolmentRequests = 0;
+    const courseService = new CourseService({
+      getEnrolments: async () => {
+        enrolmentRequests += 1;
+        return [...enrolments, newlyEnrolledCourse];
+      },
+    });
+    const sessionRepository = new SessionRepository(
+      new InMemorySecretStorage(),
+    );
+    await sessionRepository.save(session);
+    const authService = new AuthService(
+      { exchangeAuthorizationCode: async () => session },
+      sessionRepository,
+    );
+    const labels: string[] = [];
+    const windowApi = vscode.window as unknown as {
+      showQuickPick: (items: readonly vscode.QuickPickItem[]) =>
+        Promise<vscode.QuickPickItem | undefined>;
+    };
+    const originalShowQuickPick = windowApi.showQuickPick;
+    windowApi.showQuickPick = async (items) => {
+      labels.push(...items.map((item) => item.label));
+      return undefined;
+    };
+
+    try {
+      const controller = new CourseController(
+        authService,
+        courseService,
+        new CourseSelectionRepository(storage),
+        cacheRepository,
+      );
+
+      assert.strictEqual(await controller.selectCourseAndVersion(), false);
+      assert.strictEqual(enrolmentRequests, 1);
+      assert.deepStrictEqual(labels, [
+        'Web Software Development',
+        'New Course',
+      ]);
+    } finally {
+      windowApi.showQuickPick = originalShowQuickPick;
+    }
   });
 
   test('requests all enrolments with the stored token', async () => {
