@@ -247,18 +247,16 @@ export class CourseTreeProvider implements
       );
       const refreshing = enrolmentSnapshot.refreshing ||
         structure.refreshing || exercisePoints?.refreshing === true;
-      const usingCache = enrolmentSnapshot.source === 'cache' ||
-        enrolmentSnapshot.offline || structure.source === 'cache' ||
-        structure.offline || exercisePoints === undefined ||
-        exercisePoints.source === 'cache' || exercisePoints.offline;
+      const offline = enrolmentSnapshot.offline || structure.offline ||
+        exercisePoints?.offline === true;
       this.setDescription([
         enrolment.abbreviation || enrolment.courseName || enrolment.courseSlug,
         instance.label,
-        usingCache ? 'Cached' : undefined,
+        offline ? 'Cached' : undefined,
       ].filter(Boolean).join(' · '));
       this.setMessage(refreshing
         ? 'Refreshing course data...'
-        : usingCache
+        : offline
           ? 'Platform offline - retry later'
           : undefined);
       return contentResult;

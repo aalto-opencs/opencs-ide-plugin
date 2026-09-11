@@ -389,6 +389,86 @@ suite('Courses', () => {
     }
   });
 
+  test('does not show the platform offline state when optional points are unavailable', async () => {
+    const { provider, sessionRepository, courseSyncService } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+      true,
+      true,
+      {
+        getCourseProgress: async () => [],
+        getExerciseProgress: async () => {
+          throw new Error('Exercise points unavailable');
+        },
+      },
+    );
+
+    try {
+      await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
+
+      const parts = await provider.getChildren();
+
+      assert.strictEqual(parts[0].label, 'Web Applications and HTTP');
+      assert.strictEqual(provider.description, 'WSD · Spring 2026');
+      assert.strictEqual(provider.message, undefined);
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('does not show the platform offline state after reselecting the same instance', async () => {
+    const courseCacheRepository = new CourseCacheRepository(
+      new InMemoryMemento(),
+    );
+    await courseCacheRepository.saveStructure(
+      session.student.id,
+      enrolments[0].courseSlug,
+      structure,
+    );
+    const { provider, sessionRepository, courseSyncService } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+      true,
+      true,
+      new MockCoursePointsRepository(),
+      undefined,
+      courseCacheRepository,
+    );
+    const selection: CourseSelection = {
+      courseSlug: enrolments[0].courseSlug,
+      courseInstanceId: enrolments[0].activeInstanceId as number,
+    };
+
+    try {
+      await sessionRepository.save(session);
+      const snapshot = await courseSyncService.synchronizeSelection(
+        session.student.id,
+        selection,
+        selection,
+      );
+
+      assert.strictEqual(snapshot.enrolments.source, 'live');
+      assert.strictEqual(snapshot.enrolments.offline, false);
+      assert.strictEqual(snapshot.structure?.source, 'cache');
+      assert.strictEqual(snapshot.structure?.offline, false);
+      assert.strictEqual(snapshot.exercisePoints?.source, 'live');
+      assert.strictEqual(snapshot.exercisePoints?.offline, false);
+
+      const parts = await provider.getChildren();
+
+      assert.strictEqual(parts[0].label, 'Web Applications and HTTP');
+      assert.strictEqual(provider.description, 'WSD · Spring 2026');
+      assert.strictEqual(provider.message, undefined);
+    } finally {
+      provider.dispose();
+    }
+  });
+
   test('does not request backend data while rendering without a snapshot', async () => {
     let enrolmentRequests = 0;
     let structureRequests = 0;
@@ -806,6 +886,9 @@ function createProvider(
     userId: number,
     assignment: ProgrammingAssignment,
   ) => boolean = () => false,
+  courseCacheRepository = new CourseCacheRepository(
+    new InMemoryMemento(),
+  ),
 ): {
   provider: CourseTreeProvider;
   sessionRepository: SessionRepository;
@@ -830,9 +913,6 @@ function createProvider(
     new InMemoryMemento(),
   );
   const courseSelectionRepository = new CourseSelectionRepository(
-    new InMemoryMemento(),
-  );
-  const courseCacheRepository = new CourseCacheRepository(
     new InMemoryMemento(),
   );
   const currentAssignmentRepository = new CurrentAssignmentRepository(
