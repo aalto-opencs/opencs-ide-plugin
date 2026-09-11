@@ -489,19 +489,21 @@ export function registerCommands(
   };
 
   const navigateToPrerequisite = async (
-    blockedAssignment: ProgrammingAssignment,
+    _blockedAssignment: ProgrammingAssignment,
     prerequisite: AssignmentLockExercise,
-  ): Promise<void> => {
-    const assignment: ProgrammingAssignment = {
-      ...blockedAssignment,
-      exerciseUuid: prerequisite.uuid,
-      name: prerequisite.name || prerequisite.uuid,
-    };
+  ): Promise<boolean> => {
+    const assignment = await courseTreeProvider.resolveAssignment(
+      prerequisite.uuid,
+    );
+    if (!assignment) {
+      return false;
+    }
     await makeCurrent(assignment);
     await vscode.commands.executeCommand(
       'workbench.view.extension.aaltoOpenCsIde',
     );
     await courseTreeProvider.revealAssignment(assignment.exerciseUuid);
+    return true;
   };
   const assignmentController = new AssignmentController(
     new AssignmentDownloadService(

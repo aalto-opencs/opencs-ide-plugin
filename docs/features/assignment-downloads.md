@@ -29,9 +29,12 @@ copy while protecting the old copy if preparation or installation fails.
    assignment folder will be permanently deleted.
 3. After explicit confirmation, the extension prepares a complete fresh copy
    before moving the existing folder aside.
-4. It installs the new copy and deletes the replaced folder only after the new
+4. The platform checks access during the same starter metadata and starter-file
+   requests used by first download. A structured lock shows **Assignment is
+   locked** with the platform message and stops before folder replacement.
+5. It installs the new copy and deletes the replaced folder only after the new
    installation succeeds.
-5. The refreshed preferred file opens automatically in the editor and is
+6. The refreshed preferred file opens automatically in the editor and is
    selected in the Exercise tree.
 
 ## Rules & Conditions
@@ -62,10 +65,17 @@ copy while protecting the old copy if preparation or installation fails.
 - The content hash must remain the same across the starter download. A change
   during download prevents installation.
 - A platform lock returned as structured HTTP 403 from starter metadata or
-  starter files stops the download before local installation. For one
-  incomplete exercise prerequisite, **Assignment is locked** shows the
-  platform message and offers **Go to prerequisite**. That action selects and
-  reveals the prerequisite in Courses; it never downloads the prerequisite.
+  starter files stops download before local installation or redownload folder
+  replacement. **Assignment is locked** shows the platform message and offers
+  **Go to prerequisite** when incomplete prerequisite assignments are
+  available. Multiple prerequisites open a chooser with names, UUID fallbacks,
+  and available current/max points. Choosing one selects and reveals it in
+  Courses; it never downloads the prerequisite. If the prerequisite is absent
+  from the selected course version, the IDE asks the student to verify that
+  course and version without changing selection.
+- Lock state is authoritative platform state. The extension does not persist
+  or cache it, and the lock warning does not offer **Download Anyway** or
+  **Open Existing Copy**.
 - Opening a downloaded exercise never closes editor tabs or discards unsaved
   work from another exercise.
 

@@ -11,3 +11,9 @@ _Avoid_: Visible tests, starter tests
 **Hidden tests**:
 Grader-only tests that are not distributed to students and run only as part of platform grading.
 _Avoid_: Private tests
+
+## Glossary
+
+**Prerequisite assignment**: An assignment required by the platform before
+another assignment can be accessed. It is not necessarily the immediately
+preceding assignment.

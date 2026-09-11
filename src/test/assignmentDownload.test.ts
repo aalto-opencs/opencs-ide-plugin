@@ -273,6 +273,103 @@ suite('Assignment download', () => {
     }
   });
 
+  test('normalizes an unknown future lock reason', async () => {
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(403, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({
+        locked: true,
+        lockedByProgress: false,
+        lockedByExercises: false,
+        lockedAfterExercises: false,
+        lockedAfterProgress: false,
+        lockedByInstanceSelection: false,
+        lockedByFutureRule: true,
+        progress: null,
+        exercises: null,
+        message: 'This assignment is unavailable for a new platform reason.',
+        code: null,
+      }));
+    });
+
+    try {
+      const repository = new ApiAssignmentRepository(
+        new ApiClient(server.baseUrl),
+      );
+      const error = await getRejectedError(
+        repository.getStarter(assignment.exerciseUuid),
+      );
+
+      assert.ok(error instanceof AssignmentLockedError);
+      assert.strictEqual((error as AssignmentLockedError).reason, 'unknown');
+      assert.strictEqual(
+        (error as AssignmentLockedError).message,
+        'This assignment is unavailable for a new platform reason.',
+      );
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('normalizes every current lock reason', async () => {
+    const reasons = [
+      'lockedByProgress',
+      'lockedByExercises',
+      'lockedAfterExercises',
+      'lockedAfterProgress',
+      'lockedByInstanceSelection',
+    ] as const;
+    let currentReason: (typeof reasons)[number] = reasons[0];
+    const server = await startTestHttpServer((_request, response) => {
+      response.writeHead(403, { 'Content-Type': 'application/json' });
+      response.end(JSON.stringify({
+        locked: true,
+        lockedByProgress: currentReason === 'lockedByProgress',
+        lockedByExercises: currentReason === 'lockedByExercises',
+        lockedAfterExercises: currentReason === 'lockedAfterExercises',
+        lockedAfterProgress: currentReason === 'lockedAfterProgress',
+        lockedByInstanceSelection:
+          currentReason === 'lockedByInstanceSelection',
+        progress: currentReason === 'lockedByProgress' ||
+            currentReason === 'lockedAfterProgress'
+          ? {
+            course_slug: assignment.courseSlug,
+            required_point_percentage: 80,
+            current_point_percentage: 25,
+            parts: ['Part 1'],
+          }
+          : null,
+        exercises: currentReason === 'lockedByExercises' ||
+            currentReason === 'lockedAfterExercises'
+          ? [{
+            uuid: '22222222-2222-4222-8222-222222222222',
+            name: 'Related exercise',
+          }]
+          : null,
+        message: `Lock reason: ${currentReason}`,
+        code: currentReason === 'lockedByInstanceSelection'
+          ? 'COURSE_INSTANCE_SELECTION_REQUIRED'
+          : null,
+      }));
+    });
+
+    try {
+      const repository = new ApiAssignmentRepository(
+        new ApiClient(server.baseUrl),
+      );
+
+      for (const reason of reasons) {
+        currentReason = reason;
+        const error = await getRejectedError(
+          repository.getStarter(assignment.exerciseUuid),
+        );
+        assert.ok(error instanceof AssignmentLockedError);
+        assert.strictEqual((error as AssignmentLockedError).reason, reason);
+      }
+    } finally {
+      await server.close();
+    }
+  });
+
   test('writes handout, starter files, and submission metadata', async () => {
     const root = await createTemporaryRoot();
 

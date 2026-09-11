@@ -34,7 +34,8 @@ export type AssignmentLockReason =
   | 'lockedByExercises'
   | 'lockedAfterExercises'
   | 'lockedAfterProgress'
-  | 'lockedByInstanceSelection';
+  | 'lockedByInstanceSelection'
+  | 'unknown';
 
 export interface AssignmentLockExercise {
   uuid: string;

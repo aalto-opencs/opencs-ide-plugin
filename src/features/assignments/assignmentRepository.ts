@@ -102,7 +102,7 @@ export class MockAssignmentRepository implements AssignmentRepository {
   }
 }
 
-const LOCK_REASONS: AssignmentLockReason[] = [
+const KNOWN_LOCK_REASONS: Exclude<AssignmentLockReason, 'unknown'>[] = [
   'lockedByProgress',
   'lockedByExercises',
   'lockedAfterExercises',
@@ -120,14 +120,29 @@ function normalizeAssignmentLock(error: unknown): unknown {
     return error;
   }
 
-  const reason = LOCK_REASONS.find((candidate) =>
-    body[candidate] === true);
-  if (!reason || LOCK_REASONS.some((candidate) =>
-    candidate !== reason && body[candidate] === true) ||
-    LOCK_REASONS.some((candidate) => typeof body[candidate] !== 'boolean') ||
+  if (KNOWN_LOCK_REASONS.some((candidate) =>
+    typeof body[candidate] !== 'boolean') ||
     typeof body.message !== 'string' || !body.message.trim()) {
     return error;
   }
+
+  const lockFlags = Object.entries(body)
+    .filter(([key]) => key.startsWith('locked') && key !== 'locked');
+  if (lockFlags.some(([, value]) => typeof value !== 'boolean')) {
+    return error;
+  }
+
+  const activeReasons = lockFlags
+    .filter(([, value]) => value === true)
+    .map(([key]) => key);
+  if (activeReasons.length !== 1) {
+    return error;
+  }
+
+  const reason = KNOWN_LOCK_REASONS.includes(activeReasons[0] as
+    Exclude<AssignmentLockReason, 'unknown'>)
+    ? activeReasons[0] as Exclude<AssignmentLockReason, 'unknown'>
+    : 'unknown';
 
   const exercises = parseLockExercises(body.exercises);
   const progress = parseLockProgress(body.progress);

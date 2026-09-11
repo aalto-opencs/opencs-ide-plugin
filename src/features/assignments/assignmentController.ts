@@ -16,7 +16,7 @@ import { SubmissionRepository } from '../submissions/submissionRepository';
 export type AssignmentPrerequisiteNavigator = (
   assignment: ProgrammingAssignment,
   prerequisite: AssignmentLockExercise,
-) => void | Promise<void>;
+) => boolean | void | Promise<boolean | void>;
 
 export class AssignmentController {
   public constructor(
@@ -252,22 +252,57 @@ export class AssignmentController {
     error: AssignmentLockedError,
     assignment: ProgrammingAssignment,
   ): Promise<void> {
-    const prerequisite = error.reason === 'lockedByExercises' &&
-        error.exercises?.length === 1
-      ? error.exercises[0]
-      : undefined;
+    const prerequisites = error.reason === 'lockedByExercises'
+      ? error.exercises ?? []
+      : [];
     const action = await vscode.window.showWarningMessage(
       'Assignment is locked',
       {
         modal: true,
         detail: error.message,
       },
-      ...(prerequisite && this.navigateToPrerequisite
+      ...(prerequisites.length && this.navigateToPrerequisite
         ? ['Go to prerequisite']
         : []),
     );
-    if (action === 'Go to prerequisite' && prerequisite) {
-      await this.navigateToPrerequisite?.(assignment, prerequisite);
+    if (action !== 'Go to prerequisite' || !this.navigateToPrerequisite) {
+      return;
+    }
+
+    let prerequisite: AssignmentLockExercise | undefined = prerequisites[0];
+    if (prerequisites.length > 1) {
+      const selected = await vscode.window.showQuickPick(
+        prerequisites.map((candidate) => {
+          const points = formatPrerequisitePoints(candidate);
+          return {
+            label: candidate.name || candidate.uuid,
+            ...(points ? { description: points } : {}),
+            prerequisite: candidate,
+          };
+        }),
+        {
+          title: 'Choose prerequisite assignment',
+          placeHolder: 'Select an incomplete prerequisite to open',
+        },
+      );
+      prerequisite = selected?.prerequisite;
+    }
+    if (!prerequisite) {
+      return;
+    }
+
+    const navigated = await this.navigateToPrerequisite(
+      assignment,
+      prerequisite,
+    );
+    if (navigated === false) {
+      await vscode.window.showWarningMessage(
+        'Prerequisite not found in selected course version',
+        {
+          modal: true,
+          detail: 'Verify the selected course and version, then try again.',
+        },
+      );
     }
   }
 
@@ -335,4 +370,18 @@ export class AssignmentController {
       );
     }
   }
+}
+
+function formatPrerequisitePoints(
+  prerequisite: AssignmentLockExercise,
+): string | undefined {
+  if (!isValidPoints(prerequisite.userPoints) ||
+    !isValidPoints(prerequisite.maxPoints)) {
+    return undefined;
+  }
+  return `${prerequisite.userPoints}/${prerequisite.maxPoints} pts`;
+}
+
+function isValidPoints(value: number | null | undefined): value is number {
+  return typeof value === 'number' && Number.isFinite(value) && value >= 0;
 }

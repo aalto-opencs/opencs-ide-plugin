@@ -139,6 +139,13 @@ export class CourseTreeProvider implements
     return true;
   }
 
+  public async resolveAssignment(
+    exerciseUuid: string,
+  ): Promise<ProgrammingAssignment | undefined> {
+    const roots = await this.getChildren();
+    return findAssignmentItem(roots, exerciseUuid)?.assignment;
+  }
+
   public async getChildren(
     element?: CourseTreeItem,
   ): Promise<CourseTreeItem[]> {
