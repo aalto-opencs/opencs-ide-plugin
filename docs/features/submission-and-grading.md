@@ -17,8 +17,9 @@ its grading state, and presents the backend's authoritative outcome.
 5. The extension records a compact submit diff and uploads only the payload,
    course-instance ID, and exercise ID.
 6. After a valid submission UUID returns, the extension freezes activity,
-   seeds next active log from submitted files, and sends completed activity
-   separately as `ide-action-log`. Delivery failure does not affect grading.
+   seeds next active log from submitted files, and queues completed activity
+   separately as `ide-action-log`. Delivery starts immediately and retries
+   transient failures silently. Delivery failure does not affect grading.
 7. The returned submission is stored locally as pending. One status poller
    observes the accepted submission immediately, then waits 2, 3, 5, and 8
    seconds. It uses 10-second intervals during the first five minutes, waits

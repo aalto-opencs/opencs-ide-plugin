@@ -37,9 +37,17 @@ and diff strings never appear in diagnostics or error messages.
    immutable completed batch associated with that UUID.
 5. Seed next active log immediately from submitted state.
 6. Post completed raw entries to the event-log endpoint as `ide-action-log`.
+   Delivery starts immediately after submission acceptance.
 
 Event-log delivery failure does not fail grading or show an activity warning.
 The completed batch remains scoped in global state when delivery fails.
+Pending batches flush oldest-first at startup, after sign-in, and after every
+successful submission while the student remains authenticated. A retryable
+failure stops that flush so later batches retain their order.
+Retry transient delivery failures silently after approximately 5 seconds, 30
+seconds, 2 minutes, and 10 minutes, then every 15 minutes with jitter.
+Delivery stops on authentication failure until sign-in returns, and removes
+permanent request failures.
 The per-student outbox retains at most 10 completed batches and 20 MB. It
 evicts oldest batches first when either limit is exceeded.
 
