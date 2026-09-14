@@ -1,4 +1,7 @@
-import { SubmissionStatus } from './submissionModels';
+import {
+  GRADING_STATUS_ERROR,
+  SubmissionStatus,
+} from './submissionModels';
 
 export interface SubmissionTestResult {
   name: string;
@@ -18,16 +21,20 @@ export function summarizeSubmissionResult(
 ): SubmissionResultSummary {
   const gradingData = status.gradingData ?? {};
   const tests = parseTestResults(gradingData.testResults);
+  const shouldShowGraderErrors =
+    status.gradingStatus === GRADING_STATUS_ERROR || tests.length === 0;
 
   return {
     tests,
     failedTests: tests.filter((test) => !test.passed),
     passedTestCount: tests.filter((test) => test.passed).length,
-    graderErrors: [
-      readText(gradingData.error),
-      readText(gradingData.testErrors),
-      readText(gradingData.testErrorsOutput),
-    ].filter((value): value is string => value !== undefined),
+    graderErrors: shouldShowGraderErrors
+      ? [
+        readText(gradingData.error),
+        readText(gradingData.testErrors),
+        readText(gradingData.testErrorsOutput),
+      ].filter((value): value is string => value !== undefined)
+      : [],
   };
 }
 

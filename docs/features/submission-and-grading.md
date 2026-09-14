@@ -50,6 +50,9 @@ its grading state, and presents the backend's authoritative outcome.
   points. Course structure and enrolments are not refreshed.
 - A failed result reports the test summary and makes detailed failures
   available from submission history.
+- When a processed result includes structured test results, the view shows
+  individual failed-test details without repeating aggregate runner output as
+  a separate grader error.
 - A grader error is distinct from an incorrect solution.
 - Cancellation or repeated transient polling failures leave the accepted
   submission pending for later synchronization rather than declaring failure.

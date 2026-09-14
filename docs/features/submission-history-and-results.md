@@ -17,8 +17,8 @@ when a later refresh is temporarily offline.
    status requests.
 4. The two newest submissions appear directly; older rows are grouped under
    **Past Submissions**.
-5. Expanding a failed or grader-error row reveals detail entries that open as
-   selectable Markdown text in an editor.
+5. Expanding a failed or genuine grader-error row reveals detail entries that
+   open as selectable Markdown text in an editor.
 
 ## Rules & Conditions
 
@@ -45,7 +45,11 @@ when a later refresh is temporarily offline.
 - Result labels distinguish Pending, Passed, Failed, and Grading error.
 - Only failed tests are shown as child rows; passing-test counts contribute to
   the summary.
-- Grader errors are shown even when no test list was returned.
+- When structured test results are present, aggregate runner fields such as
+  `testErrors` and `testErrorsOutput` are suppressed so they do not duplicate
+  the individual failed-test details.
+- Grader errors remain visible for an error status or when no test list was
+  returned.
 - Persisted history is structurally validated before display.
 
 ## Outcomes
@@ -54,8 +58,8 @@ when a later refresh is temporarily offline.
   available in a collapsed group.
 - Failed-test details include the assignment, submission time, test name,
   passed/failed summary, and returned error output when available.
-- Grader-error details preserve readable strings and formatted structured
-  platform error data.
+- Grader-error details, when applicable, preserve readable strings and
+  formatted structured platform error data.
 - Previously synchronized results survive ordinary extension restarts.
 
 ## Failure Behavior

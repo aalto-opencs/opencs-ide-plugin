@@ -631,15 +631,18 @@ suite('Assignment submission', () => {
         status: {
           correct: index === 4 ? false : true,
           gradingStatus: GRADING_STATUS_PROCESSED,
-          gradingData: {
-            testResults: index === 4
-              ? [{
-                testName: 'Newest failed test',
-                passed: false,
-                error: 'Expected a heading',
-              }]
-              : [],
-          },
+            gradingData: {
+              testResults: index === 4
+                ? [{
+                  testName: 'Newest failed test',
+                  passed: false,
+                  error: 'Expected a heading',
+                }]
+                : [],
+              testErrors: index === 4
+                ? 'Bad state: No element'
+                : undefined,
+            },
         },
       });
     }
@@ -876,6 +879,37 @@ suite('Assignment submission', () => {
     assert.match(output, /1\. The page has a Hello world heading\./);
     assert.match(output, /Error details:/);
     assert.match(output, /Received: 0/);
+  });
+
+  test('does not show aggregate grader errors alongside structured test results', () => {
+    const status: SubmissionStatus = {
+      correct: false,
+      gradingStatus: GRADING_STATUS_PROCESSED,
+      gradingData: {
+        testResults: [
+          {
+            testName: 'The page has a heading.',
+            passed: false,
+            'test output': 'Expected: 1\nReceived: 0',
+          },
+          {
+            testName: 'The page has a title.',
+            passed: true,
+          },
+        ],
+        error: 'The test runner emitted an aggregate error.',
+        testErrors: 'Bad state: No element',
+        testErrorsOutput: 'Duplicate runner output',
+      },
+    };
+
+    const summary = summarizeSubmissionResult(status);
+    const output = formatSubmissionResult(status).join('\n');
+
+    assert.deepStrictEqual(summary.graderErrors, []);
+    assert.match(output, /Failed tests:/);
+    assert.doesNotMatch(output, /Grader errors:/);
+    assert.doesNotMatch(output, /Bad state: No element/);
   });
 
   test('shows platform grading errors when no tests were returned', () => {
