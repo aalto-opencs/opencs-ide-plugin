@@ -11,3 +11,5 @@ release/
 AGENTS.md
 skills-lock.json
 docs/agents/
+.agent-dispatcher
+.codex
