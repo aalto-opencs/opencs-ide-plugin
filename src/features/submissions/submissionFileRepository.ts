@@ -14,6 +14,7 @@ const EXCLUDED_DIRECTORIES = new Set([
   'dist',
   'build',
   'coverage',
+  'test',
 ]);
 const SAFE_PATH_SEGMENT = /^[A-Za-z0-9._+@()[\] -]+$/;
 
