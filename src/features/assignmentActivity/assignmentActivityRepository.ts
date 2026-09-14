@@ -11,8 +11,10 @@ import {
 } from './assignmentActivityModels';
 
 const STORAGE_KEY_PREFIX = 'aaltoOpenCsIde.assignmentActivity.v2';
-const MAX_ACTIVITY_EVENTS = 20;
-const MAX_ACTIVITY_BYTES = 10 * 1024 * 1024;
+export const MAX_ACTIVITY_EVENTS = 50;
+export const MAX_ACTIVITY_BYTES = 10 * 1024 * 1024;
+export const MAX_COMPLETED_BATCHES = 10;
+export const MAX_COMPLETED_BYTES = 20 * 1024 * 1024;
 const UUID_PATTERN = /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 
 /** Persists reconstructable activity until its separate event log is sent. */
@@ -53,7 +55,13 @@ export class AssignmentActivityRepository {
       action: input.action,
       files: createFileDiff(previous, input.files),
     });
-    trimActiveHistory(events);
+    if (!trimActiveHistory(events)) {
+      await this.state.update(
+        this.getActiveKey(userId, assignment),
+        undefined,
+      );
+      return [];
+    }
     await this.state.update(
       this.getActiveKey(userId, assignment),
       events,
@@ -77,11 +85,18 @@ export class AssignmentActivityRepository {
       submissionUuid,
       events: cloneEvents(events),
     };
-    const completedBatches = this.getCompleted(userId, assignment);
+    const completedBatches = this.getCompleted(userId);
+    const existing = completedBatches.find(
+      (batch) => batch.submissionUuid === submissionUuid,
+    );
+    if (existing) {
+      return existing;
+    }
     completedBatches.push(completed);
+    trimCompletedOutbox(completedBatches);
     await this.state.update(
-      this.getCompletedKey(userId, assignment),
-      completedBatches,
+      this.getCompletedKey(userId),
+      completedBatches.length > 0 ? completedBatches : undefined,
     );
     const submittedState = reconstructAssignmentActivity(events);
     await this.state.update(
@@ -93,10 +108,10 @@ export class AssignmentActivityRepository {
 
   public getCompleted(
     userId: number,
-    assignment: ProgrammingAssignment,
+    _assignment?: ProgrammingAssignment,
   ): CompletedAssignmentActivity[] {
     const value = this.state.get<unknown>(
-      this.getCompletedKey(userId, assignment),
+      this.getCompletedKey(userId),
     );
     return Array.isArray(value)
       ? value.filter(isCompletedAssignmentActivity).map((batch) => ({
@@ -108,14 +123,20 @@ export class AssignmentActivityRepository {
 
   public async removeCompleted(
     userId: number,
-    assignment: ProgrammingAssignment,
-    submissionUuid: string,
+    assignmentOrSubmissionUuid: ProgrammingAssignment | string,
+    providedSubmissionUuid?: string,
   ): Promise<void> {
-    const remaining = this.getCompleted(userId, assignment).filter(
+    const submissionUuid = typeof assignmentOrSubmissionUuid === 'string'
+      ? assignmentOrSubmissionUuid
+      : providedSubmissionUuid;
+    if (!submissionUuid) {
+      return;
+    }
+    const remaining = this.getCompleted(userId).filter(
       (batch) => batch.submissionUuid !== submissionUuid,
     );
     await this.state.update(
-      this.getCompletedKey(userId, assignment),
+      this.getCompletedKey(userId),
       remaining.length > 0 ? remaining : undefined,
     );
   }
@@ -146,9 +167,8 @@ export class AssignmentActivityRepository {
 
   private getCompletedKey(
     userId: number,
-    assignment: ProgrammingAssignment,
   ): string {
-    return `${this.getScopeKey(userId, assignment)}.completed`;
+    return `${STORAGE_KEY_PREFIX}.${userId}.completed`;
   }
 
   private getScopeKey(
@@ -257,29 +277,90 @@ function isUnchanged(changes: AssignmentActivityFileDiff): boolean {
   return changes.every(([operation]) => operation === 0);
 }
 
-function trimActiveHistory(events: AssignmentActivityEvent[]): void {
-  const states = events.map((_, index) =>
-    reconstructAssignmentActivity(events.slice(0, index + 1)));
+function trimActiveHistory(events: AssignmentActivityEvent[]): boolean {
   while (
     events.length > MAX_ACTIVITY_EVENTS ||
     activityBytes(events) > MAX_ACTIVITY_BYTES
   ) {
-    if (events.length <= 1) {
-      break;
+    const actionCount = events.length - 1;
+    if (actionCount <= 1) {
+      events.length = 0;
+      return false;
     }
-    events.splice(1, 1);
-    states.splice(1, 1);
-    for (let index = 1; index < events.length; index += 1) {
-      const event = events[index];
-      if (event.action !== 'load') {
-        event.files = createFileDiff(states[index - 1], states[index]);
+
+    if (actionCount < 25) {
+      const load = events[0];
+      if (load.action !== 'load') {
+        events.length = 0;
+        return false;
       }
+      const finalState = reconstructAssignmentActivity(events);
+      const newest = events.at(-1);
+      if (!newest || newest.action === 'load') {
+        events.length = 0;
+        return false;
+      }
+      const newestFromLoad: AssignmentActivityEvent = {
+        ...newest,
+        files: createFileDiff(load.files, finalState),
+      };
+      if (activityBytes([load, newestFromLoad]) > MAX_ACTIVITY_BYTES) {
+        events.length = 0;
+        return false;
+      }
+
+      const checkpointIndex = events.length - 2;
+      const checkpoint = createCheckpoint(events, checkpointIndex);
+      events.splice(1, checkpointIndex - 1);
+      events[1] = checkpoint;
+      if (activityBytes(events) > MAX_ACTIVITY_BYTES) {
+        events.splice(1, events.length - 1, newestFromLoad);
+      }
+      continue;
     }
+
+    const checkpoint = createCheckpoint(events, 25);
+    events.splice(1, 24);
+    events[1] = checkpoint;
+  }
+  return true;
+}
+
+function createCheckpoint(
+  events: AssignmentActivityEvent[],
+  checkpointIndex: number,
+): AssignmentActivityEvent {
+  const load = events[0];
+  const checkpoint = events[checkpointIndex];
+  if (load.action !== 'load' || !checkpoint || checkpoint.action === 'load') {
+    throw new Error('Invalid active activity history.');
+  }
+  return {
+    ...checkpoint,
+    files: createFileDiff(
+      load.files,
+      reconstructAssignmentActivity(events.slice(0, checkpointIndex + 1)),
+    ),
+  };
+}
+
+function trimCompletedOutbox(batches: CompletedAssignmentActivity[]): void {
+  while (
+    batches.length > MAX_COMPLETED_BATCHES ||
+    completedActivityBytes(batches) > MAX_COMPLETED_BYTES
+  ) {
+    batches.shift();
   }
 }
 
 function activityBytes(events: AssignmentActivityEvent[]): number {
   return new TextEncoder().encode(JSON.stringify(events)).byteLength;
+}
+
+function completedActivityBytes(
+  batches: CompletedAssignmentActivity[],
+): number {
+  return new TextEncoder().encode(JSON.stringify(batches)).byteLength;
 }
 
 function canonicalTimestamp(value: string): string {
