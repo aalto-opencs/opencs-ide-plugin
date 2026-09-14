@@ -13,6 +13,40 @@ const assignment: ProgrammingAssignment = {
 };
 
 suite('Assignment activity', () => {
+  test('initializes and resets the load state from downloaded files', async () => {
+    const repository = new AssignmentActivityRepository(new InMemoryMemento());
+    await repository.initialize(
+      7,
+      assignment,
+      { 'main.py': 'print(0)\n' },
+      '2026-09-09T07:59:00.000Z',
+    );
+    await repository.add(7, assignment, {
+      id: '11111111-1111-4111-8111-111111111111',
+      timestamp: '2026-09-09T08:00:00.000Z',
+      action: 'run',
+      files: { 'main.py': 'print(1)\n' },
+    });
+
+    const events = repository.get(7, assignment);
+    assert.strictEqual(events[0].action, 'load');
+    assert.deepStrictEqual(events[0].files, { 'main.py': 'print(0)\n' });
+    assert.deepStrictEqual(
+      reconstructAssignmentActivity(events),
+      { 'main.py': 'print(1)\n' },
+    );
+
+    await repository.initialize(
+      7,
+      assignment,
+      { 'main.py': 'print(2)\n' },
+      '2026-09-09T08:01:00.000Z',
+    );
+    const reset = repository.get(7, assignment);
+    assert.strictEqual(reset.length, 1);
+    assert.deepStrictEqual(reset[0].files, { 'main.py': 'print(2)\n' });
+  });
+
   test('stores one load followed by compact diffs and reconstructs state', async () => {
     const repository = new AssignmentActivityRepository(new InMemoryMemento());
     await repository.add(7, assignment, {

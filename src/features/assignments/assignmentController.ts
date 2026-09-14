@@ -18,6 +18,12 @@ export type AssignmentPrerequisiteNavigator = (
   prerequisite: AssignmentLockExercise,
 ) => boolean | void | Promise<boolean | void>;
 
+export type AssignmentActivityInitializer = (
+  userId: number,
+  assignment: ProgrammingAssignment,
+  downloaded: DownloadedAssignment,
+) => Promise<void>;
+
 export class AssignmentController {
   public constructor(
     private readonly downloadService: AssignmentDownloadService,
@@ -25,6 +31,7 @@ export class AssignmentController {
     private readonly authService: AuthService,
     private readonly submissionRepository: SubmissionRepository,
     private readonly navigateToPrerequisite?: AssignmentPrerequisiteNavigator,
+    private readonly initializeActivity?: AssignmentActivityInitializer,
   ) {}
 
   public async selectAssignmentFolder(): Promise<vscode.Uri | undefined> {
@@ -157,6 +164,11 @@ export class AssignmentController {
           session.student.email,
         ),
       );
+      await this.initializeActivity?.(
+        session.student.id,
+        assignment,
+        downloaded,
+      ).catch(() => undefined);
       await onDownloaded(downloaded);
       await vscode.window.showInformationMessage(
         `Downloaded ${assignment.name}.`,
@@ -242,6 +254,11 @@ export class AssignmentController {
       return;
     }
 
+    await this.initializeActivity?.(
+      location.userId,
+      assignment,
+      downloaded,
+    ).catch(() => undefined);
     await onDownloaded(downloaded);
     await vscode.window.showInformationMessage(
       `Redownloaded ${assignment.name}.`,
@@ -310,6 +327,7 @@ export class AssignmentController {
     assignment?: ProgrammingAssignment,
   ): Promise<{
     root: vscode.Uri;
+    userId: number;
     userEmail: string;
     folder: vscode.Uri;
   } | undefined> {
@@ -338,6 +356,7 @@ export class AssignmentController {
 
     return {
       root,
+      userId: session.student.id,
       userEmail: session.student.email,
       folder: this.downloadService.getAssignmentFolder(
         root,

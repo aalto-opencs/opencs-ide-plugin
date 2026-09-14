@@ -56,8 +56,18 @@ export class ApiSubmissionRepository implements SubmissionRepository {
     await this.apiClient.post('/event-logs', {
       eventType: 'ide-action-log',
       submissionUuid,
-      data: events,
-    });
+      data: events.map((event) => event.action === 'load'
+        ? {
+          action: event.action,
+          timestamp: event.timestamp,
+          files: event.files,
+        }
+        : {
+          action: event.action,
+          timestamp: event.timestamp,
+          diffs: event.files,
+        }),
+    }, { priority: 'background' });
   }
 
   public async getStatus(submissionUuid: string): Promise<SubmissionStatus> {

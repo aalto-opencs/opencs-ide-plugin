@@ -126,6 +126,54 @@ suite('Assignment activity delivery', () => {
     ]);
   });
 
+  test('runs another pass when delivery is requested during a flush', async () => {
+    const first = createBatch('11111111-1111-4111-8111-111111111111');
+    const second = createBatch('33333333-3333-4333-8333-333333333333');
+    const batches = [first];
+    const sent: string[] = [];
+    let releaseFirst: (() => void) | undefined;
+    let markFirstStarted: (() => void) | undefined;
+    const firstStarted = new Promise<void>((resolve) => {
+      markFirstStarted = resolve;
+    });
+    const firstDelivery = new Promise<void>((resolve) => {
+      releaseFirst = resolve;
+    });
+    const service = new AssignmentActivityDeliveryService(
+      {
+        getCompleted: () => batches,
+        removeCompleted: async (_userId: number, submissionUuid: string) => {
+          const index = batches.findIndex(
+            (batch) => batch.submissionUuid === submissionUuid,
+          );
+          if (index >= 0) {
+            batches.splice(index, 1);
+          }
+        },
+      },
+      {
+        sendActivityLog: async (submissionUuid) => {
+          sent.push(submissionUuid);
+          if (submissionUuid === first.submissionUuid) {
+            markFirstStarted?.();
+            await firstDelivery;
+          }
+        },
+      },
+      createSessionProvider(7),
+    );
+
+    const startupFlush = service.flush(7);
+    await firstStarted;
+    batches.push(second);
+    const submissionFlush = service.flush(7);
+    releaseFirst?.();
+    await Promise.all([startupFlush, submissionFlush]);
+
+    assert.deepStrictEqual(sent, [first.submissionUuid, second.submissionUuid]);
+    assert.deepStrictEqual(batches, []);
+  });
+
   test('removes permanent failures and acknowledges one successful batch', async () => {
     const batches = [
       createBatch('11111111-1111-4111-8111-111111111111'),

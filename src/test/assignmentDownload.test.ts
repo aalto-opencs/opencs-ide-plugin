@@ -414,6 +414,10 @@ suite('Assignment download', () => {
         downloaded.mainFile.fsPath,
         join(downloaded.folder.fsPath, 'src', 'index.ts'),
       );
+      assert.deepStrictEqual(downloaded.submissionFiles, [
+        'src/index.ts',
+        'reports/summary.txt',
+      ]);
       assert.strictEqual(
         await readFile(
           join(downloaded.folder.fsPath, 'src', 'index.ts'),

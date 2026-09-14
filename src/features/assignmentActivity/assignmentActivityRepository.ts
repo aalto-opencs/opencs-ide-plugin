@@ -21,6 +21,18 @@ const UUID_PATTERN = /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i;
 export class AssignmentActivityRepository {
   public constructor(private readonly state: vscode.Memento) {}
 
+  public async initialize(
+    userId: number,
+    assignment: ProgrammingAssignment,
+    files: Record<string, string>,
+    timestamp = new Date().toISOString(),
+  ): Promise<void> {
+    await this.state.update(
+      this.getActiveKey(userId, assignment),
+      [createLoadEvent(files, timestamp)],
+    );
+  }
+
   public get(
     userId: number,
     assignment: ProgrammingAssignment,

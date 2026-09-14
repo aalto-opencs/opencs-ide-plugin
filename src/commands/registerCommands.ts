@@ -18,6 +18,7 @@ import { AssignmentFileRepository } from '../features/assignments/assignmentFile
 import { AssignmentFolderRepository } from '../features/assignments/assignmentFolderRepository';
 import {
   AssignmentLockExercise,
+  DownloadedAssignment,
   ProgrammingAssignment,
 } from '../features/assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
@@ -178,6 +179,22 @@ export function registerCommands(
   const assignmentActivityRepository = new AssignmentActivityRepository(
     context.globalState,
   );
+  const submissionFileRepository = new SubmissionFileRepository();
+  const initializeDownloadedActivity = async (
+    userId: number,
+    assignment: ProgrammingAssignment,
+    downloaded: DownloadedAssignment,
+  ): Promise<void> => {
+    const files = await submissionFileRepository.collect(
+      downloaded.folder,
+      downloaded.submissionFiles,
+    );
+    await assignmentActivityRepository.initialize(
+      userId,
+      assignment,
+      files,
+    );
+  };
   const developmentCompletionRepository = __DEVELOPMENT_TOOLS__ &&
       context.extensionMode === vscode.ExtensionMode.Development
     ? new DevelopmentCompletionRepository()
@@ -258,7 +275,7 @@ export function registerCommands(
   };
   const submissionService = new SubmissionService(
     submissionRepository,
-    new SubmissionFileRepository(),
+    submissionFileRepository,
   );
   const activityDeliveryService = new AssignmentActivityDeliveryService(
     assignmentActivityRepository,
@@ -305,7 +322,7 @@ export function registerCommands(
     assignmentFolderRepository,
     assignmentFileRepository,
     currentAssignmentRepository,
-    new SubmissionFileRepository(),
+    submissionFileRepository,
     assignmentActivityRepository,
   );
   const publicTestExecutionController = new PublicTestExecutionController(
@@ -314,7 +331,7 @@ export function registerCommands(
     assignmentFolderRepository,
     assignmentFileRepository,
     currentAssignmentRepository,
-    new SubmissionFileRepository(),
+    submissionFileRepository,
     assignmentActivityRepository,
   );
 
@@ -470,7 +487,7 @@ export function registerCommands(
   );
   void refreshUiState()
     .then(async () => {
-      await activityDeliveryService.flushCurrentUser().catch(() => undefined);
+      void activityDeliveryService.flushCurrentUser().catch(() => undefined);
       await synchronizeCurrentCourse().catch(() => undefined);
       await synchronizeCurrentSubmissionHistory().catch(() => undefined);
     })
@@ -522,6 +539,7 @@ export function registerCommands(
     authService,
     submissionRepository,
     navigateToPrerequisite,
+    initializeDownloadedActivity,
   );
 
   if (
@@ -583,7 +601,7 @@ export function registerCommands(
         await refreshUiState();
         await synchronizeCurrentCourse().catch(() => undefined);
         await synchronizeCurrentSubmissionHistory().catch(() => undefined);
-        await activityDeliveryService.flushCurrentUser().catch(() => undefined);
+        void activityDeliveryService.flushCurrentUser().catch(() => undefined);
       }
     },
   );

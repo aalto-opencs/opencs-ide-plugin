@@ -245,6 +245,7 @@ export class AssignmentFileRepository {
         folder: assignmentFolder,
         handoutFilename: HANDOUT_FILENAME,
         mainFile: await this.getPreferredOpenFile(assignmentFolder),
+        ...(submissionFiles ? { submissionFiles } : {}),
       };
     } catch (error: unknown) {
       if (temporaryFolderCreated) {

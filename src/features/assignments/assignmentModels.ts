@@ -74,4 +74,5 @@ export interface DownloadedAssignment {
   folder: vscode.Uri;
   handoutFilename: string;
   mainFile: vscode.Uri;
+  submissionFiles?: string[];
 }

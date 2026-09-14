@@ -34,6 +34,10 @@ import { SubmissionService } from '../features/submissions/submissionService';
 import { SubmissionTreeProvider } from '../features/submissions/submissionTreeProvider';
 import { ApiClient } from '../infrastructure/apiClient';
 import {
+  ApiRequestPriority,
+  ApiRequestScheduler,
+} from '../infrastructure/apiRequestScheduler';
+import {
   InMemoryMemento,
   InMemorySecretStorage,
   startTestHttpServer,
@@ -298,6 +302,16 @@ suite('Assignment submission', () => {
     let requestPath: string | undefined;
     let authorization: string | undefined;
     let body: Record<string, unknown> | undefined;
+    const priorities: ApiRequestPriority[] = [];
+    class RecordingRequestScheduler extends ApiRequestScheduler {
+      public override schedule<T>(
+        priority: ApiRequestPriority,
+        operation: () => Promise<T>,
+      ): Promise<T> {
+        priorities.push(priority);
+        return operation();
+      }
+    }
     const server = await startTestHttpServer((request, response) => {
       requestPath = request.url;
       authorization = request.headers.authorization;
@@ -310,28 +324,69 @@ suite('Assignment submission', () => {
 
     try {
       const repository = new ApiSubmissionRepository(
-        new ApiClient(server.baseUrl, async () => 'raw-session-token'),
+        new ApiClient(
+          server.baseUrl,
+          async () => 'raw-session-token',
+          10_000,
+          new RecordingRequestScheduler(),
+        ),
       );
-      const events = [{
-        id: '33333333-3333-4333-8333-333333333333',
-        timestamp: '2026-08-14T10:30:00.000Z',
-        action: 'submit' as const,
-        files: {
-          'src/app.js': [[1, 'console.log(1);\n'] as [1, string]],
+      const events = [
+        {
+          id: '33333333-3333-4333-8333-333333333333',
+          timestamp: '2026-08-14T10:29:00.000Z',
+          action: 'load' as const,
+          files: {
+            'src/app.js': 'console.log(0);\n',
+          },
         },
-      }];
+        {
+          id: '44444444-4444-4444-8444-444444444444',
+          timestamp: '2026-08-14T10:30:00.000Z',
+          action: 'submit' as const,
+          files: {
+            'src/app.js': [
+              [0, 'console.log('] as [0, string],
+              [-1, '0'] as [-1, string],
+              [1, '1'] as [1, string],
+              [0, ');\n'] as [0, string],
+            ],
+          },
+        },
+      ];
 
       await repository.sendActivityLog(
         '22222222-2222-4222-8222-222222222222',
         events,
       );
 
-      assert.strictEqual(requestPath, '/event-log');
+      assert.strictEqual(requestPath, '/event-logs');
       assert.strictEqual(authorization, 'raw-session-token');
+      assert.deepStrictEqual(priorities, ['background']);
       assert.deepStrictEqual(body, {
         eventType: 'ide-action-log',
         submissionUuid: '22222222-2222-4222-8222-222222222222',
-        data: events,
+        data: [
+          {
+            timestamp: '2026-08-14T10:29:00.000Z',
+            action: 'load',
+            files: {
+              'src/app.js': 'console.log(0);\n',
+            },
+          },
+          {
+            timestamp: '2026-08-14T10:30:00.000Z',
+            action: 'submit',
+            diffs: {
+              'src/app.js': [
+                [0, 'console.log('],
+                [-1, '0'],
+                [1, '1'],
+                [0, ');\n'],
+              ],
+            },
+          },
+        ],
       });
     } finally {
       await server.close();

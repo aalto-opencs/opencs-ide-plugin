@@ -184,7 +184,7 @@ export class SubmissionController {
           }
         }
       }
-      await this.activityDeliveryService?.flush(session.student.id)
+      void this.activityDeliveryService?.flush(session.student.id)
         .catch(() => undefined);
       await this.historyRepository.add({
         schemaVersion: 1,

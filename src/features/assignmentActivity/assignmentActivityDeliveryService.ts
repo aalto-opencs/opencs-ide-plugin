@@ -49,6 +49,7 @@ export class AssignmentActivityDeliveryService {
   private readonly timers = new Map<number, TimerHandle>();
   private readonly retryAttempts = new Map<string, number>();
   private readonly flushes = new Map<number, Promise<void>>();
+  private readonly flushRequestVersions = new Map<number, number>();
   private readonly generations = new Map<number, number>();
   private readonly random: () => number;
   private readonly setTimer: SetTimer;
@@ -73,6 +74,10 @@ export class AssignmentActivityDeliveryService {
   }
 
   public async flush(userId: number): Promise<void> {
+    this.flushRequestVersions.set(
+      userId,
+      (this.flushRequestVersions.get(userId) ?? 0) + 1,
+    );
     this.cancelTimer(userId);
     const existing = this.flushes.get(userId);
     if (existing) {
@@ -81,7 +86,7 @@ export class AssignmentActivityDeliveryService {
     }
 
     const generation = this.getGeneration(userId);
-    const flush = this.flushUser(userId, generation).finally(() => {
+    const flush = this.flushRequested(userId, generation).finally(() => {
       if (this.flushes.get(userId) === flush) {
         this.flushes.delete(userId);
       }
@@ -105,6 +110,22 @@ export class AssignmentActivityDeliveryService {
     }
     this.timers.clear();
     this.retryAttempts.clear();
+    this.flushRequestVersions.clear();
+  }
+
+  private async flushRequested(
+    userId: number,
+    generation: number,
+  ): Promise<void> {
+    let handledVersion: number;
+    do {
+      handledVersion = this.flushRequestVersions.get(userId) ?? 0;
+      this.cancelTimer(userId);
+      await this.flushUser(userId, generation);
+    } while (
+      generation === this.getGeneration(userId) &&
+      (this.flushRequestVersions.get(userId) ?? 0) > handledVersion
+    );
   }
 
   private async flushUser(userId: number, generation: number): Promise<void> {
