@@ -5,6 +5,7 @@ set -euo pipefail
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 repository_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
 default_coding_root=$(CDPATH= cd -- "$repository_root/../../../.." && pwd -P)
+
 introcs_dir=${AALTO_OPENCS_INTROCS_DIR:-"$default_coding_root/introcs"}
 
 with_test_course=false
@@ -12,16 +13,19 @@ detached=false
 
 usage() {
   cat <<'EOF'
+
 Usage: ./scripts/start-local-platform.sh [options]
 
 Start the local IntroCS platform with Docker-backed code execution and grading.
 
 Options:
+
   --with-test-course  Include the local IDE integration-test course overlay.
   --detach, -d        Start the containers in the background.
   --help, -h          Show this help.
 
 Set AALTO_OPENCS_INTROCS_DIR to override the default IntroCS repository path.
+
 EOF
 }
 
@@ -43,6 +47,7 @@ while [ "$#" -gt 0 ]; do
       exit 2
       ;;
   esac
+
   shift
 done
 
@@ -72,11 +77,13 @@ if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>
 fi
 
 compose_args=(-f docker-compose-with-executor.yml)
+
 if "$with_test_course"; then
   compose_args+=(-f docker-compose.with-test-course.yml)
 fi
 
 up_args=(up --build)
+
 if "$detached"; then
   up_args+=(-d)
 fi
@@ -91,6 +98,26 @@ services=(
   docker-exec-api
 )
 
+db_data_dir="$introcs_dir/introcs_psql_data"
+
 echo "Starting the local platform from $introcs_dir"
+
 cd "$introcs_dir"
+
+echo "Stopping existing local platform..."
+docker compose "${compose_args[@]}" down --remove-orphans
+
+case "$db_data_dir" in
+  */introcs_psql_data)
+    echo "Deleting old local PostgreSQL database: $db_data_dir"
+    rm -rf -- "$db_data_dir"
+    ;;
+  *)
+    echo "Refusing to delete unexpected database path: $db_data_dir" >&2
+    exit 1
+    ;;
+esac
+
+echo "Starting fresh local platform..."
+
 exec docker compose "${compose_args[@]}" "${up_args[@]}" "${services[@]}"

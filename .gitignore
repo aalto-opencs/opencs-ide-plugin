@@ -2,7 +2,7 @@ out
 dist
 node_modules
 .DS_Store
-.vscode-test/
+.vscode-test
 *.vsix
 DEVELOPMENT_DIARY.md
 .env.test.local
@@ -12,4 +12,5 @@ AGENTS.md
 skills-lock.json
 docs/agents/
 .agent-dispatcher
+.worktrees/
 .codex
