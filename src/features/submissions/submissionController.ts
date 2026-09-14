@@ -1,7 +1,6 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import { AssignmentActivityRepository } from '../assignmentActivity/assignmentActivityRepository';
-import { AssignmentActivityEvent } from '../assignmentActivity/assignmentActivityModels';
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
@@ -134,22 +133,22 @@ export class SubmissionController {
         return;
       }
 
-      const submitEvent: AssignmentActivityEvent = {
+      const submitEvent = {
         id: randomUUID(),
         timestamp: new Date().toISOString(),
-        action: 'submit',
+        action: 'submit' as const,
         files: prepared.files,
       };
-      let activityEvents = [
-        ...(this.activityRepository?.get(session.student.id, assignment) ?? []),
-        submitEvent,
-      ].slice(-20);
+      let activityEvents = this.activityRepository?.get(
+        session.student.id,
+        assignment,
+      );
       if (this.activityRepository) {
         activityEvents = await this.activityRepository.add(
           session.student.id,
           assignment,
           submitEvent,
-        ).catch(() => activityEvents);
+        ).catch(() => activityEvents ?? []);
       }
 
       const result = await vscode.window.withProgress(
@@ -158,13 +157,29 @@ export class SubmissionController {
           title: `Submitting ${assignment.name}`,
           cancellable: false,
         },
-        () => this.service.submit(assignment, prepared, activityEvents),
+        () => this.service.submit(assignment, prepared),
       );
-      await this.activityRepository?.remove(
-        session.student.id,
-        assignment,
-        activityEvents.map((event) => event.id),
-      ).catch(() => undefined);
+      if (this.activityRepository && activityEvents?.length) {
+        const completed = await this.activityRepository.complete(
+          session.student.id,
+          assignment,
+          result.submissionUuid,
+          activityEvents,
+        ).catch(() => undefined);
+        if (completed) {
+          await this.service.sendActivityLog(
+            result.submissionUuid,
+            completed.events,
+          ).then(
+            () => this.activityRepository?.removeCompleted(
+              session.student.id,
+              assignment,
+              result.submissionUuid,
+            ).catch(() => undefined),
+            () => undefined,
+          );
+        }
+      }
       await this.historyRepository.add({
         schemaVersion: 1,
         userId: session.student.id,

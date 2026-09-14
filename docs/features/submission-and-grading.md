@@ -14,14 +14,17 @@ its grading state, and presents the backend's authoritative outcome.
 3. It prepares the exact submission files and performs the applicable local
    Python syntax check.
 4. The student reviews the file list and explicitly confirms submission.
-5. The extension records a submit activity snapshot and uploads the payload,
-   course-instance ID, exercise ID, and queued activity.
-6. The returned submission is stored locally as pending. One status poller
+5. The extension records a compact submit diff and uploads only the payload,
+   course-instance ID, and exercise ID.
+6. After a valid submission UUID returns, the extension freezes activity,
+   seeds next active log from submitted files, and sends completed activity
+   separately as `ide-action-log`. Delivery failure does not affect grading.
+7. The returned submission is stored locally as pending. One status poller
    observes the accepted submission immediately, then waits 2, 3, 5, and 8
    seconds. It uses 10-second intervals during the first five minutes, waits
    20 seconds once, then uses 30-second intervals. It stops on a terminal
    result, cancellation, or repeated transient failure.
-7. The final state refreshes Submissions and, after a pass, selected-instance
+8. The final state refreshes Submissions and, after a pass, selected-instance
    exercise points.
 
 ## Rules & Conditions
@@ -38,8 +41,8 @@ its grading state, and presents the backend's authoritative outcome.
 - Supported Python assignments run the syntax-check decision flow before final
   confirmation. Other courses retain the normal flow.
 - Upload begins only after final confirmation.
-- A valid platform submission identifier is required before the request is
-  treated as accepted or queued activity is acknowledged.
+- A valid platform submission identifier is required before activity freezes and
+  separate event-log delivery starts.
 - The backend alone determines correctness, tests, points, and completion.
 
 ## Outcomes
@@ -65,7 +68,7 @@ its grading state, and presents the backend's authoritative outcome.
 - Missing setup, mismatched metadata, invalid files, failed course validation,
   or unavailable required version checks stop before upload.
 - Closing a warning or confirmation cancels without submitting.
-- Upload errors display the platform or transport message and retain queued
+- Upload errors display the platform or transport message and retain active
   activity for a later submission attempt.
 - An invalid submission response is not acknowledged as success.
 - Polling failures do not delete the accepted pending submission; later refresh
@@ -84,10 +87,10 @@ its grading state, and presents the backend's authoritative outcome.
   or is blocked by platform unavailability.
 - [Python Syntax Checking](./python-syntax-checking.md) can pass, warn, be
   bypassed explicitly, or cancel before final confirmation.
-- [Assignment Activity History](./assignment-activity-history.md) accompanies
-  the accepted request.
+- [Assignment Activity History](./assignment-activity-history.md) sends a
+  completed log separately after acceptance.
 - [Local Public-Test Execution](./local-public-test-execution.md) may add
-  advisory `public-test` snapshots to the queued activity.
+  advisory `public-test` diffs to active activity.
 - [Submission History and Result Details](./submission-history-and-results.md)
   retains and displays the outcome.
 

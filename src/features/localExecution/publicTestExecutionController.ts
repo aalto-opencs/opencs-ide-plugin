@@ -17,7 +17,7 @@ const PUBLIC_TEST_CONTEXT =
   'aaltoOpenCsIde.currentAssignmentPublicTestRunnable';
 const PUBLIC_TEST_DEBOUNCE_MS = 1_000;
 
-/** Owns local public-test UI, saving, activity snapshots, and terminals. */
+/** Owns local public-test UI, saving, compact activity, and terminals. */
 export class PublicTestExecutionController implements vscode.Disposable {
   private contextSequence = 0;
   private lastAcceptedAt = Number.NEGATIVE_INFINITY;

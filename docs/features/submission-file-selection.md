@@ -32,7 +32,7 @@ confirmation.
   dependency/build directories, and symbolic links.
 - Binary data or invalid UTF-8 is rejected instead of transformed.
 - An empty result cannot be submitted.
-- The exact prepared contents are reused by syntax checking, activity snapshots,
+- The exact prepared contents are reused by syntax checking, compact activity,
   final confirmation, and upload; the extension does not recollect a different
   payload after confirmation.
 
@@ -58,8 +58,8 @@ confirmation.
   stores the platform allowlist.
 - [Python Syntax Checking](./python-syntax-checking.md) checks only selected
   Python files from the prepared payload.
-- [Assignment Activity History](./assignment-activity-history.md) snapshots the
-  same prepared files.
+- [Assignment Activity History](./assignment-activity-history.md) records
+  compact diffs from the same prepared files.
 - [Submission and Grading](./submission-and-grading.md) uploads the confirmed
   map.
 

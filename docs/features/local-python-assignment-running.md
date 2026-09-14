@@ -20,8 +20,7 @@ run is a local convenience and does not replace platform grading.
    run action becomes visible and usable.
 3. When the student chooses it, the extension saves every unsaved document
    inside the current assignment folder.
-4. The extension snapshots the files selected by the assignment's submission
-   policy as a local run activity event.
+4. The extension records selected files as compact diff activity.
 5. It opens an interactive terminal rooted at the assignment folder and runs
    the configured Python command followed by `main.py`.
 
@@ -70,8 +69,8 @@ run is a local convenience and does not replace platform grading.
 
 - The terminal is shown and receives the configured command followed by
   `main.py` for interactive execution.
-- A run activity event contains the invocation time and a snapshot of the
-  assignment files selected for submission. See
+- A run activity event contains the invocation time and compact changes from
+  the previous retained state. See
   [Assignment Activity History](./assignment-activity-history.md).
 - Running does not upload source, create a platform submission, execute grader
   tests, award points, or mark the assignment complete.
@@ -89,7 +88,7 @@ run is a local convenience and does not replace platform grading.
 - If submission-file collection fails, running stops and displays that error.
 - If `main.py` is missing or the configured Python command is empty or contains
   a newline or null character, no terminal is opened and an error is shown.
-- Failure to retain the activity snapshot does not block an otherwise valid
+- Failure to retain activity does not block an otherwise valid
   local run.
 - Once the command is sent to the terminal, interpreter errors and program exit
   status remain visible in the terminal; the extension does not translate them
@@ -104,10 +103,10 @@ run is a local convenience and does not replace platform grading.
   leaves the editor-title action visible but disabled.
 - Only dirty documents inside the current assignment folder are saved. Files
   in sibling folders—even when their paths share a prefix—are not included.
-- A version 3 assignment manifest controls the activity snapshot's file list,
+- A version 3 assignment manifest controls activity's file list,
   but it does not change the fixed `main.py` execution entry point. Older
-  downloads use normal submission-file discovery for the snapshot.
-- The activity snapshot is recorded before terminal preparation. If terminal
+  downloads use normal submission-file discovery for activity.
+- Activity is recorded before terminal preparation. If terminal
   preparation then fails, the recorded run attempt can remain in history.
 
 ## Interactions With Other Features
@@ -115,8 +114,8 @@ run is a local convenience and does not replace platform grading.
 - [Python Syntax Checking](./python-syntax-checking.md) shares the current
   runnable-assignment usability condition with **Run Assignment**, but syntax
   checking does not execute `main.py`.
-- [Assignment Activity History](./assignment-activity-history.md) retains the
-  selected source snapshot until it is acknowledged with a later submission.
+- [Assignment Activity History](./assignment-activity-history.md) retains
+  compact selected-source activity until separate delivery after submission.
 - The remembered current assignment is scoped to the signed-in student and can
   survive an extension reload. Selecting another course clears it.
 

@@ -59,7 +59,6 @@ export class SubmissionService {
   public async submit(
     assignment: ProgrammingAssignment,
     prepared: CollectedSubmission,
-    activityEvents: AssignmentActivityEvent[] = [],
   ): Promise<SubmissionResponse> {
     if (assignment.type !== PROGRAMMING_EXERCISE_TYPE) {
       throw new Error('Only programming assignments can be submitted.');
@@ -69,8 +68,14 @@ export class SubmissionService {
       exerciseUuid: assignment.exerciseUuid,
       courseSlug: assignment.courseSlug,
       files: prepared.files,
-      activityEvents,
     });
+  }
+
+  public async sendActivityLog(
+    submissionUuid: string,
+    events: AssignmentActivityEvent[],
+  ): Promise<void> {
+    await this.repository.sendActivityLog?.(submissionUuid, events);
   }
 
   public waitForResult(
