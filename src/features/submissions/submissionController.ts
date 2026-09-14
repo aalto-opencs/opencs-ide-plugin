@@ -1,6 +1,7 @@
 import * as vscode from 'vscode';
 import { randomUUID } from 'crypto';
 import { AssignmentActivityRepository } from '../assignmentActivity/assignmentActivityRepository';
+import { AssignmentActivityDeliveryService } from '../assignmentActivity/assignmentActivityDeliveryService';
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
@@ -44,6 +45,7 @@ export class SubmissionController {
     ) => void | Promise<void>,
     private readonly syntaxCheckController?: PythonSyntaxCheckController,
     private readonly activityRepository?: AssignmentActivityRepository,
+    private readonly activityDeliveryService?: AssignmentActivityDeliveryService,
   ) {}
 
   public async submitAssignment(
@@ -167,19 +169,23 @@ export class SubmissionController {
           activityEvents,
         ).catch(() => undefined);
         if (completed) {
-          await this.service.sendActivityLog(
-            result.submissionUuid,
-            completed.events,
-          ).then(
-            () => this.activityRepository?.removeCompleted(
-              session.student.id,
-              assignment,
+          if (!this.activityDeliveryService) {
+            await this.service.sendActivityLog(
               result.submissionUuid,
-            ).catch(() => undefined),
-            () => undefined,
-          );
+              completed.events,
+            ).then(
+              () => this.activityRepository?.removeCompleted(
+                session.student.id,
+                assignment,
+                result.submissionUuid,
+              ).catch(() => undefined),
+              () => undefined,
+            );
+          }
         }
       }
+      await this.activityDeliveryService?.flush(session.student.id)
+        .catch(() => undefined);
       await this.historyRepository.add({
         schemaVersion: 1,
         userId: session.student.id,

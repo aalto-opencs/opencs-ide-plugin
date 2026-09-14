@@ -48,6 +48,7 @@ import { ApiPlatformStatusRepository } from '../features/platformStatus/platform
 import { PlatformStatusService } from '../features/platformStatus/platformStatusService';
 import { SubmissionController } from '../features/submissions/submissionController';
 import { AssignmentActivityRepository } from '../features/assignmentActivity/assignmentActivityRepository';
+import { AssignmentActivityDeliveryService } from '../features/assignmentActivity/assignmentActivityDeliveryService';
 import { SubmissionFileRepository } from '../features/submissions/submissionFileRepository';
 import { SubmissionHistoryRepository } from '../features/submissions/submissionHistoryRepository';
 import { SubmissionHistorySyncService } from '../features/submissions/submissionHistorySyncService';
@@ -259,6 +260,11 @@ export function registerCommands(
     submissionRepository,
     new SubmissionFileRepository(),
   );
+  const activityDeliveryService = new AssignmentActivityDeliveryService(
+    assignmentActivityRepository,
+    submissionService,
+    authService,
+  );
   const pythonSyntaxCheckController = new PythonSyntaxCheckController(
     new CompositeSyntaxCheckService([
       new PythonSyntaxCheckService(),
@@ -291,6 +297,7 @@ export function registerCommands(
     },
     pythonSyntaxCheckController,
     assignmentActivityRepository,
+    activityDeliveryService,
   );
   const localPythonExecutionController = new LocalPythonExecutionController(
     new LocalPythonExecutionService(),
@@ -463,6 +470,7 @@ export function registerCommands(
   );
   void refreshUiState()
     .then(async () => {
+      await activityDeliveryService.flushCurrentUser().catch(() => undefined);
       await synchronizeCurrentCourse().catch(() => undefined);
       await synchronizeCurrentSubmissionHistory().catch(() => undefined);
     })
@@ -575,6 +583,7 @@ export function registerCommands(
         await refreshUiState();
         await synchronizeCurrentCourse().catch(() => undefined);
         await synchronizeCurrentSubmissionHistory().catch(() => undefined);
+        await activityDeliveryService.flushCurrentUser().catch(() => undefined);
       }
     },
   );
@@ -593,6 +602,9 @@ export function registerCommands(
     'aaltoOpenCsIde.signOut',
     async () => {
       const session = await authService.getCurrentSession();
+      if (session) {
+        activityDeliveryService.cancelForUser(session.student.id);
+      }
       await authController.signOut();
       if (session) {
         await assignmentActivityRepository.clearForUser(session.student.id);
@@ -825,6 +837,7 @@ export function registerCommands(
     localPythonExecutionController,
     publicTestExecutionController,
     pythonSyntaxCheckController,
+    activityDeliveryService,
     refreshSubmissionsCommand,
     selectCourseCommand,
     selectAssignmentFolderCommand,
