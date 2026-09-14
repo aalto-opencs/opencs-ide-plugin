@@ -53,7 +53,7 @@ export class ApiSubmissionRepository implements SubmissionRepository {
     submissionUuid: string,
     events: AssignmentActivityEvent[],
   ): Promise<void> {
-    await this.apiClient.post('/event-log', {
+    await this.apiClient.post('/event-logs', {
       eventType: 'ide-action-log',
       submissionUuid,
       data: events,
