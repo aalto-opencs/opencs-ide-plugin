@@ -17,6 +17,12 @@ creation succeeds.
   manifest is authoritative. Downloads without that manifest use normal
   fallback discovery. Files outside the selected set are never recorded.
 
+Active activity keeps at most 50 entries, including `load`, and 10 MB of
+encoded JSON. When either limit is exceeded, the oldest 25 actions collapse
+into one checkpoint. If fewer than 25 actions exist, all actions except the
+newest collapse into one checkpoint. An active batch is discarded when even
+`load` plus its newest action cannot fit within 10 MB.
+
 Every entry has a UUID and canonical UTC timestamp. Activity stays in extension
 global state, scoped by student, course instance, and exercise. Source contents
 and diff strings never appear in diagnostics or error messages.
@@ -34,6 +40,8 @@ and diff strings never appear in diagnostics or error messages.
 
 Event-log delivery failure does not fail grading or show an activity warning.
 The completed batch remains scoped in global state when delivery fails.
+The per-student outbox retains at most 10 completed batches and 20 MB. It
+evicts oldest batches first when either limit is exceeded.
 
 Preparation failure, syntax-check cancellation, and confirmation cancellation
 do not add a `submit` action. A failed upload keeps active activity for a later
