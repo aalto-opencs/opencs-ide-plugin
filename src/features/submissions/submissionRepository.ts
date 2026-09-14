@@ -1,5 +1,6 @@
 import { ApiClient } from '../../infrastructure/apiClient';
 import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
+import { AssignmentActivityEvent } from '../assignmentActivity/assignmentActivityModels';
 import {
   AssignmentSubmission,
   ExerciseSubmissionHistoryEntry,
@@ -11,6 +12,10 @@ import {
 
 export interface SubmissionRepository {
   submit(submission: AssignmentSubmission): Promise<SubmissionResponse>;
+  sendActivityLog?(
+    submissionUuid: string,
+    events: AssignmentActivityEvent[],
+  ): Promise<void>;
   getStatus(submissionUuid: string): Promise<SubmissionStatus>;
   getHistory(
     exerciseUuid: string,
@@ -33,10 +38,6 @@ export class ApiSubmissionRepository implements SubmissionRepository {
     formData.append('exerciseUuid', submission.exerciseUuid);
     formData.append('courseSlug', submission.courseSlug);
     formData.append('data', JSON.stringify(submission.files));
-    formData.append(
-      'activityEvents',
-      JSON.stringify(submission.activityEvents),
-    );
 
     const response = await this.apiClient.postForm<unknown>(
       '/submissions',
@@ -46,6 +47,17 @@ export class ApiSubmissionRepository implements SubmissionRepository {
       throw new Error('The platform returned an invalid submission ID.');
     }
     return response;
+  }
+
+  public async sendActivityLog(
+    submissionUuid: string,
+    events: AssignmentActivityEvent[],
+  ): Promise<void> {
+    await this.apiClient.post('/event-log', {
+      eventType: 'ide-action-log',
+      submissionUuid,
+      data: events,
+    });
   }
 
   public async getStatus(submissionUuid: string): Promise<SubmissionStatus> {

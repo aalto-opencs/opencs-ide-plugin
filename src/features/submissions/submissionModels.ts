@@ -1,11 +1,8 @@
 import * as vscode from 'vscode';
-import { AssignmentActivityEvent } from '../assignmentActivity/assignmentActivityModels';
-
 export interface AssignmentSubmission {
   exerciseUuid: string;
   courseSlug: string;
   files: Record<string, string>;
-  activityEvents: AssignmentActivityEvent[];
 }
 
 export interface SubmissionResponse {

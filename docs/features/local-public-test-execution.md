@@ -14,7 +14,7 @@ result is advisory terminal output; platform grading remains authoritative.
 3. **Run Public Tests** appears in the editor title and Exercise view on a
    trusted desktop IDE host.
 4. The extension saves dirty documents inside the assignment folder and records
-   a `public-test` activity snapshot using the normal submission-file policy.
+   a `public-test` compact diff using the normal submission-file policy.
 5. It opens a new terminal rooted at the assignment folder and sends the fixed
    command for the stored runner.
 
@@ -52,11 +52,11 @@ extension never accepts an arbitrary command from assignment metadata.
   assignment must be selected and downloaded first.
 - A legacy or unsupported download explains that public tests are unavailable
   and suggests redownloading when supported.
-- A failed save or source snapshot stops the run before opening a terminal.
+- A failed save or source collection stops the run before opening a terminal.
 - Missing Dart or Flutter installations and command failures remain visible in
   the terminal; the extension does not convert them into stored pass/fail
   results.
-- Failure to retain the activity snapshot does not block an otherwise valid
+- Failure to retain activity does not block an otherwise valid
   local run.
 
 ## Interactions With Other Features
@@ -64,7 +64,7 @@ extension never accepts an arbitrary command from assignment metadata.
 - [Assignment Download and Redownload](./assignment-downloads.md) owns archive
   validation and runner metadata.
 - [Assignment Activity History](./assignment-activity-history.md) describes the
-  queued `public-test` snapshot and later submission transport.
+  queued `public-test` diff and later separate event-log transport.
 - [Local Python Assignment Running](./local-python-assignment-running.md)
   describes the separate Python **Run Assignment** action.
 - [Submission and Grading](./submission-and-grading.md) remains authoritative

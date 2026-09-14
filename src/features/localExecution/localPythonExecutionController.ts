@@ -14,7 +14,7 @@ import { SubmissionFileRepository } from '../submissions/submissionFileRepositor
 const RUNNABLE_ASSIGNMENT_CONTEXT =
   'aaltoOpenCsIde.currentAssignmentRunnable';
 
-/** Owns local-run UI, editor-title context, saving, and terminal creation. */
+/** Owns local-run UI, saving, compact activity, and terminal creation. */
 export class LocalPythonExecutionController implements vscode.Disposable {
   private contextSequence = 0;
   private readonly terminals = new Set<vscode.Terminal>();

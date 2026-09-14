@@ -4,7 +4,6 @@ import { IncomingMessage } from 'http';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import * as vscode from 'vscode';
-import { AssignmentActivityRepository } from '../features/assignmentActivity/assignmentActivityRepository';
 import { AuthRepository } from '../features/auth/authRepository';
 import { AuthSession } from '../features/auth/authModels';
 import { AuthService } from '../features/auth/authService';
@@ -233,21 +232,6 @@ suite('Assignment submission', () => {
         files: {
           'src/app.js': 'console.log("student work");\n',
         },
-        activityEvents: [{
-          id: '44444444-4444-4444-8444-444444444444',
-          timestamp: '2026-08-14T10:29:00.000Z',
-          action: 'public-test',
-          files: {
-            'src/app.js': 'console.log("student work");\n',
-          },
-        }, {
-          id: '33333333-3333-4333-8333-333333333333',
-          timestamp: '2026-08-14T10:30:00.000Z',
-          action: 'submit',
-          files: {
-            'src/app.js': 'console.log("student work");\n',
-          },
-        }],
       });
 
       assert.strictEqual(authorization, 'raw-session-token');
@@ -264,24 +248,7 @@ suite('Assignment submission', () => {
         JSON.parse(String(submittedForm?.get('data'))),
         { 'src/app.js': 'console.log("student work");\n' },
       );
-      assert.deepStrictEqual(
-        JSON.parse(String(submittedForm?.get('activityEvents'))),
-        [{
-          id: '44444444-4444-4444-8444-444444444444',
-          timestamp: '2026-08-14T10:29:00.000Z',
-          action: 'public-test',
-          files: {
-            'src/app.js': 'console.log("student work");\n',
-          },
-        }, {
-          id: '33333333-3333-4333-8333-333333333333',
-          timestamp: '2026-08-14T10:30:00.000Z',
-          action: 'submit',
-          files: {
-            'src/app.js': 'console.log("student work");\n',
-          },
-        }],
-      );
+      assert.strictEqual(submittedForm?.get('activityEvents'), null);
       assert.strictEqual(
         result.submissionUuid,
         '22222222-2222-4222-8222-222222222222',
@@ -322,6 +289,50 @@ suite('Assignment submission', () => {
       assert.strictEqual(authorization, 'raw-session-token');
       assert.strictEqual(status.gradingStatus, GRADING_STATUS_PROCESSED);
       assert.strictEqual(status.correct, false);
+    } finally {
+      await server.close();
+    }
+  });
+
+  test('posts completed activity separately as an IDE action log', async () => {
+    let requestPath: string | undefined;
+    let authorization: string | undefined;
+    let body: Record<string, unknown> | undefined;
+    const server = await startTestHttpServer((request, response) => {
+      requestPath = request.url;
+      authorization = request.headers.authorization;
+      void readJsonBody(request).then((value) => {
+        body = value;
+        response.writeHead(200, { 'Content-Type': 'application/json' });
+        response.end(JSON.stringify({ status: 'success' }));
+      });
+    });
+
+    try {
+      const repository = new ApiSubmissionRepository(
+        new ApiClient(server.baseUrl, async () => 'raw-session-token'),
+      );
+      const events = [{
+        id: '33333333-3333-4333-8333-333333333333',
+        timestamp: '2026-08-14T10:30:00.000Z',
+        action: 'submit' as const,
+        files: {
+          'src/app.js': [[1, 'console.log(1);\n'] as [1, string]],
+        },
+      }];
+
+      await repository.sendActivityLog(
+        '22222222-2222-4222-8222-222222222222',
+        events,
+      );
+
+      assert.strictEqual(requestPath, '/event-log');
+      assert.strictEqual(authorization, 'raw-session-token');
+      assert.deepStrictEqual(body, {
+        eventType: 'ide-action-log',
+        submissionUuid: '22222222-2222-4222-8222-222222222222',
+        data: events,
+      });
     } finally {
       await server.close();
     }
@@ -959,68 +970,6 @@ suite('Assignment submission', () => {
   });
 });
 
-suite('Assignment activity persistence', () => {
-  const assignment: ProgrammingAssignment = {
-    exerciseUuid: '11111111-1111-4111-8111-111111111111',
-    name: 'Hello platform',
-    type: 'programming-exercise',
-    courseSlug: 'web-software-development',
-    courseInstanceId: 42,
-  };
-
-  test('scopes events and removes only acknowledged event IDs', async () => {
-    const repository = new AssignmentActivityRepository(
-      new InMemoryMemento(),
-    );
-    const first = {
-      id: '22222222-2222-4222-8222-222222222222',
-      timestamp: '2026-08-14T10:00:00.000Z',
-      action: 'run' as const,
-      files: { 'main.py': 'print("first")\n' },
-    };
-    const second = {
-      id: '33333333-3333-4333-8333-333333333333',
-      timestamp: '2026-08-14T10:01:00.000Z',
-      action: 'run' as const,
-      files: { 'main.py': 'print("second")\n' },
-    };
-
-    await repository.add(7, assignment, first);
-    await repository.add(7, assignment, second);
-    await repository.add(8, assignment, first);
-    await repository.remove(7, assignment, [first.id]);
-
-    assert.deepStrictEqual(repository.get(7, assignment), [second]);
-    assert.deepStrictEqual(repository.get(8, assignment), [first]);
-  });
-
-  test('keeps only the newest twenty events', async () => {
-    const repository = new AssignmentActivityRepository(
-      new InMemoryMemento(),
-    );
-    for (let index = 0; index < 21; index += 1) {
-      const eventId = String(index).padStart(12, '0');
-      await repository.add(7, assignment, {
-        id: `00000000-0000-4000-8000-${eventId}`,
-        timestamp: `2026-08-14T10:${String(index).padStart(2, '0')}:00.000Z`,
-        action: 'run',
-        files: { 'main.py': `print(${index})\n` },
-      });
-    }
-
-    const events = repository.get(7, assignment);
-    assert.strictEqual(events.length, 20);
-    assert.strictEqual(
-      events[0].id,
-      '00000000-0000-4000-8000-000000000001',
-    );
-    assert.strictEqual(
-      events[19].id,
-      '00000000-0000-4000-8000-000000000020',
-    );
-  });
-});
-
 function createStatusRepository(
   getStatus: (submissionUuid: string) => Promise<SubmissionStatus>,
   getHistory: SubmissionRepository['getHistory'] = async () => [],
@@ -1047,6 +996,16 @@ async function readFormData(request: IncomingMessage): Promise<FormData> {
       'Content-Type': String(request.headers['content-type']),
     },
   }).formData();
+}
+
+async function readJsonBody(
+  request: IncomingMessage,
+): Promise<Record<string, unknown>> {
+  const chunks: Buffer[] = [];
+  for await (const chunk of request) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  return JSON.parse(Buffer.concat(chunks).toString('utf8')) as Record<string, unknown>;
 }
 
 function createTemporaryRoot(): Promise<string> {
