@@ -69,9 +69,9 @@ The feature documentation covers:
 - assignment activity history; and
 - local Python running and syntax checking.
 
-See
-[Course Structure Refresh and Assignment Changes](docs/course-structure-refresh-policy.md)
-for the network-refresh, offline-cache, and assignment-content-version policy.
+See [Snapshot Synchronization and Request Budget](docs/features/synchronization-and-request-budget.md)
+for network refresh, offline cache, request-budget, and assignment-content
+version behavior.
 
 Repository-wide contributor and agent constraints are maintained in
 [`AGENTS.md`](AGENTS.md).
@@ -116,6 +116,16 @@ Open the project in a compatible desktop editor and launch an Extension
 Development Host. The provided launch configurations support a fresh user
 layout, a fresh production-connected profile, and the existing development
 layout.
+
+Start the sibling IntroCS platform with Docker-backed execution and grading:
+
+```bash
+./scripts/start-local-platform.sh
+```
+
+Use `--with-test-course` for the local IDE integration-test course. See
+[`docs/agents/local-platform.md`](docs/agents/local-platform.md) for repository
+layout, grader images, readiness checks, and shutdown instructions.
 
 Real-platform integration tests are opt-in:
 

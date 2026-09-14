@@ -115,7 +115,7 @@ and their current, downloaded, and completed states.
   authoritative.
 - The detailed structure-refresh and assignment-content distinction is
   described in
-  [Course Structure Refresh and Assignment Changes](../course-structure-refresh-policy.md).
+  [Snapshot Synchronization and Request Budget](./synchronization-and-request-budget.md).
 
 ## Important Constraints
 
