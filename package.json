@@ -1,7 +1,7 @@
 {
   "name": "aalto-opencs-ide",
   "displayName": "Aalto OpenCS IDE",
-  "description": "Browse Aalto OpenCS courses, download programming assignments, and view grader feedback in compatible IDEs.",
+  "description": "Access Aalto OpenCS programming courses, download exercises, submit solutions, and review automated grading feedback.",
   "version": "0.3.0-beta",
   "publisher": "aalto-opencs",
   "author": {
@@ -30,10 +30,15 @@
     "Aalto",
     "OpenCS",
     "education",
-    "courses",
+    "programming courses",
+    "programming exercises",
     "assignments",
+    "submissions",
+    "automated grading",
+    "students",
     "learning platform",
-    "grader"
+    "VS Code",
+    "VSCodium"
   ],
   "activationEvents": [
     "onStartupFinished",

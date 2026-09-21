@@ -39,7 +39,6 @@ async function main() {
 
   for (const entry of [
     'CHANGELOG.md',
-    'README.md',
     '.vscodeignore',
     'dist',
     'media',
@@ -50,6 +49,11 @@ async function main() {
       { recursive: true },
     );
   }
+
+  await fs.copyFile(
+    path.join(root, 'README.marketplace.md'),
+    path.join(releaseDirectory, 'README.md'),
+  );
 
   console.log(`Release package prepared in ${path.relative(root, releaseDirectory)}/`);
 }
