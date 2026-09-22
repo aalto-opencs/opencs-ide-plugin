@@ -123,7 +123,7 @@ export function parseAnalyzerOutput(
     }
 
     const flutterDiagnostic = line.match(
-      /^\s*(error|warning|info)\s+•\s+(.*?)\s+•\s+(.+):(\d+):(\d+)\s+•\s+\S+\s*$/i,
+      /^\s*(error|warning|info)\s+(?:•|-)\s+(.*?)\s+(?:•|-)\s+(.+):(\d+):(\d+)\s+(?:•|-)\s+\S+\s*$/i,
     );
     if (!flutterDiagnostic) {
       return [];

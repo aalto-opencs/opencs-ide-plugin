@@ -334,4 +334,44 @@ suite('DartFlutterSyntaxCheckService', () => {
       ],
     });
   });
+
+  test('maps hyphen-delimited Flutter diagnostics to source files', async () => {
+    const folder = vscode.Uri.file('/assignment');
+    const service = new DartFlutterSyntaxCheckService(async () => ({
+      exitCode: 1,
+      stdout: [
+        "  error - Expected to find ';' - lib/main.dart:5:48 - expected_token",
+        "  error - Variables must be declared using the keywords 'const', 'final', 'var' or a type name. Try adding the name of the type of the variable or the keyword 'var' - lib/main.dart:5:49 - missing_const_final_var_or_type",
+      ].join('\n'),
+    }));
+
+    const result = await service.check(crossPlatformAssignment, {
+      folder,
+      files: {
+        'pubspec.yaml': 'dependencies:\n  flutter:\n    sdk: flutter\n',
+        'lib/main.dart': 'void main() => runApp(const DeviceExplorerApp())asd\n',
+      },
+    });
+
+    assert.deepStrictEqual(result, {
+      status: 'errors',
+      checkedFiles: 1,
+      errors: [
+        {
+          filePath: 'lib/main.dart',
+          line: 5,
+          column: 48,
+          message: "Expected to find ';'",
+          severity: 'error',
+        },
+        {
+          filePath: 'lib/main.dart',
+          line: 5,
+          column: 49,
+          message: "Variables must be declared using the keywords 'const', 'final', 'var' or a type name. Try adding the name of the type of the variable or the keyword 'var'",
+          severity: 'error',
+        },
+      ],
+    });
+  });
 });
