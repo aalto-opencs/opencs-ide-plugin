@@ -7,7 +7,7 @@ creation succeeds.
 Assignment activity history gives the platform a bounded reconstruction of the
 recent source changes that led to a submission. The extension records local
 runs, public-test attempts, and confirmed submissions, while the platform stores
-one IDE action log for each submission.
+accepted IDE action logs as event metadata.
 
 Activity recording supports the submission workflow but never determines
 grading, completion, or points.
@@ -62,11 +62,14 @@ Files outside the resolved submission set are never captured in the log.
 
 Downloading an assignment starts its active log with a `load` snapshot. An
 existing download without an active log is initialized lazily immediately
-before its first tracked action.
+before its first tracked action unless recording was disabled for the current
+attempt.
 
 After submission freezes a completed log, the submitted file state becomes the
 `load` snapshot for the assignment's next active log. Delivery and retry of the
-completed log proceed independently.
+completed log proceed independently. If recording was disabled because the
+previous attempt exceeded the transport limit, a successful submission clears
+that state and starts the next attempt from the submitted files.
 
 ### Local run and public tests
 
@@ -84,8 +87,8 @@ Retry transient delivery failures silently after approximately 5 seconds, 30
 seconds, 2 minutes, and 10 minutes, then every 15 minutes with jitter.
 Delivery stops on authentication failure until sign-in returns, and removes
 permanent request failures.
-The per-student outbox retains at most 10 completed batches and 20 MB. It
-evicts oldest batches first when either limit is exceeded.
+The per-student outbox retains at most 10 completed batches and evicts the
+oldest batch when that limit is exceeded.
 
 After the student confirms submission, the extension records a `submit` entry
 whose reconstructed state exactly matches the prepared submission files. It
@@ -97,31 +100,27 @@ the batch separately to `/api/event-logs` and immediately starts the next active
 log from the submitted state. Submission and grading remain successful even if
 the activity request fails.
 
-## Active-Log Limits and Compaction
+## Active-Log Limit
 
-An active log contains at most 50 total entries, including `load`, and at most
-10 MB of encoded JSON.
+The complete serialized event-log request may contain at most 256 KiB
+(262,144 bytes), including `eventType`, the submission UUID, metadata field
+names, and the action log. The extension accounts for the fixed-length UUID
+before the platform has assigned the real submission UUID. There is no separate
+entry-count limit.
 
-When either limit is exceeded, the extension compacts the oldest 25 non-load
-entries into one checkpoint:
-
-1. The first 24 entries are removed.
-2. The twenty-fifth entry keeps its original action and timestamp.
-3. Its diffs are recomputed directly from `load` to the file state at that
-   entry.
-4. Later entries remain diffs from their immediately preceding retained entry.
-
-Compaction repeats until both limits are satisfied. If the size limit is
-exceeded before 25 non-load entries exist, all existing non-load entries except
-the newest are combined into one checkpoint. If `load` plus the newest action
-still exceeds 10 MB, the active log is discarded because it cannot satisfy the
-transport limit. Activity loss never blocks the student's run or submission.
+The extension does not compact an oversized log. If adding an action would make
+the eventual request exceed the limit, it discards the active log and disables
+activity recording for the remainder of that assignment attempt. Later runs,
+public tests, and the eventual submission continue normally without activity.
+A successful submission or fresh download begins a new attempt and enables
+recording again. Activity loss never blocks submission or grading.
 
 ## Completed-Batch Queue and Retry
 
-The extension retains at most 10 completed batches and 20 MB of completed
-batches per student across assignments. It evicts the oldest completed batches
-first when either limit is exceeded. Completed batches are immutable.
+The extension retains at most 10 completed batches per student across
+assignments and evicts the oldest batches first. Completed batches are
+immutable. A legacy or otherwise invalid completed batch whose serialized
+request exceeds 256 KiB is discarded rather than rewritten or sent.
 
 The extension attempts to send a completed batch immediately after submission.
 For retryable failures, it processes batches oldest-first and stops the current
@@ -136,8 +135,8 @@ failure.
 
 Network failures, timeouts, HTTP 408, HTTP 429, and HTTP 5xx responses are
 retryable. HTTP 401 pauses delivery until authentication is restored. Malformed,
-forbidden, missing, or conflicting batches reported with HTTP 400, 403, 404, or
-409 are discarded as non-retryable.
+forbidden, missing, oversized, or conflicting batches reported with HTTP 400,
+403, 404, 409, or 413 are discarded as non-retryable.
 
 Signing out deletes that student's active and completed local logs, including
 undelivered batches. Resetting all extension state in development deletes all
@@ -145,50 +144,50 @@ students' local activity.
 
 ## Platform Persistence and Validation
 
-The platform stores one row per completed batch in the existing `event_log`
-table with:
+The platform stores each accepted request in the existing `event_log` table
+with:
 
 - the authenticated student's `user_id`;
 - the `ide-action-log` event type;
-- a nullable `submission_uuid` foreign key to `exercise_submissions`, with
-  cascading deletion;
-- the raw activity array in `metadata`; and
+- metadata containing the submission UUID and raw activity array; and
 - the server receipt time in `created_at`.
-
-A unique partial index on `(event_type_id, submission_uuid)` for rows with a
-submission UUID permits only one IDE action log per submission without adding a
-separate client log identifier.
 
 The client sends:
 
 ```json
 {
   "eventType": "ide-action-log",
-  "submissionUuid": "platform submission UUID",
-  "data": [
-    {
-      "action": "load",
-      "files": {},
-      "timestamp": "2026-09-14T12:00:00.000Z"
-    }
-  ]
+  "data": {
+    "submissionUuid": "platform submission UUID",
+    "log": [
+      {
+        "action": "load",
+        "files": {},
+        "timestamp": "2026-09-14T12:00:00.000Z"
+      },
+      {
+        "action": "submit",
+        "diffs": {},
+        "timestamp": "2026-09-14T12:01:00.000Z"
+      }
+    ]
+  }
 }
 ```
 
 The event-log endpoint applies a dedicated schema and verifies that:
 
 - the submission exists and belongs to the authenticated student;
+- exam submissions are not accepted;
 - the log begins with exactly one `load` entry;
 - later entries contain supported actions and valid diffs;
-- paths are safe and belong to the submission's resolved file set;
-- the complete chain can be reconstructed within the count and size limits;
+- paths are safe;
 - the final entry is `submit`; and
-- its reconstructed state exactly matches the stored submission files.
+- the complete HTTP request does not exceed 256 KiB.
 
-Repeating an identical request for the same submission returns success without
-inserting another row. Reusing the submission UUID with different activity data
-returns HTTP 409. Invalid activity cannot roll back or invalidate the already
-accepted submission.
+Invalid activity cannot roll back or invalidate the already accepted
+submission. The generic event-log storage does not enforce idempotency or
+one-row-per-submission uniqueness.
 
 ## Important Constraints
 
@@ -205,6 +204,6 @@ accepted submission.
 - Recording every edit, syntax check, terminal output, grader output, or
   arbitrary IDE interaction.
 - Synchronizing an active log before a submission exists.
-- Reconstructing a complete or permanent edit history after compaction.
+- Reconstructing a complete or permanent edit history.
 - Using activity to infer correctness, completion, or scores.
 - Providing a student-facing activity-history viewer or API.

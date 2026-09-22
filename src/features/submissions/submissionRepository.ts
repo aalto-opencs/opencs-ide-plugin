@@ -2,6 +2,9 @@ import { ApiClient } from '../../infrastructure/apiClient';
 import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import { AssignmentActivityEvent } from '../assignmentActivity/assignmentActivityModels';
 import {
+  createActivityLogRequest,
+} from '../assignmentActivity/assignmentActivityRequest';
+import {
   AssignmentSubmission,
   ExerciseSubmissionHistoryEntry,
   ExerciseSubmissionSummary,
@@ -53,21 +56,11 @@ export class ApiSubmissionRepository implements SubmissionRepository {
     submissionUuid: string,
     events: AssignmentActivityEvent[],
   ): Promise<void> {
-    await this.apiClient.post('/event-logs', {
-      eventType: 'ide-action-log',
-      submissionUuid,
-      data: events.map((event) => event.action === 'load'
-        ? {
-          action: event.action,
-          timestamp: event.timestamp,
-          files: event.files,
-        }
-        : {
-          action: event.action,
-          timestamp: event.timestamp,
-          diffs: event.files,
-        }),
-    }, { priority: 'background' });
+    await this.apiClient.post(
+      '/event-logs',
+      createActivityLogRequest(submissionUuid, events),
+      { priority: 'background' },
+    );
   }
 
   public async getStatus(submissionUuid: string): Promise<SubmissionStatus> {

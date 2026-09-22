@@ -365,28 +365,30 @@ suite('Assignment submission', () => {
       assert.deepStrictEqual(priorities, ['background']);
       assert.deepStrictEqual(body, {
         eventType: 'ide-action-log',
-        submissionUuid: '22222222-2222-4222-8222-222222222222',
-        data: [
-          {
-            timestamp: '2026-08-14T10:29:00.000Z',
-            action: 'load',
-            files: {
-              'src/app.js': 'console.log(0);\n',
+        data: {
+          submissionUuid: '22222222-2222-4222-8222-222222222222',
+          log: [
+            {
+              timestamp: '2026-08-14T10:29:00.000Z',
+              action: 'load',
+              files: {
+                'src/app.js': 'console.log(0);\n',
+              },
             },
-          },
-          {
-            timestamp: '2026-08-14T10:30:00.000Z',
-            action: 'submit',
-            diffs: {
-              'src/app.js': [
-                [0, 'console.log('],
-                [-1, '0'],
-                [1, '1'],
-                [0, ');\n'],
-              ],
+            {
+              timestamp: '2026-08-14T10:30:00.000Z',
+              action: 'submit',
+              diffs: {
+                'src/app.js': [
+                  [0, 'console.log('],
+                  [-1, '0'],
+                  [1, '1'],
+                  [0, ');\n'],
+                ],
+              },
             },
-          },
-        ],
+          ],
+        },
       });
     } finally {
       await server.close();

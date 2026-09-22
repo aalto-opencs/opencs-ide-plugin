@@ -161,28 +161,27 @@ export class SubmissionController {
         },
         () => this.service.submit(assignment, prepared),
       );
-      if (this.activityRepository && activityEvents?.length) {
-        const completed = await this.activityRepository.complete(
+      const completedActivity = this.activityRepository
+        ? await this.activityRepository.complete(
           session.student.id,
           assignment,
           result.submissionUuid,
-          activityEvents,
-        ).catch(() => undefined);
-        if (completed) {
-          if (!this.activityDeliveryService) {
-            await this.service.sendActivityLog(
-              result.submissionUuid,
-              completed.events,
-            ).then(
-              () => this.activityRepository?.removeCompleted(
-                session.student.id,
-                assignment,
-                result.submissionUuid,
-              ).catch(() => undefined),
-              () => undefined,
-            );
-          }
-        }
+          activityEvents ?? [],
+          prepared.files,
+        ).catch(() => undefined)
+        : undefined;
+      if (completedActivity && !this.activityDeliveryService) {
+        await this.service.sendActivityLog(
+          result.submissionUuid,
+          completedActivity.events,
+        ).then(
+          () => this.activityRepository?.removeCompleted(
+            session.student.id,
+            assignment,
+            result.submissionUuid,
+          ).catch(() => undefined),
+          () => undefined,
+        );
       }
       void this.activityDeliveryService?.flush(session.student.id)
         .catch(() => undefined);

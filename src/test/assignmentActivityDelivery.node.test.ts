@@ -70,7 +70,7 @@ suite('Assignment activity delivery', () => {
       classifyActivityDeliveryError(new ApiError(401, 'unauthorized')),
       'authentication',
     );
-    for (const status of [400, 403, 404, 409]) {
+    for (const status of [400, 403, 404, 409, 413]) {
       assert.strictEqual(
         classifyActivityDeliveryError(new ApiError(status, 'permanent')),
         'permanent',
@@ -212,6 +212,45 @@ suite('Assignment activity delivery', () => {
     assert.deepStrictEqual(batches, []);
   });
 
+  test('discards an oversized completed batch without sending it', async () => {
+    const oversized = createBatch(
+      '11111111-1111-4111-8111-111111111111',
+      'x'.repeat(262_144),
+    );
+    const valid = createBatch('33333333-3333-4333-8333-333333333333');
+    const batches = [oversized, valid];
+    const attempted: string[] = [];
+    const removed: string[] = [];
+    const service = new AssignmentActivityDeliveryService(
+      {
+        getCompleted: () => batches,
+        removeCompleted: async (_userId: number, submissionUuid: string) => {
+          removed.push(submissionUuid);
+          batches.splice(
+            batches.findIndex((batch) =>
+              batch.submissionUuid === submissionUuid),
+            1,
+          );
+        },
+      },
+      {
+        sendActivityLog: async (submissionUuid) => {
+          attempted.push(submissionUuid);
+        },
+      },
+      createSessionProvider(7),
+    );
+
+    await service.flush(7);
+
+    assert.deepStrictEqual(attempted, [valid.submissionUuid]);
+    assert.deepStrictEqual(removed, [
+      oversized.submissionUuid,
+      valid.submissionUuid,
+    ]);
+    assert.deepStrictEqual(batches, []);
+  });
+
   test('pauses on authentication failure and resumes after authentication', async () => {
     const batches = [createBatch('11111111-1111-4111-8111-111111111111')];
     const scheduled: Array<() => void> = [];
@@ -328,15 +367,26 @@ suite('Assignment activity delivery', () => {
   });
 });
 
-function createBatch(submissionUuid: string): CompletedAssignmentActivity {
+function createBatch(
+  submissionUuid: string,
+  contents = '',
+): CompletedAssignmentActivity {
   return {
     submissionUuid,
-    events: [{
-      id: '22222222-2222-4222-8222-222222222222',
-      timestamp: '2026-09-14T10:00:00.000Z',
-      action: 'submit',
-      files: {},
-    }],
+    events: [
+      {
+        id: '22222222-2222-4222-8222-222222222222',
+        timestamp: '2026-09-14T10:00:00.000Z',
+        action: 'load',
+        files: { 'app.js': contents },
+      },
+      {
+        id: '44444444-4444-4444-8444-444444444444',
+        timestamp: '2026-09-14T10:01:00.000Z',
+        action: 'submit',
+        files: {},
+      },
+    ],
   };
 }
 

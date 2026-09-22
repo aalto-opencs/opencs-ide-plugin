@@ -4,6 +4,7 @@ import type {
   AssignmentActivityEvent,
   CompletedAssignmentActivity,
 } from './assignmentActivityModels';
+import { activityLogRequestFits } from './assignmentActivityRequest';
 import type { AssignmentActivityRepository } from './assignmentActivityRepository';
 
 export const RETRY_DELAYS_MS = [
@@ -139,6 +140,15 @@ export class AssignmentActivityDeliveryService {
       if (generation !== this.getGeneration(userId) ||
           !await this.isAuthenticatedUser(userId)) {
         return;
+      }
+
+      if (!activityLogRequestFits(batch.submissionUuid, batch.events)) {
+        await this.activityRepository.removeCompleted(
+          userId,
+          batch.submissionUuid,
+        );
+        this.retryAttempts.delete(batch.submissionUuid);
+        continue;
       }
 
       try {

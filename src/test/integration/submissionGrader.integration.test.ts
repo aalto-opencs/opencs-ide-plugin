@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { randomUUID } from 'crypto';
 import * as vscode from 'vscode';
 import {
   PROGRAMMING_EXERCISE_TYPE,
@@ -45,7 +46,7 @@ const FAILING_HTML_SUBMISSION = [
 ].join('\n');
 
 suite('Submission grader backend integration', () => {
-  test('submits an assignment and returns failed-test details',
+  test('submits an assignment, records activity, and returns failed-test details',
     async function () {
       this.timeout(GRADER_TIMEOUT_MS);
 
@@ -88,6 +89,27 @@ suite('Submission grader backend integration', () => {
         submission.submissionUuid,
         /^[0-9a-f]{8}-([0-9a-f]{4}-){3}[0-9a-f]{12}$/i,
         'Expected the backend to return a submission UUID',
+      );
+
+      const activityTimestamp = new Date().toISOString();
+      await submissionRepository.sendActivityLog(
+        submission.submissionUuid,
+        [
+          {
+            id: randomUUID(),
+            timestamp: activityTimestamp,
+            action: 'load',
+            files: {
+              [configuration.starterFile]: FAILING_HTML_SUBMISSION,
+            },
+          },
+          {
+            id: randomUUID(),
+            timestamp: activityTimestamp,
+            action: 'submit',
+            files: {},
+          },
+        ],
       );
 
       const status = await submissionService.waitForResult(

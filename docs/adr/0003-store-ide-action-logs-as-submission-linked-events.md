@@ -1,32 +1,32 @@
-# Store IDE action logs as submission-linked events
+# Store bounded IDE action logs as submission-associated events
 
-Each accepted submission has at most one `ide-action-log` row in the existing
-platform `event_log` table. The row has a nullable `submission_uuid` foreign key
-and stores the raw action array in `metadata`; uniqueness of the event type and
-submission UUID makes retries idempotent without a separate client log ID. The
-IDE sends this event through `/api/event-logs` only after normal submission has
-returned the UUID, keeping activity failure outside the submission and grading
-transaction.
+After the platform accepts a submission, the IDE sends its activity separately
+through `/api/event-logs` as an `ide-action-log`. The event metadata contains
+the submission UUID and the reconstructable action log. The platform verifies
+that the authenticated student owns the non-exam submission, then stores the
+metadata in the existing `event_log` table. Keeping this optional research data
+outside the submission request prevents activity failure from affecting grading.
 
-The action array begins with a complete `load` snapshot. Later run, public-test,
-and submit actions store per-file `fast-diff` tuples from the preceding retained
-state. Bounded client-side compaction and a durable retry queue reduce repeated
-source storage while keeping every transmitted batch independently
-reconstructable.
+The complete serialized event-log request is limited to 256 KiB, matching the
+platform transport limit. The client does not impose an entry-count limit or
+compact an oversized history: compaction would discard the oldest activity and
+leave a less representative record. Instead, exceeding the request limit
+discards the active log and disables recording for the rest of that assignment
+attempt. A successful submission or fresh download starts a new attempt.
 
 ## Considered Options
 
-A dedicated submission-activity table was rejected because activity is an
-event-log concern and does not need row-level relational storage for every IDE
-action. Sending full snapshots inside the submission request was rejected
-because it couples optional research data to submission availability and
-duplicates file contents. A separate client log ID was rejected because the
-one-log-per-submission invariant already provides a stable idempotency key.
+Sending activity inside the submission request was rejected because it couples
+optional research data to submission availability and duplicates file contents.
+A dedicated activity table was rejected because the generic event log already
+stores the required metadata. Checkpoint compaction was rejected because a log
+that has crossed the transport limit no longer retains enough relevant activity
+to justify storing a rewritten subset.
 
 ## Consequences
 
-The generic event-log request gains optional submission identity and strict
-validation for `ide-action-log`. Submission UUIDs become nullable foreign keys
-on event rows, and identical retries succeed while conflicting retries are
-rejected. Logs can arrive after their submissions or be absent after exhausted
-local retention, without changing grading outcomes.
+Every transmitted batch is independently reconstructable and fits the backend
+request boundary. Large or unusually long attempts can have no activity log,
+but their submission and grading remain unaffected. The generic event-log table
+does not provide submission foreign-key or one-row-per-submission guarantees;
+the submission UUID is part of the stored metadata.
