@@ -54,4 +54,44 @@ suite('Dart/Flutter analyzer process', () => {
       await rm(root, { recursive: true, force: true });
     }
   });
+
+  test('runs the Flutter batch command found on Windows PATH', async function () {
+    if (process.platform !== 'win32') {
+      this.skip();
+    }
+    this.timeout(10_000);
+
+    const root = await mkdtemp(join(process.cwd(), '.test-flutter-path-'));
+    const bin = join(root, 'bin');
+    const flutter = join(bin, 'flutter.cmd');
+    const systemRoot = process.env.SystemRoot ?? 'C:\\Windows';
+    await mkdir(bin);
+    await writeFile(flutter, [
+      '@echo off',
+      'echo flutter:%*',
+    ].join('\r\n'));
+
+    try {
+      const result = await executeAnalyzer(
+        'flutter',
+        ['analyze', '--machine', 'lib/main file.dart'],
+        root,
+        {
+          shell: process.env.ComSpec ?? '',
+          env: {
+            ...process.env,
+            PATH: [bin, join(systemRoot, 'System32')].join(';'),
+          },
+        },
+      );
+
+      assert.strictEqual(result.exitCode, 0, result.stdout);
+      assert.match(
+        result.stdout,
+        /^flutter:analyze --machine "?lib\/main file\.dart"?\r?\n$/,
+      );
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
 });
