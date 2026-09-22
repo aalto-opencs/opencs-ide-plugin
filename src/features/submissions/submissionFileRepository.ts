@@ -9,6 +9,7 @@ const EXCLUDED_FILES = new Set([
 ]);
 const EXCLUDED_DIRECTORIES = new Set([
   '.git',
+  '.dart_tool',
   '.vscode',
   'node_modules',
   'dist',

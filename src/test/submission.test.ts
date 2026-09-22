@@ -154,6 +154,37 @@ suite('Assignment submission', () => {
     }
   });
 
+  test('excludes Flutter-generated .dart_tool files from discovery', async () => {
+    const root = await createTemporaryRoot();
+
+    try {
+      await mkdir(join(root, '.dart_tool', 'chrome-device', 'Default'), {
+        recursive: true,
+      });
+      await writeFile(join(root, 'main.dart'), 'void main() {}\n');
+      await writeFile(
+        join(
+          root,
+          '.dart_tool',
+          'chrome-device',
+          'Default',
+          'Affiliation Database',
+        ),
+        Uint8Array.from([0, 1, 2]),
+      );
+
+      const files = await new SubmissionFileRepository().collect(
+        vscode.Uri.file(root),
+      );
+
+      assert.deepStrictEqual(files, {
+        'main.dart': 'void main() {}\n',
+      });
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
   test('rejects binary files', async () => {
     const root = await createTemporaryRoot();
 

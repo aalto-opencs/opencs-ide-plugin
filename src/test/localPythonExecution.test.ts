@@ -294,4 +294,44 @@ suite('DartFlutterSyntaxCheckService', () => {
     assert.deepStrictEqual(args, ['analyze', '--machine', 'lib/main.dart']);
     assert.deepStrictEqual(result, { status: 'passed', checkedFiles: 1 });
   });
+
+  test('maps current Flutter analyze diagnostics to source files', async () => {
+    const folder = vscode.Uri.file('/assignment');
+    const service = new DartFlutterSyntaxCheckService(async () => ({
+      exitCode: 1,
+      stdout: [
+        "  error • Expected to find ';' • lib/main.dart:5:48 • expected_token",
+        "  error • Undefined name 'asdadadada'. Try correcting the name to one that is defined, or defining the name • lib/main.dart:5:48 • undefined_identifier",
+      ].join('\n'),
+    }));
+
+    const result = await service.check(crossPlatformAssignment, {
+      folder,
+      files: {
+        'pubspec.yaml': 'dependencies:\n  flutter:\n    sdk: flutter\n',
+        'lib/main.dart': 'void main() {} asdadadada\n',
+      },
+    });
+
+    assert.deepStrictEqual(result, {
+      status: 'errors',
+      checkedFiles: 1,
+      errors: [
+        {
+          filePath: 'lib/main.dart',
+          line: 5,
+          column: 48,
+          message: "Expected to find ';'",
+          severity: 'error',
+        },
+        {
+          filePath: 'lib/main.dart',
+          line: 5,
+          column: 48,
+          message: "Undefined name 'asdadadada'. Try correcting the name to one that is defined, or defining the name",
+          severity: 'error',
+        },
+      ],
+    });
+  });
 });

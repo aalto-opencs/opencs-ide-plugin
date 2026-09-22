@@ -1,4 +1,3 @@
-import { spawn } from 'child_process';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from '../assignments/publicTestRunnerDetector';
@@ -9,11 +8,10 @@ import {
   SyntaxCheckResult,
   SyntaxCheckService,
 } from './syntaxCheckService';
-
-interface AnalyzerProcessResult {
-  exitCode: number;
-  stdout: string;
-}
+import {
+  AnalyzerProcessResult,
+  executeAnalyzer,
+} from './dartFlutterAnalyzerProcess';
 
 type AnalyzerExecutor = (
   executable: string,
@@ -26,7 +24,8 @@ export class DartFlutterSyntaxCheckService implements SyntaxCheckService {
   public readonly languageLabel = 'Dart/Flutter';
 
   public constructor(
-    private readonly execute: AnalyzerExecutor = executeAnalyzer,
+    private readonly execute: AnalyzerExecutor = (executable, args, cwd) =>
+      executeAnalyzer(executable, args, cwd, { shell: vscode.env.shell }),
   ) {}
 
   public supports(assignment: ProgrammingAssignment): boolean {
@@ -111,32 +110,67 @@ export function parseAnalyzerOutput(
 ): SyntaxCheckError[] {
   return output.split(/\r?\n/).flatMap((line) => {
     const fields = line.split('|');
-    if (fields.length < 8) {
+    if (fields.length >= 8) {
+      const [severity, , , filePath, lineNumber, column, , message] = fields;
+      return toSyntaxCheckError(
+        severity,
+        filePath,
+        lineNumber,
+        column,
+        message,
+        workingDirectory,
+      );
+    }
+
+    const flutterDiagnostic = line.match(
+      /^\s*(error|warning|info)\s+•\s+(.*?)\s+•\s+(.+):(\d+):(\d+)\s+•\s+\S+\s*$/i,
+    );
+    if (!flutterDiagnostic) {
       return [];
     }
-    const [severity, , , filePath, lineNumber, column, , message] = fields;
-    if (!['ERROR', 'WARNING', 'INFO'].includes(severity)) {
-      return [];
-    }
-    const parsedLine = Number(lineNumber);
-    const parsedColumn = Number(column);
-    if (!filePath || !Number.isInteger(parsedLine) ||
-        !Number.isInteger(parsedColumn)) {
-      return [];
-    }
-    const relativePath = path.isAbsolute(filePath)
-      ? path.relative(workingDirectory, filePath)
-      : filePath;
-    return [{
-      filePath: relativePath.split(path.sep).join('/'),
-      line: Math.max(1, parsedLine),
-      column: Math.max(1, parsedColumn),
+    const [, severity, message, filePath, lineNumber, column] =
+      flutterDiagnostic;
+    return toSyntaxCheckError(
+      severity,
+      filePath,
+      lineNumber,
+      column,
       message,
-      severity: severity === 'ERROR'
-        ? 'error'
-        : severity === 'WARNING' ? 'warning' : 'info',
-    }];
+      workingDirectory,
+    );
   });
+}
+
+function toSyntaxCheckError(
+  severity: string,
+  filePath: string,
+  lineNumber: string,
+  column: string,
+  message: string,
+  workingDirectory: string,
+): SyntaxCheckError[] {
+  const normalizedSeverity = severity.toUpperCase();
+  if (!['ERROR', 'WARNING', 'INFO'].includes(normalizedSeverity)) {
+    return [];
+  }
+  const parsedLine = Number(lineNumber);
+  const parsedColumn = Number(column);
+  if (!filePath || !Number.isInteger(parsedLine) ||
+      !Number.isInteger(parsedColumn)) {
+    return [];
+  }
+  const relativePath = path.isAbsolute(filePath)
+    ? path.relative(workingDirectory, filePath)
+    : filePath;
+  return [{
+    filePath: relativePath.split(path.sep).join('/'),
+    line: Math.max(1, parsedLine),
+    column: Math.max(1, parsedColumn),
+    message,
+    severity: normalizedSeverity === 'ERROR'
+      ? 'error'
+      : normalizedSeverity === 'WARNING' ? 'warning' : 'info',
+  }];
 }
 
 function isFlutterProject(pubspec: string | undefined): boolean {
@@ -146,28 +180,4 @@ function isFlutterProject(pubspec: string | undefined): boolean {
       pubspec ?? '',
     )
   );
-}
-
-function executeAnalyzer(
-  executable: string,
-  args: string[],
-  cwd: string,
-): Promise<AnalyzerProcessResult> {
-  return new Promise((resolve, reject) => {
-    const child = spawn(executable, args, {
-      cwd,
-      stdio: ['ignore', 'pipe', 'ignore'],
-      windowsHide: true,
-    });
-    let stdout = '';
-    child.stdout.setEncoding('utf8');
-    child.stdout.on('data', (chunk: string) => {
-      stdout += chunk;
-    });
-    child.once('error', reject);
-    child.once('close', (code) => resolve({
-      exitCode: code ?? 1,
-      stdout,
-    }));
-  });
 }
