@@ -2,7 +2,7 @@
   "name": "aalto-opencs-ide",
   "displayName": "Aalto OpenCS IDE",
   "description": "Access Aalto OpenCS programming courses, download exercises, submit solutions, and review automated grading feedback.",
-  "version": "0.3.0-beta",
+  "version": "0.4.0",
   "publisher": "aalto-opencs",
   "author": {
     "name": "Aalto OpenCS IDE extension contributors"
@@ -11,7 +11,7 @@
     "type": "git",
     "url": "https://github.com/aalto-opencs/opencs-ide-plugin.git"
   },
-  "license": "UNLICENSED",
+  "license": "MIT",
   "preview": true,
   "pricing": "Free",
   "icon": "media/aalto-opencs-ide-marketplace.png",

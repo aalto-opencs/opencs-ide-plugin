@@ -4,6 +4,10 @@ All notable changes to Aalto OpenCS IDE will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.4.0] - 2026-09-22
+
+- Licensed the project under the MIT License.
+
 ## [0.3.0-beta] - 2026-09-07
 
 - Removed the obsolete local assignment-folder command from Course Parts.

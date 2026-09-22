@@ -39,6 +39,7 @@ async function main() {
 
   for (const entry of [
     'CHANGELOG.md',
+    'LICENSE',
     '.vscodeignore',
     'dist',
     'media',
