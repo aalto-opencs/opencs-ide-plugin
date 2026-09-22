@@ -128,6 +128,10 @@ function getEnvironmentValue(
   env: NodeJS.ProcessEnv,
   name: string,
 ): string | undefined {
+  const exactValue = env[name];
+  if (exactValue !== undefined) {
+    return exactValue;
+  }
   const entry = Object.entries(env).find(([key]) =>
     key.toUpperCase() === name);
   return entry?.[1];

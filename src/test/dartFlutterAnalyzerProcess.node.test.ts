@@ -65,6 +65,11 @@ suite('Dart/Flutter analyzer process', () => {
     const bin = join(root, 'bin');
     const flutter = join(bin, 'flutter.cmd');
     const systemRoot = process.env.SystemRoot ?? 'C:\\Windows';
+    const env = Object.fromEntries(Object.entries(process.env).filter(
+      ([key]) => key.toUpperCase() !== 'PATH',
+    ));
+    env.Path = join(root, 'missing-bin');
+    env.PATH = [bin, join(systemRoot, 'System32')].join(';');
     await mkdir(bin);
     await writeFile(flutter, [
       '@echo off',
@@ -78,10 +83,7 @@ suite('Dart/Flutter analyzer process', () => {
         root,
         {
           shell: process.env.ComSpec ?? '',
-          env: {
-            ...process.env,
-            PATH: [bin, join(systemRoot, 'System32')].join(';'),
-          },
+          env,
         },
       );
 
