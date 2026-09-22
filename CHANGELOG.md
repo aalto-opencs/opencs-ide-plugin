@@ -4,6 +4,10 @@ All notable changes to Aalto OpenCS IDE will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.5.1] - 2026-09-22
+
+- Fix Flutter check syntax command PATH mismatch on window
+
 ## [0.5.0] - 2026-09-22
 
 - Fix Flutter run code command to ignore the generated .dart_tool the first time the feature is used
