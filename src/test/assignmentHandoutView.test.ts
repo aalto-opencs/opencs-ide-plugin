@@ -10,13 +10,13 @@ suite('AssignmentHandoutViewProvider', () => {
       '',
       '**Implement** the exercise.',
       '',
-      '<script>alert("unsafe")</script>',
+      '<ScRiPt>alert("unsafe")</ScRiPt>',
     ].join('\n'));
 
     assert.match(html, /<h1>Hello world<\/h1>/);
     assert.match(html, /<strong>Implement<\/strong>/);
-    assert.doesNotMatch(html, /<script>/);
-    assert.match(html, /&lt;script&gt;/);
+    assert.doesNotMatch(html, /<script\b/i);
+    assert.match(html, /&lt;ScRiPt&gt;/);
   });
 
   test('blocks unsafe images and resolves safe local images', () => {
