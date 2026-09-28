@@ -324,7 +324,7 @@ export class CourseTreeProvider implements
           exerciseProgress,
         )))
         : [this.createMessageItem(
-          'No programming assignments found.',
+          'No assignments in this course are available in the IDE yet.',
           'info',
         )];
     return items;

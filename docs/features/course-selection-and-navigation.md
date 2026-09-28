@@ -32,8 +32,14 @@ and their current, downloaded, and completed states.
 - Cancelling either picker or an end-date confirmation leaves the existing
   selection unchanged.
 - Selecting another course clears the remembered current exercise.
-- Only exercises whose type is exactly `programming-exercise` are displayed.
-- Parts and chapters with no programming exercises are omitted.
+- Course Parts lists only IDE-available assignments: programming exercises
+  whose definition sets `available_in_ide: true`. The platform filters the
+  course structure; the extension also keeps only exercises whose type is
+  exactly `programming-exercise`.
+- Parts and chapters with no listed exercises are omitted.
+- When live course structure no longer lists the current exercise, the current
+  exercise is cleared and the views refresh. Failed requests and cached data
+  never clear it, and its local files are left untouched.
 - Course Parts requires a signed-in student, assignment folder, and saved
   course selection.
 - Completion comes from the backend for the selected instance. A chapter is
@@ -73,6 +79,8 @@ and their current, downloaded, and completed states.
 
 - A signed-out student is asked to sign in, and no course request is made.
 - No enrolments produces an informational empty state.
+- A course with no IDE-available assignments shows **No assignments in this
+  course are available in the IDE yet.**
 - Cached enrolments can be displayed while offline, but the student cannot
   change the active course version until the platform is reachable.
 - If activation fails or refreshed enrolments do not confirm the chosen

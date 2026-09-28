@@ -109,7 +109,7 @@ export class AssignmentDeepLinkService {
       .find((candidate) => candidate.exerciseUuid === exerciseUuid);
     if (!exercise) {
       throw new AssignmentDeepLinkError(
-        'This assignment could not be found in the selected course.',
+        'This assignment is not available in the IDE for the selected course.',
       );
     }
     if (exercise.type !== PROGRAMMING_EXERCISE_TYPE) {

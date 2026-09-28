@@ -8,6 +8,7 @@ import { AssignmentFolderRepository } from '../features/assignments/assignmentFo
 import { AssignmentFileRepository } from '../features/assignments/assignmentFileRepository';
 import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
+import { watchCurrentAssignmentAvailability } from '../features/assignments/currentAssignmentAvailability';
 import { CoursePart } from '../features/courseMaterials/courseMaterialModels';
 import {
   ApiCourseMaterialRepository,
@@ -96,6 +97,18 @@ const structure: CoursePart[] = [{
     }],
   }],
 }];
+
+const hiddenAssignment: ProgrammingAssignment = {
+  exerciseUuid: '33333333-3333-4333-8333-333333333333',
+  name: 'Hidden from the IDE',
+  type: 'programming-exercise',
+  courseSlug: 'web-software-development',
+  courseInstanceId: 12,
+};
+
+function flushListeners(): Promise<void> {
+  return new Promise((resolve) => setImmediate(resolve));
+}
 
 suite('Courses', () => {
   test('stores course selections separately for each user', async () => {
@@ -853,6 +866,184 @@ suite('Courses', () => {
 
       assert.strictEqual(children[0].label, 'No course enrolments found.');
     } finally {
+      provider.dispose();
+    }
+  });
+
+  test('explains when no course assignments are available in the IDE', async () => {
+    const { provider, sessionRepository, courseSyncService } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => [] },
+    );
+
+    try {
+      await sessionRepository.save(session);
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
+
+      const children = await provider.getChildren();
+
+      assert.strictEqual(children.length, 1);
+      assert.strictEqual(
+        children[0].label,
+        'No assignments in this course are available in the IDE yet.',
+      );
+    } finally {
+      provider.dispose();
+    }
+  });
+
+  test('clears the current assignment when the course no longer lists it', async () => {
+    const {
+      provider,
+      sessionRepository,
+      currentAssignmentRepository,
+      courseSyncService,
+    } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+    );
+    let cleared = 0;
+    const watcher = watchCurrentAssignmentAvailability(
+      courseSyncService,
+      currentAssignmentRepository,
+      async () => {
+        cleared += 1;
+      },
+    );
+
+    try {
+      await sessionRepository.save(session);
+      await currentAssignmentRepository.save(
+        session.student.id,
+        hiddenAssignment,
+      );
+
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
+      await flushListeners();
+
+      assert.strictEqual(
+        currentAssignmentRepository.get(session.student.id),
+        undefined,
+      );
+      assert.strictEqual(cleared, 1);
+    } finally {
+      watcher.dispose();
+      provider.dispose();
+    }
+  });
+
+  test('keeps the current assignment when live course structure is unavailable', async () => {
+    const {
+      provider,
+      sessionRepository,
+      currentAssignmentRepository,
+      courseSyncService,
+    } = createProvider(
+      { getEnrolments: async () => enrolments },
+      {
+        getStructure: async () => {
+          throw new Error('offline');
+        },
+      },
+    );
+    const watcher = watchCurrentAssignmentAvailability(
+      courseSyncService,
+      currentAssignmentRepository,
+      async () => undefined,
+    );
+
+    try {
+      await sessionRepository.save(session);
+      await currentAssignmentRepository.save(
+        session.student.id,
+        hiddenAssignment,
+      );
+
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      ).catch(() => undefined);
+      await flushListeners();
+
+      assert.strictEqual(
+        currentAssignmentRepository.get(session.student.id)?.exerciseUuid,
+        hiddenAssignment.exerciseUuid,
+      );
+    } finally {
+      watcher.dispose();
+      provider.dispose();
+    }
+  });
+
+  test('keeps a current assignment that is listed or belongs to another course', async () => {
+    const {
+      provider,
+      sessionRepository,
+      currentAssignmentRepository,
+      courseSyncService,
+    } = createProvider(
+      { getEnrolments: async () => enrolments },
+      { getStructure: async () => structure },
+    );
+    const watcher = watchCurrentAssignmentAvailability(
+      courseSyncService,
+      currentAssignmentRepository,
+      async () => undefined,
+    );
+
+    try {
+      await sessionRepository.save(session);
+      const otherCourseAssignment: ProgrammingAssignment = {
+        ...hiddenAssignment,
+        courseSlug: 'another-course',
+      };
+      await currentAssignmentRepository.save(
+        session.student.id,
+        otherCourseAssignment,
+      );
+      await courseSyncService.readCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
+      await flushListeners();
+
+      assert.deepStrictEqual(
+        currentAssignmentRepository.get(session.student.id),
+        otherCourseAssignment,
+      );
+
+      const listedAssignment: ProgrammingAssignment = {
+        ...hiddenAssignment,
+        exerciseUuid: '11111111-1111-4111-8111-111111111111',
+        name: 'Hello Web',
+      };
+      await currentAssignmentRepository.save(
+        session.student.id,
+        listedAssignment,
+      );
+      await courseSyncService.refreshCourse(
+        session.student.id,
+        'web-software-development',
+        12,
+      );
+      await flushListeners();
+
+      assert.deepStrictEqual(
+        currentAssignmentRepository.get(session.student.id),
+        listedAssignment,
+      );
+    } finally {
+      watcher.dispose();
       provider.dispose();
     }
   });
