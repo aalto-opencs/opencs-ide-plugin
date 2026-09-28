@@ -42,8 +42,9 @@ If the student has no enrolment for the linked course:
 - Resolution uses live enrolments and course structure rather than offline
   cache, stale local selections, or names supplied by the link.
 - An existing enrolment must have a valid active instance.
-- A linked exercise must exist in the specified course and have type
-  `programming-exercise`.
+- A linked exercise must be listed in the specified course's IDE course
+  structure and have type `programming-exercise`. An assignment that is not
+  IDE-available is reported as not available in the IDE for that course.
 - When one enrolment instance is available, it is selected without an instance
   picker after enrolment confirmation. Multiple instances require a choice and
   show their date ranges when available.

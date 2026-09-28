@@ -22,6 +22,7 @@ import {
   ProgrammingAssignment,
 } from '../features/assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../features/assignments/currentAssignmentRepository';
+import { watchCurrentAssignmentAvailability } from '../features/assignments/currentAssignmentAvailability';
 import {
   ApiAssignmentRepository,
   AssignmentRepository,
@@ -690,6 +691,12 @@ export function registerCommands(
       }
     },
   );
+  const currentAssignmentAvailabilityListener =
+    watchCurrentAssignmentAvailability(
+      courseSyncService,
+      currentAssignmentRepository,
+      refreshUiState,
+    );
   const workspaceTrustListener = vscode.workspace.onDidGrantWorkspaceTrust(
     () => {
       void localPythonExecutionController.updateRunContext();
@@ -851,6 +858,7 @@ export function registerCommands(
     checkCurrentAssignmentSyntaxCommand,
     runCurrentPublicTestsCommand,
     pythonConfigurationListener,
+    currentAssignmentAvailabilityListener,
     workspaceTrustListener,
     localPythonExecutionController,
     publicTestExecutionController,

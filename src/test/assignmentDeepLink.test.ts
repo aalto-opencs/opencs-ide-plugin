@@ -82,6 +82,48 @@ suite('Assignment platform deep links', () => {
     });
   });
 
+  test('rejects an assignment the course does not list in the IDE', async () => {
+    const storage = new InMemoryMemento();
+    const selectionRepository = new CourseSelectionRepository(storage);
+    const assignmentRepository = new CurrentAssignmentRepository(storage);
+    const service = new AssignmentDeepLinkService(
+      new CourseService({
+        getEnrolments: async () => [{
+          courseSlug: 'web-software-development',
+          courseName: 'Web Software Development',
+          abbreviation: 'WSD',
+          activeInstanceId: 17,
+          instances: [{
+            id: 17,
+            label: 'Summer 2026',
+            startTime: null,
+            endTime: null,
+            pointsComparisonEnabled: false,
+          }],
+        }],
+      }),
+      new CourseMaterialService({ getStructure: async () => [] }),
+      selectionRepository,
+      assignmentRepository,
+      undefined,
+      () => new Date('2026-08-09T12:00:00.000Z'),
+    );
+
+    await assert.rejects(
+      service.selectAssignment(
+        42,
+        'web-software-development',
+        '3b969c55-9645-4203-8bb2-5556c693ed34',
+      ),
+      {
+        message:
+          'This assignment is not available in the IDE for the selected course.',
+      },
+    );
+    assert.strictEqual(assignmentRepository.get(42), undefined);
+    assert.strictEqual(selectionRepository.getSelection(42), undefined);
+  });
+
   test('enrols through the existing active-instance operation and verifies it', async () => {
     const storage = new InMemoryMemento();
     const selectionRepository = new CourseSelectionRepository(storage);

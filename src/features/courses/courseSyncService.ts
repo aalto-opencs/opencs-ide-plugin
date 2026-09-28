@@ -37,6 +37,12 @@ export interface CourseSnapshot {
 }
 
 /** Coordinates selected-course reads independently of tree rendering. */
+export interface LiveCourseStructure {
+  userId: number;
+  courseSlug: string;
+  structure: CoursePart[];
+}
+
 export class CourseSyncService implements vscode.Disposable {
   private readonly structures = new Map<string, ResourceState<CoursePart[]>>();
   private readonly exercisePoints = new Map<
@@ -64,7 +70,12 @@ export class CourseSyncService implements vscode.Disposable {
   private notificationDepth = 0;
   private notificationPending = false;
 
+  private readonly liveStructureEmitter =
+    new vscode.EventEmitter<LiveCourseStructure>();
+
   public readonly onDidChange = this.changeEmitter.event;
+  /** Fires only for structure the platform just returned, never for cache. */
+  public readonly onDidLoadLiveStructure = this.liveStructureEmitter.event;
 
   public constructor(
     private readonly courseService: CourseService,
@@ -374,6 +385,7 @@ export class CourseSyncService implements vscode.Disposable {
 
   public dispose(): void {
     this.changeEmitter.dispose();
+    this.liveStructureEmitter.dispose();
   }
 
   private synchronizeStructure(
@@ -398,12 +410,15 @@ export class CourseSyncService implements vscode.Disposable {
       state,
       () => this.courseMaterialService.getStructure(courseSlug, priority),
       isCourseParts,
-      (value, timestamp) => this.cacheRepository?.saveStructure(
-        userId,
-        courseSlug,
-        value,
-        timestamp,
-      ) ?? Promise.resolve(),
+      (value, timestamp) => {
+        this.liveStructureEmitter.fire({ userId, courseSlug, structure: value });
+        return this.cacheRepository?.saveStructure(
+          userId,
+          courseSlug,
+          value,
+          timestamp,
+        ) ?? Promise.resolve();
+      },
     );
   }
 
