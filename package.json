@@ -1,6 +1,6 @@
 {
   "name": "aalto-opencs-ide",
-  "displayName": "Aalto OpenCS IDE",
+  "displayName": "OpenCS",
   "description": "Access Aalto OpenCS programming courses, download exercises, submit solutions, and review automated grading feedback.",
   "version": "0.5.1",
   "publisher": "aalto-opencs",
