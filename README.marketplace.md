@@ -1,101 +1,113 @@
-# Aalto OpenCS IDE
+# OpenCS
 
-Aalto OpenCS IDE brings the Aalto OpenCS programming-course workflow into VS
-Code and VSCodium. Sign in, choose a course, download programming exercises,
-work on them locally, submit selected files, and review grading feedback without
-leaving the editor.
+Do your [Aalto OpenCS](https://opencs.aalto.fi/en) programming exercises right
+in your editor. Browse your course, download an exercise, write and test your
+code locally, submit it, and see your grading results without switching back
+and forth to the browser.
 
-The extension is intended for students participating in supported Aalto OpenCS
-courses. The OpenCS platform remains authoritative for course content,
-submissions, grading, points, and completion.
+> **Preview:** for students enrolled in courses on
+> [opencs.aalto.fi](https://opencs.aalto.fi/en). You need an OpenCS account.
+> Works in VS Code and VSCodium.
 
-## Features
-
-- Sign in securely through the Aalto OpenCS website.
-- Choose from your enrolled courses and active course versions.
-- Browse course parts and programming exercises from the editor sidebar.
-- Read assignment handouts inside the editor.
-- Download starter files to a local assignment folder.
-- Redownload an exercise with a warning before replacing its current local
-  copy.
-- Run supported Python exercises and check Python syntax locally.
-- Run assignment-provided public tests when the exercise supports them.
-- Review the exact files selected for upload before confirming a submission.
-- Follow grading progress and inspect failed tests or grader errors.
-- Review submission history and assignment activity.
-- Continue browsing previously loaded course data when the platform is
-  temporarily unavailable.
-
-Only exercises whose platform type is `programming-exercise` are displayed and
-downloaded.
+<!-- Add the demo GIF here once recorded, for example:
+![Downloading, running, and submitting an exercise](media/screenshots/demo.gif)
+-->
 
 ## Getting started
 
-1. Install **Aalto OpenCS IDE** from the Extensions view.
-2. Open the **Aalto OpenCS** view from the Activity Bar.
-3. Select **Sign In with Browser** and complete sign-in on the OpenCS website.
-4. Choose the local folder where exercises should be downloaded.
-5. Choose an enrolled course and course version.
-6. Select an exercise, read its handout, and download its files.
-7. Work locally and use the available run, syntax-check, or public-test actions.
-8. Review the selected files, submit the exercise, and follow its grading
-   result.
+1. Click the **Aalto OpenCS** icon in the Activity Bar.
+2. Choose **Sign In with Browser** and sign in on the OpenCS website. You are
+   sent back to the editor automatically.
+3. Pick a folder on your computer where your exercises will be saved.
+4. Choose your course.
+5. Pick an exercise in **Course Parts**, read the handout, and choose
+   **Download Exercise**.
 
-## Local assignment files
+When your solution is ready, choose **Submit**. Check the list of files that
+will be uploaded, confirm, and your result appears in **Submissions**.
 
-Downloaded exercises remain ordinary local files that you can edit with the
-tools provided by your editor. Choose an assignment folder that you can find
-again and that is backed up according to your normal workflow.
+## What you can do
 
-The extension preserves student files during normal cleanup and sign-out.
-Redownloading is a separate action and warns before replacing the current local
-exercise copy.
+- **Browse your course** — see course parts, exercises, and which ones you have
+  completed, right in the sidebar.
+- **Read the handout** next to your code.
+- **Work on real files** — exercises are ordinary files in the folder you
+  chose, so you can use any editor tools you like.
+- **Try your code before submitting** — run Python exercises, check syntax, and
+  run the public tests that come with supported Dart and Flutter exercises.
+- **Submit with confidence** — you always see exactly which files will be
+  uploaded before anything is sent.
+- **Understand your result** — follow grading as it happens, open failed tests
+  and grader errors, and look back at earlier submissions.
+- **Jump in from the website** — links to an exercise on OpenCS can open it
+  directly in the editor.
+- **Keep browsing offline** — course information you have already loaded stays
+  available if the platform is briefly unreachable.
 
-## Python support
+<!-- Optional screenshots, for example:
+![Course sidebar with an exercise handout](media/screenshots/overview.png)
+![Grading result with a failed test](media/screenshots/result.png)
+-->
 
-Supported Introduction to Programming exercises can be run and syntax-checked
-locally. Python must be installed on your computer.
+## Good to know
 
-By default, the extension uses `python3` on macOS and Linux and `py` on Windows.
-To use another interpreter, open editor settings, search for **Aalto OpenCS
-IDE**, and set **Python Command**.
+- **The OpenCS platform decides your grade.** Local runs and public tests are
+  only a preview. Points and completion come from grading on the platform,
+  which may also use hidden tests.
+- **Only exercises available in the IDE are listed.** If you can't find an
+  exercise, it may be one you complete on the website instead.
+- **Your files are safe.** Signing out or cleaning up never deletes your work.
+  Redownloading an exercise replaces your copy only after you confirm.
+- **Pick a folder you can find again**, and back it up the way you back up
+  your other work.
 
-Public tests provide local feedback before submission. They do not determine
-official points or completion; authoritative grading remains on the OpenCS
-platform.
+## What happens to your code
 
-## Submission safety
+- Your code stays on your computer until you confirm a submission.
+- When you submit, the extension uploads the files you reviewed. It also sends
+  a short history of how your code changed each time you ran it, ran public
+  tests, or submitted since downloading the exercise. Course staff can use
+  this history to understand how a solution developed. It does not affect your
+  points.
+- You sign in through the OpenCS website. Your session is stored in the
+  editor's secure storage, and the extension never writes your code or login
+  details to its logs.
 
-Before uploading, the extension shows the exact files selected for submission
-and asks for confirmation. Source files are uploaded only after that review.
-Hidden tests run only as part of platform grading and are not downloaded to the
-student's computer.
+## Requirements
 
-## Privacy and security
-
-- Authentication is completed through the OpenCS website.
-- Sessions are stored using the editor's secure secret storage.
-- The extension does not intentionally log authorization data, student
-  identifiers, or student source code.
-- Grading, points, completion, and hidden tests remain controlled by the OpenCS
-  platform.
+- VS Code or VSCodium, version 1.125 or newer.
+- **Python courses:** Python installed on your computer. By default the
+  extension uses `python3` on macOS and Linux and `py` on Windows. To use a
+  different one, open Settings, search for **Aalto OpenCS IDE**, and set
+  **Python Command**.
+- **Dart and Flutter courses:** the Dart or Flutter SDK, if you want to run
+  public tests locally.
 
 ## Troubleshooting
 
-If information looks out of date, refresh the relevant view or run **Aalto
-OpenCS IDE: Check Platform Status** from the Command Palette.
+**Sign-in doesn't return to the editor.** Check that
+[opencs.aalto.fi](https://opencs.aalto.fi/en) opens in your browser, then try
+**Sign In with Browser** again. If your browser asks whether to open VS Code or
+VSCodium, allow it.
 
-For sign-in problems, confirm that the OpenCS website opens successfully in
-your browser and that your course enrolment is active. For local Python
-problems, confirm that the configured Python command works in a terminal.
+**My course isn't listed.** Check on the OpenCS website that you are enrolled
+and the course is currently running, then refresh the course list.
 
-When reporting a problem, include the extension version, editor version,
-operating system, the action you attempted, and the visible error message. Do
-not include access tokens, authorization codes, student source files, or other
-sensitive information.
+**The Run or Run Public Tests button is missing.** These appear only for
+exercises that support them, and only in a trusted workspace. If your editor
+asks whether you trust the folder, choose to trust it.
+
+**Python isn't found.** Check that your Python command works in a terminal,
+then set **Python Command** in Settings.
+
+**Something looks out of date.** Refresh the view, or run **Aalto OpenCS IDE:
+Check Platform Status** from the Command Palette.
+
+When asking for help, include the extension version, your editor and operating
+system, what you were doing, and the error message you saw. Never share
+passwords, access tokens, or login codes.
 
 ## Preview status
 
-Aalto OpenCS IDE is currently published as a preview. Features and user
-interfaces may change as support for additional OpenCS courses and workflows is
-developed.
+This extension is a preview. Features and screens may change as more OpenCS
+courses are supported.

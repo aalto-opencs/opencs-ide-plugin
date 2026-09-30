@@ -17,3 +17,8 @@ _Avoid_: Private tests
 **Prerequisite assignment**: An assignment required by the platform before
 another assignment can be accessed. It is not necessarily the immediately
 preceding assignment.
+
+**IDE-available assignment**: A programming assignment whose own definition
+opts it into the IDE with `available_in_ide: true`. Only these assignments are
+listed in the IDE, and only within courses that are themselves available in
+the IDE. This controls listing only; it does not restrict access.
