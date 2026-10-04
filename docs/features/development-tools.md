@@ -20,8 +20,9 @@ Host, the **Aalto OpenCS Test Tools** status item can:
 
 ### Launch profiles
 
-- **Fresh User Layout** uses a temporary IDE profile and configured development
-  endpoints.
+- **Fresh User Layout** uses a temporary IDE profile and forces the local
+  platform URLs: API `http://localhost:8842/api` and website
+  `http://localhost:7799`.
 - **Fresh Production Profile** uses a temporary profile and forces the
   production API and website URLs.
 - **Current Development Layout** reuses the existing Extension Development Host
@@ -38,8 +39,9 @@ Host, the **Aalto OpenCS Test Tools** status item can:
 
 - API-backed repositories are always used at runtime. Development profiles may
   override the API and website URLs, but there is no mock API setting.
-- The production development profile overrides local URL settings only in a
-  development-tools build when its profile environment value is active.
+- The production and local development profiles override URL settings only in
+  a development-tools build when `AALTO_OPENCS_IDE_DEVELOPMENT_PROFILE` is
+  `production` or `local`. Without either value, the URL settings apply.
 - Production builds always use the production API and website URLs, even if old
   URL values remain in editor settings.
 - Development completion overrides are stored only in memory and are scoped by
@@ -79,6 +81,8 @@ Host, the **Aalto OpenCS Test Tools** status item can:
   result.
 - Fresh Production Profile must force real production endpoints without
   inheriting a developer's local endpoint settings.
+- Fresh User Layout must reach the local platform even though its temporary
+  profile starts without URL settings.
 
 ## Non-Goals
 

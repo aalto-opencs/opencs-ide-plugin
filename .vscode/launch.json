@@ -13,6 +13,9 @@
 				"--extensionDevelopmentPath=${workspaceFolder}",
 				"--profile-temp"
 			],
+			"env": {
+				"AALTO_OPENCS_IDE_DEVELOPMENT_PROFILE": "local"
+			},
 			"outFiles": [
 				"${workspaceFolder}/dist/**/*.js"
 			],

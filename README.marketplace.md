@@ -9,22 +9,22 @@ and forth to the browser.
 > [opencs.aalto.fi](https://opencs.aalto.fi/en). You need an OpenCS account.
 > Works in VS Code and VSCodium.
 
-<!-- Add the demo GIF here once recorded, for example:
-![Downloading, running, and submitting an exercise](media/screenshots/demo.gif)
--->
-
 ## Getting started
 
-1. Click the **Aalto OpenCS** icon in the Activity Bar.
-2. Choose **Sign In with Browser** and sign in on the OpenCS website. You are
-   sent back to the editor automatically.
-3. Pick a folder on your computer where your exercises will be saved.
-4. Choose your course.
-5. Pick an exercise in **Course Parts**, read the handout, and choose
-   **Download Exercise**.
+1. Click the **Aalto OpenCS** icon in the Activity Bar and choose
+   **Sign In with Browser**. Sign in on the OpenCS website as usual, and allow
+   your browser and editor to open the sign-in link.
+2. Pick a folder on your computer where your exercises will be saved.
+3. Choose **Select Course** and pick your course and its version.
+4. In **Course Parts**, select an exercise and choose **Download Exercise**.
+5. Choose **Show Assignment Handout** to read the handout beside your code.
+6. When your solution is ready, choose **Submit Current Exercise**, check the
+   files that will be uploaded, and confirm. The result appears in
+   **Submissions**.
 
-When your solution is ready, choose **Submit**. Check the list of files that
-will be uploaded, confirm, and your result appears in **Submissions**.
+For step-by-step instructions with pictures, see
+[Guide: OpenCS extension for VS Code](https://opencs.aalto.fi/en/information/vscode-extension)
+on the OpenCS website.
 
 ## What you can do
 
@@ -33,8 +33,8 @@ will be uploaded, confirm, and your result appears in **Submissions**.
 - **Read the handout** next to your code.
 - **Work on real files** — exercises are ordinary files in the folder you
   chose, so you can use any editor tools you like.
-- **Try your code before submitting** — run Python exercises, check syntax, and
-  run the public tests that come with supported Dart and Flutter exercises.
+- **Try your code before submitting** — in Dart and Flutter exercises, run the
+  exercise, check it for errors, and run the public tests that come with it.
 - **Submit with confidence** — you always see exactly which files will be
   uploaded before anything is sent.
 - **Understand your result** — follow grading as it happens, open failed tests
@@ -44,18 +44,14 @@ will be uploaded, confirm, and your result appears in **Submissions**.
 - **Keep browsing offline** — course information you have already loaded stays
   available if the platform is briefly unreachable.
 
-<!-- Optional screenshots, for example:
-![Course sidebar with an exercise handout](media/screenshots/overview.png)
-![Grading result with a failed test](media/screenshots/result.png)
--->
-
 ## Good to know
 
 - **The OpenCS platform decides your grade.** Local runs and public tests are
   only a preview. Points and completion come from grading on the platform,
   which may also use hidden tests.
-- **Only exercises available in the IDE are listed.** If you can't find an
-  exercise, it may be one you complete on the website instead.
+- **Only some courses and exercises are listed.** You see only the courses and
+  programming exercises that your teacher has made available in the editor.
+  Other exercises are done on the OpenCS website.
 - **Your files are safe.** Signing out or cleaning up never deletes your work.
   Redownloading an exercise replaces your copy only after you confirm.
 - **Pick a folder you can find again**, and back it up the way you back up
@@ -76,29 +72,36 @@ will be uploaded, confirm, and your result appears in **Submissions**.
 ## Requirements
 
 - VS Code or VSCodium, version 1.125 or newer.
-- **Python courses:** Python installed on your computer. By default the
-  extension uses `python3` on macOS and Linux and `py` on Windows. To use a
-  different one, open Settings, search for **Aalto OpenCS IDE**, and set
-  **Python Command**.
-- **Dart and Flutter courses:** the Dart or Flutter SDK, if you want to run
-  public tests locally.
+- **To run, check, or test exercises:** these actions currently work only in
+  Dart and Flutter exercises and need [Flutter](https://docs.flutter.dev/get-started/install),
+  which includes Dart. Check that the `flutter` and `dart` commands work in a
+  terminal. You can edit and submit other exercises without it.
 
 ## Troubleshooting
 
 **Sign-in doesn't return to the editor.** Check that
 [opencs.aalto.fi](https://opencs.aalto.fi/en) opens in your browser, then try
-**Sign In with Browser** again. If your browser asks whether to open VS Code or
-VSCodium, allow it.
+**Sign In with Browser** again. Allow your browser to open VS Code or VSCodium,
+and choose **Open** when the editor asks.
 
-**My course isn't listed.** Check on the OpenCS website that you are enrolled
-and the course is currently running, then refresh the course list.
+**My course isn't listed.** Only courses that your teacher has made available
+in the editor are listed. If yours should be, check on the OpenCS website that
+you are enrolled and the course is currently running, then choose
+**Select Course** again.
 
-**The Run or Run Public Tests button is missing.** These appear only for
-exercises that support them, and only in a trusted workspace. If your editor
-asks whether you trust the folder, choose to trust it.
+**An exercise is missing.** Only the programming exercises that your teacher
+has made available in the editor are listed. Do the other exercises on the
+OpenCS website.
 
-**Python isn't found.** Check that your Python command works in a terminal,
-then set **Python Command** in Settings.
+**The run actions are missing or don't work.** They are available only in Dart
+and Flutter exercises, and only in a folder your editor trusts. If the terminal
+says that `flutter` or `dart` is not found, install Flutter and restart your
+editor.
+
+**I want to start an exercise over.** In **Course Parts**, right-click the
+exercise you are working on and choose **Redownload Assignment**. This
+replaces your copy with fresh starter files and permanently deletes your
+changes, so the extension asks you to confirm first.
 
 **Something looks out of date.** Refresh the view, or run **Aalto OpenCS IDE:
 Check Platform Status** from the Command Palette.

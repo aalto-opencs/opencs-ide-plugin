@@ -17,6 +17,9 @@ usage() {
 Usage: ./scripts/start-local-platform.sh [options]
 
 Start the local IntroCS platform with Docker-backed code execution and grading.
+After the platform is ready, the IntroCS demo users are created. With
+--with-test-course, every loaded course is also made available in the IDE for
+both demo users.
 
 Options:
 
@@ -80,6 +83,20 @@ compose_args=(-f docker-compose-with-executor.yml)
 
 if "$with_test_course"; then
   compose_args+=(-f docker-compose.with-test-course.yml)
+
+  if ! command -v node >/dev/null 2>&1; then
+    echo "Node.js is required to read the platform's active courses." >&2
+    exit 1
+  fi
+
+  # The platform's current active courses plus the local test course.
+  OPENCS_ACTIVE_COURSES=$(
+    node --input-type=module -e '
+      const { ACTIVE_COURSES } = await import(process.argv[1]);
+      console.log([...new Set([...ACTIVE_COURSES, "test-course"])].join(","));
+    ' "$introcs_dir/shared/src/constants.js"
+  )
+  export OPENCS_ACTIVE_COURSES
 fi
 
 up_args=(up --build)
@@ -100,6 +117,39 @@ services=(
 
 db_data_dir="$introcs_dir/introcs_psql_data"
 
+query_database() {
+  docker exec -e PGPASSWORD=dev_password csfoundations-postgres psql \
+    --host=database --username=dev_user --dbname=csfoundations \
+    -At -c "$1" 2>/dev/null
+}
+
+# Waits for the API and course import, then creates the demo users and, with
+# the test course, makes every loaded course available in the IDE.
+set_up_demo_data() {
+  local deadline=$((SECONDS + 1200))
+
+  until curl --silent --fail http://localhost:8842/api/status >/dev/null &&
+    query_database "SELECT 1 FROM users LIMIT 0" >/dev/null &&
+    { ! "$with_test_course" ||
+      [ "$(query_database "SELECT COUNT(*) FROM courses WHERE slug = 'test-course'")" = "1" ]; }; do
+    if [ "$SECONDS" -ge "$deadline" ]; then
+      echo "[setup] Timed out waiting for the platform; demo data was not created." >&2
+      return 1
+    fi
+    sleep 5
+  done
+
+  echo "[setup] Creating demo users..."
+  bash "$introcs_dir/scripts/add-demo-users.sh"
+
+  if "$with_test_course"; then
+    echo "[setup] Making local courses available in the IDE..."
+    bash "$introcs_dir/scripts/configure-test-course-for-ide.sh"
+  fi
+
+  echo "[setup] Demo data ready."
+}
+
 echo "Starting the local platform from $introcs_dir"
 
 cd "$introcs_dir"
@@ -119,5 +169,13 @@ case "$db_data_dir" in
 esac
 
 echo "Starting fresh local platform..."
+
+if "$detached"; then
+  docker compose "${compose_args[@]}" "${up_args[@]}" "${services[@]}"
+  set_up_demo_data
+  exit
+fi
+
+set_up_demo_data &
 
 exec docker compose "${compose_args[@]}" "${up_args[@]}" "${services[@]}"
