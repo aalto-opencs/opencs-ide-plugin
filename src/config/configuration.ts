@@ -6,6 +6,8 @@ export { validateEndpointUrl } from '../infrastructure/endpointUrl';
 const CONFIGURATION_SECTION = 'aaltoOpenCsIde';
 const PRODUCTION_API_BASE_URL = 'https://opencs.aalto.fi/api';
 const PRODUCTION_PLATFORM_BASE_URL = 'https://opencs.aalto.fi';
+const LOCAL_API_BASE_URL = 'http://localhost:8842/api';
+const LOCAL_PLATFORM_BASE_URL = 'http://localhost:7799';
 const DEVELOPMENT_PROFILE_ENV = 'AALTO_OPENCS_IDE_DEVELOPMENT_PROFILE';
 
 function useProductionBaseUrls(): boolean {
@@ -14,9 +16,16 @@ function useProductionBaseUrls(): boolean {
     process.env[DEVELOPMENT_PROFILE_ENV] === 'production';
 }
 
+function useLocalBaseUrls(): boolean {
+  return process.env[DEVELOPMENT_PROFILE_ENV] === 'local';
+}
+
 export function getApiBaseUrl(): string {
   if (useProductionBaseUrls()) {
     return PRODUCTION_API_BASE_URL;
+  }
+  if (useLocalBaseUrls()) {
+    return LOCAL_API_BASE_URL;
   }
   return validateEndpointUrl(
     'aaltoOpenCsIde.apiBaseUrl',
@@ -29,6 +38,9 @@ export function getApiBaseUrl(): string {
 export function getPlatformBaseUrl(): string {
   if (useProductionBaseUrls()) {
     return PRODUCTION_PLATFORM_BASE_URL;
+  }
+  if (useLocalBaseUrls()) {
+    return LOCAL_PLATFORM_BASE_URL;
   }
   return validateEndpointUrl(
     'aaltoOpenCsIde.platformBaseUrl',
