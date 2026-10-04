@@ -1,8 +1,16 @@
 # Change Log
 
-All notable changes to Aalto OpenCS IDE will be documented in this file.
+All notable changes to OpenCS will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
+
+## [0.5.2] - 2026-10-04
+
+- Rename the extension to OpenCS
+- Rewrite the Marketplace description for students and link to the step-by-step guide on OpenCS
+- Show only the programming exercises that teachers have made available in the IDE
+- Fix Dart and Flutter Check Syntax not recognising analyzer output that uses `-` separators
+- Fix Dart and Flutter Check Syntax ignoring an explicit Windows PATH override
 
 ## [0.5.1] - 2026-09-22
 
