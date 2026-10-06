@@ -980,6 +980,41 @@ suite('Assignment submission', () => {
     assert.match(output, /Received: 0/);
   });
 
+  test('shows the Python grader failure traceback when its test output is empty', () => {
+    const status: SubmissionStatus = {
+      correct: false,
+      gradingStatus: GRADING_STATUS_PROCESSED,
+      gradingData: {
+        testResults: [
+          {
+            testName: 'test_partial_progress_and_exact_format',
+            passed: false,
+            'Test failure': [
+              '',
+              'Traceback (most recent call last):',
+              '  File "/app/src/main.py", line 7, in <module>',
+              '    assert practice_summary(5, 2) == "Answered: 2, remaining: 3"',
+              'AssertionError',
+            ].join('\n'),
+            'test output': '',
+          },
+        ],
+      },
+    };
+
+    const summary = summarizeSubmissionResult(status);
+    const output = formatSubmissionResult(status).join('\n');
+
+    assert.strictEqual(summary.failedTests[0].details, [
+      'Traceback (most recent call last):',
+      '  File "/app/src/main.py", line 7, in <module>',
+      '    assert practice_summary(5, 2) == "Answered: 2, remaining: 3"',
+      'AssertionError',
+    ].join('\n'));
+    assert.match(output, /Error details:/);
+    assert.doesNotMatch(output, /No error details were returned/);
+  });
+
   test('does not show aggregate grader errors alongside structured test results', () => {
     const status: SubmissionStatus = {
       correct: false,
