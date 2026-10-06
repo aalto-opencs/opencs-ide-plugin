@@ -2,7 +2,7 @@
   "name": "aalto-opencs-ide",
   "displayName": "OpenCS",
   "description": "Access Aalto OpenCS programming courses, download exercises, submit solutions, and review automated grading feedback.",
-  "version": "0.5.2",
+  "version": "0.5.3",
   "publisher": "aalto-opencs",
   "author": {
     "name": "Aalto OpenCS IDE extension contributors"
