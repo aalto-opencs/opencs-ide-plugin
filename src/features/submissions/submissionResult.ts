@@ -106,7 +106,10 @@ function readTestName(test: Record<string, unknown>, index: number): string {
 }
 
 function readTestDetails(test: Record<string, unknown>): string | undefined {
+  // The Python grader puts the traceback under "Test failure" and leaves
+  // "test output" empty; the platform UI also prefers the failure text.
   for (const key of [
+    'Test failure',
     'test output',
     'testOutput',
     'error',
