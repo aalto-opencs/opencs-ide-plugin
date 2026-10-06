@@ -12,6 +12,14 @@ _Avoid_: Visible tests, starter tests
 Grader-only tests that are not distributed to students and run only as part of platform grading.
 _Avoid_: Private tests
 
+**Python assignment**:
+A downloaded programming assignment whose original starter contained a root-level `main.py`, regardless of course. Run and Check Syntax treat it as Python.
+_Avoid_: Introduction to Programming assignment (when meaning any Python course version)
+
+**Python command**:
+The command the IDE uses to start Python 3 on the student's computer for Run and Check Syntax. It belongs to the computer, and it comes from detection or the student's choice, never from the platform.
+_Avoid_: Python setting, interpreter path
+
 ## Glossary
 
 **Prerequisite assignment**: An assignment required by the platform before

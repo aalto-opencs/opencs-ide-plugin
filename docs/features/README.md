@@ -94,8 +94,8 @@ with an assignment submission.
 
 [Python Syntax Checking](./python-syntax-checking.md)
 
-Describes the local, non-executing syntax check available for Introduction to
-Programming assignments and its role in the submission flow.
+Describes the local, non-executing syntax check available for Python
+assignments and its role in the submission flow.
 
 ## Local Python Assignment Running
 

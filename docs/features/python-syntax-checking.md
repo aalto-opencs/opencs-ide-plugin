@@ -8,9 +8,8 @@ student's program or predict whether the grader will accept the solution.
 
 ## Actors
 
-- A signed-in student working on a downloaded Introduction to Programming
-  assignment.
-- The desktop IDE, using the locally configured Python interpreter.
+- A signed-in student working on a downloaded Python assignment.
+- The desktop IDE, using the computer's Python command.
 
 ## Main Flow
 
@@ -40,13 +39,18 @@ student's program or predict whether the grader will accept the solution.
 
 ## Rules & Conditions
 
-- Syntax checking is supported only for the
-  `introduction-to-programming` course.
+- Syntax checking is supported only for Python assignments.
+- A Python assignment is a download whose original starter archive contained
+  a root-level `main.py`; download metadata records this as
+  `localRuntime: "python"`. The course slug does not matter, so test and
+  seasonal course versions are supported. Downloads made before this detection
+  existed have no recorded runtime and remain supported only in the
+  `introduction-to-programming` course; redownloading records the runtime.
 - Local checking is available only in a desktop IDE host.
 - The visible manual action targets the current assignment, not the active
   editor file.
-- The Exercise view shows **Check Syntax** only for a downloaded Introduction
-  to Programming assignment.
+- The Exercise view shows **Check Syntax** only for a downloaded Python
+  assignment or a Cross-Platform Development assignment.
 - The editor action uses the same runnable-assignment context as **Run**: the
   current assignment must be downloaded, be supported, and contain `main.py`.
 - A version 3 assignment manifest restricts checking to its declared submission
@@ -88,8 +92,12 @@ student's program or predict whether the grader will accept the solution.
   asks the student to save them.
 - If no Python files are selected, the check is unavailable rather than
   successful.
-- If Python is missing, the configured command is invalid, or Python does not
-  return a readable result, the check is unavailable rather than failed.
+- If Python is not found, the check is unavailable rather than failed. A manual
+  check shows the not-found warning with **Install Python** and
+  **Select Python Command**; the submission pre-check explains it in the
+  **Submit Without Checking** warning.
+- If Python does not return a readable result, the check is unavailable rather
+  than failed.
 - A manual unavailable result displays guidance and makes no submission.
 - During submission, an unavailable result requires the explicit
   **Submit Without Checking** choice; dismissing the warning cancels.
@@ -108,9 +116,9 @@ student's program or predict whether the grader will accept the solution.
 
 ## Important Constraints
 
-- The configured `aaltoOpenCsIde.pythonCommand` is used, including supported
-  interpreter arguments and quoted paths. The default is `python3` on macOS and
-  Linux and `py` on Windows.
+- The saved Python command is used, including supported interpreter arguments
+  and quoted paths. Detection and selection are described in
+  [Local Python Assignment Running](./local-python-assignment-running.md#python-command).
 - Student source is copied to temporary storage for parsing and the temporary
   data is removed afterward. The check does not create reports, bytecode
   caches, or other files in the assignment folder.
@@ -128,4 +136,4 @@ student's program or predict whether the grader will accept the solution.
 
 - The manual diagnostics and submission warning flows do not currently have
   direct extension-host tests. Service tests cover Python-file filtering,
-  structured syntax errors, and configured command parsing.
+  structured syntax errors, and Python command parsing.

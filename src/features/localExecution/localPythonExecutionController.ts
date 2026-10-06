@@ -5,14 +5,20 @@ import { AssignmentActivityRepository } from '../assignmentActivity/assignmentAc
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
 import { ProgrammingAssignment } from '../assignments/assignmentModels';
-import { PublicTestRunner } from '../assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 import { AuthService } from '../auth/authService';
-import { LocalPythonExecutionService } from './localPythonExecutionService';
+import {
+  LocalExecutionMetadata,
+  LocalPythonExecutionService,
+  PythonCommandUnavailableError,
+  usesPythonRuntime,
+} from './localPythonExecutionService';
+import { PythonCommandUi } from './pythonCommandController';
 import { SubmissionFileRepository } from '../submissions/submissionFileRepository';
 
 const RUNNABLE_ASSIGNMENT_CONTEXT =
   'aaltoOpenCsIde.currentAssignmentRunnable';
+const SHELL_INTEGRATION_TIMEOUT_MS = 3000;
 
 /** Owns local-run UI, saving, compact activity, and terminal creation. */
 export class LocalPythonExecutionController implements vscode.Disposable {
@@ -21,6 +27,14 @@ export class LocalPythonExecutionController implements vscode.Disposable {
   private readonly terminalClosedListener = vscode.window.onDidCloseTerminal(
     (terminal) => this.terminals.delete(terminal),
   );
+  private readonly pythonExecutions =
+    new WeakSet<vscode.TerminalShellExecution>();
+  private readonly executionEndListener =
+    vscode.window.onDidEndTerminalShellExecution((event) => {
+      if (this.pythonExecutions.delete(event.execution)) {
+        void this.pythonCommandUi.handleRunExit(event.exitCode);
+      }
+    });
 
   public constructor(
     private readonly service: LocalPythonExecutionService,
@@ -30,6 +44,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     private readonly currentAssignmentRepository: CurrentAssignmentRepository,
     private readonly submissionFileRepository: SubmissionFileRepository,
     private readonly activityRepository: AssignmentActivityRepository,
+    private readonly pythonCommandUi: PythonCommandUi,
   ) {}
 
   public async updateRunContext(): Promise<void> {
@@ -38,10 +53,10 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     const runnable = Boolean(
       vscode.env.uiKind === vscode.UIKind.Desktop &&
       vscode.workspace.isTrusted &&
-      resolved && this.service.supports(resolved.assignment) &&
+      resolved && this.service.supports(resolved.metadata) &&
       await this.service.hasEntrypoint(
         resolved.folder,
-        resolved.publicTestRunner,
+        resolved.metadata.publicTestRunner,
       ),
     );
     if (sequence !== this.contextSequence) {
@@ -76,7 +91,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       );
       return;
     }
-    if (!this.service.supports(resolved.assignment)) {
+    if (!this.service.supports(resolved.metadata)) {
       await vscode.window.showInformationMessage(
         'Local running is not available for this assignment.',
       );
@@ -96,9 +111,8 @@ export class LocalPythonExecutionController implements vscode.Disposable {
         files,
       }).catch(() => undefined);
       const run = await this.service.prepare(
-        resolved.assignment,
+        resolved.metadata,
         resolved.folder,
-        resolved.publicTestRunner,
       );
       const terminal = vscode.window.createTerminal({
         name: `Aalto OpenCS: ${resolved.assignment.name}`,
@@ -106,8 +120,15 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       });
       this.terminals.add(terminal);
       terminal.show();
-      terminal.sendText(run.command, true);
+      const execution = await executeInTerminal(terminal, run.command);
+      if (execution && usesPythonRuntime(resolved.metadata)) {
+        this.pythonExecutions.add(execution);
+      }
     } catch (error: unknown) {
+      if (error instanceof PythonCommandUnavailableError) {
+        await this.pythonCommandUi.showPythonNotFound();
+        return;
+      }
       const message = error instanceof Error
         ? error.message
         : 'Running the assignment failed.';
@@ -117,6 +138,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
 
   public dispose(): void {
     this.terminalClosedListener.dispose();
+    this.executionEndListener.dispose();
     for (const terminal of this.terminals) {
       terminal.dispose();
     }
@@ -128,7 +150,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
     folder: vscode.Uri;
     userId: number;
     submissionFiles?: string[];
-    publicTestRunner?: PublicTestRunner;
+    metadata: LocalExecutionMetadata;
   } | undefined> {
     const session = await this.authService.getCurrentSession();
     if (!session) {
@@ -159,7 +181,7 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       ),
       userId: session.student.id,
       submissionFiles: metadata.submissionFiles,
-      publicTestRunner: metadata.publicTestRunner,
+      metadata,
     };
   }
 
@@ -174,6 +196,40 @@ export class LocalPythonExecutionController implements vscode.Disposable {
       throw new Error('Save the assignment files before running the code.');
     }
   }
+}
+
+/** Runs through shell integration when available so the exit code is visible. */
+async function executeInTerminal(
+  terminal: vscode.Terminal,
+  command: string,
+): Promise<vscode.TerminalShellExecution | undefined> {
+  const shellIntegration = terminal.shellIntegration ??
+    await waitForShellIntegration(terminal);
+  if (!shellIntegration) {
+    terminal.sendText(command, true);
+    return undefined;
+  }
+  return shellIntegration.executeCommand(command);
+}
+
+function waitForShellIntegration(
+  terminal: vscode.Terminal,
+): Promise<vscode.TerminalShellIntegration | undefined> {
+  return new Promise((resolve) => {
+    const listener = vscode.window.onDidChangeTerminalShellIntegration(
+      (event) => {
+        if (event.terminal === terminal) {
+          clearTimeout(timer);
+          listener.dispose();
+          resolve(event.shellIntegration);
+        }
+      },
+    );
+    const timer = setTimeout(() => {
+      listener.dispose();
+      resolve(undefined);
+    }, SHELL_INTEGRATION_TIMEOUT_MS);
+  });
 }
 
 export function isEqualOrChild(

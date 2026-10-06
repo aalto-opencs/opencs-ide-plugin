@@ -1,5 +1,5 @@
-import { ProgrammingAssignment } from '../assignments/assignmentModels';
 import { CollectedSubmission } from '../submissions/submissionModels';
+import { LocalExecutionMetadata } from './localPythonExecutionService';
 
 export interface SyntaxCheckError {
   filePath: string;
@@ -12,13 +12,13 @@ export interface SyntaxCheckError {
 export type SyntaxCheckResult =
   | { status: 'passed'; checkedFiles: number }
   | { status: 'errors'; checkedFiles: number; errors: SyntaxCheckError[] }
-  | { status: 'unavailable'; message: string };
+  | { status: 'unavailable'; message: string; pythonNotFound?: boolean };
 
 export interface SyntaxCheckService {
   readonly languageLabel: string;
-  supports(assignment: ProgrammingAssignment): boolean;
+  supports(metadata: LocalExecutionMetadata): boolean;
   check(
-    assignment: ProgrammingAssignment,
+    metadata: LocalExecutionMetadata,
     prepared: CollectedSubmission,
   ): Promise<SyntaxCheckResult>;
 }
@@ -31,17 +31,17 @@ export class CompositeSyntaxCheckService implements SyntaxCheckService {
     private readonly services: readonly SyntaxCheckService[],
   ) {}
 
-  public supports(assignment: ProgrammingAssignment): boolean {
-    return this.findService(assignment) !== undefined;
+  public supports(metadata: LocalExecutionMetadata): boolean {
+    return this.findService(metadata) !== undefined;
   }
 
   public check(
-    assignment: ProgrammingAssignment,
+    metadata: LocalExecutionMetadata,
     prepared: CollectedSubmission,
   ): Promise<SyntaxCheckResult> {
-    const service = this.findService(assignment);
+    const service = this.findService(metadata);
     return service
-      ? service.check(assignment, prepared)
+      ? service.check(metadata, prepared)
       : Promise.resolve({
         status: 'unavailable',
         message: 'Syntax checking is not available for this assignment.',
@@ -49,8 +49,8 @@ export class CompositeSyntaxCheckService implements SyntaxCheckService {
   }
 
   private findService(
-    assignment: ProgrammingAssignment,
+    metadata: LocalExecutionMetadata,
   ): SyntaxCheckService | undefined {
-    return this.services.find((service) => service.supports(assignment));
+    return this.services.find((service) => service.supports(metadata));
   }
 }

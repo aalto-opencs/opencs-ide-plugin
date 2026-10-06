@@ -11,6 +11,12 @@ export function isPublicTestRunner(
     value === 'flutter-test';
 }
 
+export type LocalRuntime = 'python';
+
+export function isLocalRuntime(value: unknown): value is LocalRuntime {
+  return value === 'python';
+}
+
 export interface ProgrammingAssignment {
   exerciseUuid: string;
   name: string;
@@ -68,6 +74,7 @@ export interface AssignmentMetadata {
   contentHash: string;
   submissionFiles?: string[];
   publicTestRunner?: PublicTestRunner;
+  localRuntime?: LocalRuntime;
 }
 
 export interface DownloadedAssignment {

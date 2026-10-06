@@ -41,7 +41,7 @@ export async function detectPublicTestRunner(
   return undefined;
 }
 
-function normalizeArchivePath(path: string): string {
+export function normalizeArchivePath(path: string): string {
   return path.replace(/\\/g, '/').replace(/^\.\//, '');
 }
 

@@ -5,8 +5,9 @@ import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentFolderRepository } from './assignmentFolderRepository';
 import { CurrentAssignmentRepository } from './currentAssignmentRepository';
 import {
-  PYTHON_COURSE_SLUG,
+  LocalExecutionMetadata,
   PYTHON_ENTRYPOINT,
+  usesPythonRuntime,
 } from '../localExecution/localPythonExecutionService';
 import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from './publicTestRunnerDetector';
 
@@ -119,13 +120,9 @@ export class ExerciseTreeProvider implements
     );
     const runnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
       vscode.workspace.isTrusted &&
-      await this.hasRunnableEntrypoint(
-        folder,
-        assignment.courseSlug,
-        metadata.publicTestRunner,
-      );
-    const syntaxCheckRunnable = assignment.courseSlug === PYTHON_COURSE_SLUG ||
-      assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
+      await this.hasRunnableEntrypoint(folder, metadata);
+    const syntaxCheckRunnable = usesPythonRuntime(metadata) ||
+      metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
     const publicTestRunnable = vscode.env.uiKind === vscode.UIKind.Desktop &&
       vscode.workspace.isTrusted && Boolean(metadata.publicTestRunner);
     this.watch(folder);
@@ -247,17 +244,17 @@ export class ExerciseTreeProvider implements
 
   private async hasRunnableEntrypoint(
     folder: vscode.Uri,
-    courseSlug: string,
-    publicTestRunner?: string,
+    metadata: LocalExecutionMetadata,
   ): Promise<boolean> {
-    if (courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) {
+    const { publicTestRunner } = metadata;
+    if (metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) {
       return publicTestRunner === 'dart-main-test'
         ? await this.hasFile(folder, 'main.dart')
         : (publicTestRunner === 'dart-test' ||
             publicTestRunner === 'flutter-test') &&
           await this.hasFile(folder, 'pubspec.yaml');
     }
-    if (courseSlug !== PYTHON_COURSE_SLUG) {
+    if (!usesPythonRuntime(metadata)) {
       return false;
     }
     return this.hasFile(folder, PYTHON_ENTRYPOINT);

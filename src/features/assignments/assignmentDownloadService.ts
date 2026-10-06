@@ -6,6 +6,7 @@ import {
 } from './assignmentModels';
 import { AssignmentFileRepository } from './assignmentFileRepository';
 import { AssignmentRepository } from './assignmentRepository';
+import { detectLocalRuntime } from './localRuntimeDetector';
 import { detectPublicTestRunner } from './publicTestRunnerDetector';
 
 export class AssignmentDownloadService {
@@ -55,6 +56,9 @@ export class AssignmentDownloadService {
       assignment.courseSlug,
       archive,
     );
+    const localRuntime = publicTestRunner
+      ? undefined
+      : await detectLocalRuntime(archive);
 
     return this.fileRepository.writeAssignment(
       root,
@@ -65,6 +69,7 @@ export class AssignmentDownloadService {
       archive,
       overwrite,
       publicTestRunner,
+      localRuntime,
     );
   }
 
