@@ -52,6 +52,7 @@
     "onCommand:aaltoOpenCsIde.runCurrentAssignment",
     "onCommand:aaltoOpenCsIde.checkCurrentAssignmentSyntax",
     "onCommand:aaltoOpenCsIde.runCurrentPublicTests",
+    "onCommand:aaltoOpenCsIde.selectPythonCommand",
     "onView:aaltoOpenCsIde.authenticationSetup",
     "onView:aaltoOpenCsIde.folderSetup",
     "onView:aaltoOpenCsIde.courseSelection",
@@ -261,6 +262,10 @@
         "shortTitle": "Run Public Tests",
         "icon": "$(beaker)",
         "enablement": "aaltoOpenCsIde.currentAssignmentPublicTestRunnable"
+      },
+      {
+        "command": "aaltoOpenCsIde.selectPythonCommand",
+        "title": "Aalto OpenCS IDE: Select Python Command"
       }
     ],
     "menus": {
@@ -407,12 +412,6 @@
           "default": "https://opencs.aalto.fi",
           "scope": "machine",
           "description": "Website URL used for browser sign-in. Override this only for development or testing."
-        },
-        "aaltoOpenCsIde.pythonCommand": {
-          "type": "string",
-          "default": "",
-          "scope": "machine",
-          "description": "Command used to run Introduction to Programming assignments locally. Empty uses python3 on macOS/Linux and py on Windows. Python must be installed. Command arguments are supported; quote interpreter paths that contain spaces."
         }
       }
     }

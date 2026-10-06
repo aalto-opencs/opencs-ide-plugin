@@ -76,6 +76,8 @@ import { LocalPythonExecutionController } from '../features/localExecution/local
 import { LocalPythonExecutionService } from '../features/localExecution/localPythonExecutionService';
 import { PublicTestExecutionController } from '../features/localExecution/publicTestExecutionController';
 import { PublicTestExecutionService } from '../features/localExecution/publicTestExecutionService';
+import { PythonCommandController } from '../features/localExecution/pythonCommandController';
+import { PythonCommandService } from '../features/localExecution/pythonCommandService';
 import { PythonSyntaxCheckController } from '../features/localExecution/pythonSyntaxCheckController';
 import { PythonSyntaxCheckService } from '../features/localExecution/pythonSyntaxCheckService';
 import { DartFlutterSyntaxCheckService } from '../features/localExecution/dartFlutterSyntaxCheckService';
@@ -283,9 +285,13 @@ export function registerCommands(
     submissionService,
     authService,
   );
+  const pythonCommandController = new PythonCommandController(
+    new PythonCommandService(context.globalState),
+  );
+  const resolvePythonCommand = () => pythonCommandController.resolveCommand();
   const pythonSyntaxCheckController = new PythonSyntaxCheckController(
     new CompositeSyntaxCheckService([
-      new PythonSyntaxCheckService(),
+      new PythonSyntaxCheckService(resolvePythonCommand),
       new DartFlutterSyntaxCheckService(),
     ]),
     submissionService,
@@ -293,6 +299,7 @@ export function registerCommands(
     assignmentFolderRepository,
     assignmentFileRepository,
     currentAssignmentRepository,
+    pythonCommandController,
   );
   const submissionController = new SubmissionController(
     submissionService,
@@ -318,13 +325,14 @@ export function registerCommands(
     activityDeliveryService,
   );
   const localPythonExecutionController = new LocalPythonExecutionController(
-    new LocalPythonExecutionService(),
+    new LocalPythonExecutionService(resolvePythonCommand),
     authService,
     assignmentFolderRepository,
     assignmentFileRepository,
     currentAssignmentRepository,
     submissionFileRepository,
     assignmentActivityRepository,
+    pythonCommandController,
   );
   const publicTestExecutionController = new PublicTestExecutionController(
     new PublicTestExecutionService(),
@@ -684,12 +692,9 @@ export function registerCommands(
     'aaltoOpenCsIde.runCurrentPublicTests',
     () => publicTestExecutionController.runCurrentAssignment(),
   );
-  const pythonConfigurationListener = vscode.workspace.onDidChangeConfiguration(
-    (event) => {
-      if (event.affectsConfiguration('aaltoOpenCsIde.pythonCommand')) {
-        void localPythonExecutionController.updateRunContext();
-      }
-    },
+  const selectPythonCommandCommand = vscode.commands.registerCommand(
+    'aaltoOpenCsIde.selectPythonCommand',
+    () => pythonCommandController.selectCommand(),
   );
   const currentAssignmentAvailabilityListener =
     watchCurrentAssignmentAvailability(
@@ -857,7 +862,7 @@ export function registerCommands(
     runCurrentAssignmentCommand,
     checkCurrentAssignmentSyntaxCommand,
     runCurrentPublicTestsCommand,
-    pythonConfigurationListener,
+    selectPythonCommandCommand,
     currentAssignmentAvailabilityListener,
     workspaceTrustListener,
     localPythonExecutionController,

@@ -1,13 +1,37 @@
 import * as vscode from 'vscode';
 import {
+  AssignmentMetadata,
   isPublicTestRunner,
-  ProgrammingAssignment,
   PublicTestRunner,
 } from '../assignments/assignmentModels';
 import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from '../assignments/publicTestRunnerDetector';
 
-export const PYTHON_COURSE_SLUG = 'introduction-to-programming';
 export const PYTHON_ENTRYPOINT = 'main.py';
+
+// Downloads made before starter runtime detection have no localRuntime.
+const LEGACY_PYTHON_COURSE_SLUG = 'introduction-to-programming';
+
+/** Download facts that decide which local tools an assignment supports. */
+export type LocalExecutionMetadata = Pick<
+  AssignmentMetadata,
+  'courseSlug' | 'publicTestRunner' | 'localRuntime'
+>;
+
+export function usesPythonRuntime(metadata: LocalExecutionMetadata): boolean {
+  if (metadata.localRuntime !== undefined) {
+    return metadata.localRuntime === 'python';
+  }
+  return metadata.publicTestRunner === undefined &&
+    metadata.courseSlug === LEGACY_PYTHON_COURSE_SLUG;
+}
+
+/** Python could not be found; the command owner has already told the student. */
+export class PythonCommandUnavailableError extends Error {
+  public constructor() {
+    super('Python 3 was not found on this computer.');
+    this.name = 'PythonCommandUnavailableError';
+  }
+}
 
 export interface LocalPythonRun {
   cwd: vscode.Uri;
@@ -17,12 +41,12 @@ export interface LocalPythonRun {
 /** Validates and prepares a local Python command without owning terminal UI. */
 export class LocalPythonExecutionService {
   public constructor(
-    private readonly pythonCommandProvider: () => string = getPythonCommand,
+    private readonly pythonCommandProvider: () => Promise<string | undefined>,
   ) {}
 
-  public supports(assignment: ProgrammingAssignment): boolean {
-    return assignment.courseSlug === PYTHON_COURSE_SLUG ||
-      assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
+  public supports(metadata: LocalExecutionMetadata): boolean {
+    return usesPythonRuntime(metadata) ||
+      metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
   }
 
   public async hasEntrypoint(
@@ -43,16 +67,16 @@ export class LocalPythonExecutionService {
   }
 
   public async prepare(
-    assignment: ProgrammingAssignment,
+    metadata: LocalExecutionMetadata,
     folder: vscode.Uri,
-    publicTestRunner?: PublicTestRunner,
   ): Promise<LocalPythonRun> {
-    if (!this.supports(assignment)) {
+    if (!this.supports(metadata)) {
       throw new Error(
         'Local running is not available for this assignment.',
       );
     }
-    if (assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) {
+    const { publicTestRunner } = metadata;
+    if (metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) {
       if (!publicTestRunner || !isPublicTestRunner(publicTestRunner)) {
         throw new Error(
           'Redownload the assignment before running its Dart or Flutter code.',
@@ -76,11 +100,9 @@ export class LocalPythonExecutionService {
       throw new Error('The downloaded assignment does not contain main.py.');
     }
 
-    const pythonCommand = this.pythonCommandProvider().trim();
-    if (!pythonCommand || /[\r\n\0]/.test(pythonCommand)) {
-      throw new Error(
-        'Configure a valid Python command in aaltoOpenCsIde.pythonCommand.',
-      );
+    const pythonCommand = await this.pythonCommandProvider();
+    if (!pythonCommand) {
+      throw new PythonCommandUnavailableError();
     }
     return {
       cwd: folder,
@@ -98,12 +120,4 @@ export class LocalPythonExecutionService {
       return false;
     }
   }
-}
-
-export function getPythonCommand(): string {
-  const configured = vscode.workspace
-    .getConfiguration('aaltoOpenCsIde')
-    .get<string>('pythonCommand', '')
-    .trim();
-  return configured || (process.platform === 'win32' ? 'py' : 'python3');
 }

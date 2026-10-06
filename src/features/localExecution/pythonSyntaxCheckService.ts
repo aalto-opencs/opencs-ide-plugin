@@ -2,9 +2,11 @@ import { spawn } from 'child_process';
 import { mkdtemp, rm, writeFile, mkdir } from 'fs/promises';
 import { tmpdir } from 'os';
 import { dirname, join } from 'path';
-import { ProgrammingAssignment } from '../assignments/assignmentModels';
 import { CollectedSubmission } from '../submissions/submissionModels';
-import { getPythonCommand, PYTHON_COURSE_SLUG } from './localPythonExecutionService';
+import {
+  LocalExecutionMetadata,
+  usesPythonRuntime,
+} from './localPythonExecutionService';
 import {
   SyntaxCheckError,
   SyntaxCheckResult,
@@ -19,6 +21,13 @@ interface PythonProcessResult {
   stdout: string;
 }
 
+const PYTHON_NOT_FOUND_RESULT: PythonSyntaxCheckResult = {
+  status: 'unavailable',
+  message: 'Python 3 was not found on this computer. Install Python or choose ' +
+    'a command with Aalto OpenCS IDE: Select Python Command.',
+  pythonNotFound: true,
+};
+
 type PythonExecutor = (
   command: string,
   files: Record<string, string>,
@@ -29,22 +38,22 @@ export class PythonSyntaxCheckService implements SyntaxCheckService {
   public readonly languageLabel = 'Python';
 
   public constructor(
-    private readonly pythonCommandProvider: () => string = getPythonCommand,
+    private readonly pythonCommandProvider: () => Promise<string | undefined>,
     private readonly execute: PythonExecutor = executePythonCheck,
   ) {}
 
-  public supports(assignment: ProgrammingAssignment): boolean {
-    return assignment.courseSlug === PYTHON_COURSE_SLUG;
+  public supports(metadata: LocalExecutionMetadata): boolean {
+    return usesPythonRuntime(metadata);
   }
 
   public async check(
-    assignment: ProgrammingAssignment,
+    metadata: LocalExecutionMetadata,
     prepared: CollectedSubmission,
   ): Promise<PythonSyntaxCheckResult> {
-    if (!this.supports(assignment)) {
+    if (!this.supports(metadata)) {
       return {
         status: 'unavailable',
-        message: 'Syntax checking is currently available only for Introduction to Programming assignments.',
+        message: 'Syntax checking is available only for Python assignments.',
       };
     }
 
@@ -60,12 +69,9 @@ export class PythonSyntaxCheckService implements SyntaxCheckService {
       };
     }
 
-    const command = this.pythonCommandProvider().trim();
-    if (!command || /[\r\n\0]/.test(command)) {
-      return {
-        status: 'unavailable',
-        message: 'Configure a valid Python command in aaltoOpenCsIde.pythonCommand.',
-      };
+    const command = await this.pythonCommandProvider();
+    if (!command) {
+      return PYTHON_NOT_FOUND_RESULT;
     }
 
     try {
@@ -81,13 +87,13 @@ export class PythonSyntaxCheckService implements SyntaxCheckService {
           message: 'Python could not complete the syntax check.',
         };
     } catch (error: unknown) {
-      return {
-        status: 'unavailable',
-        message: error instanceof Error && 'code' in error &&
-            error.code === 'ENOENT'
-          ? 'Python was not found. Configure aaltoOpenCsIde.pythonCommand.'
-          : 'Python could not complete the syntax check.',
-      };
+      return error instanceof Error && 'code' in error &&
+          error.code === 'ENOENT'
+        ? PYTHON_NOT_FOUND_RESULT
+        : {
+          status: 'unavailable',
+          message: 'Python could not complete the syntax check.',
+        };
     }
   }
 }
@@ -131,7 +137,7 @@ export function parsePythonCommand(command: string): string[] {
     current += '\\';
   }
   if (quote) {
-    throw new Error('The configured Python command contains an unmatched quote.');
+    throw new Error('The Python command contains an unmatched quote.');
   }
   if (current) {
     parts.push(current);

@@ -1,7 +1,10 @@
 import * as vscode from 'vscode';
 import { AssignmentFileRepository } from '../assignments/assignmentFileRepository';
 import { AssignmentFolderRepository } from '../assignments/assignmentFolderRepository';
-import { ProgrammingAssignment } from '../assignments/assignmentModels';
+import {
+  AssignmentMetadata,
+  ProgrammingAssignment,
+} from '../assignments/assignmentModels';
 import { CurrentAssignmentRepository } from '../assignments/currentAssignmentRepository';
 import { AuthService } from '../auth/authService';
 import { CollectedSubmission } from '../submissions/submissionModels';
@@ -11,6 +14,7 @@ import {
 } from './pythonSyntaxCheckService';
 import { SyntaxCheckService } from './syntaxCheckService';
 import { isEqualOrChild } from './localPythonExecutionController';
+import { PythonCommandUi } from './pythonCommandController';
 
 export type SubmissionSyntaxDecision = 'passed' | 'continue' | 'cancel';
 const SYNTAX_CHECK_CONTEXT = 'aaltoOpenCsIde.currentAssignmentSyntaxRunnable';
@@ -31,6 +35,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
     private readonly folderRepository: AssignmentFolderRepository,
     private readonly assignmentFileRepository: AssignmentFileRepository,
     private readonly currentAssignmentRepository: CurrentAssignmentRepository,
+    private readonly pythonCommandUi: PythonCommandUi,
   ) {}
 
   public async updateSyntaxContext(): Promise<void> {
@@ -39,7 +44,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
       'setContext',
       SYNTAX_CHECK_CONTEXT,
       vscode.env.uiKind === vscode.UIKind.Desktop &&
-        Boolean(resolved && this.service.supports(resolved.assignment)),
+        Boolean(resolved && this.service.supports(resolved.metadata)),
     );
   }
 
@@ -57,7 +62,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
       );
       return;
     }
-    if (!this.service.supports(resolved.assignment)) {
+    if (!this.service.supports(resolved.metadata)) {
       await vscode.window.showInformationMessage(
         'Syntax checking is not available for this assignment.',
       );
@@ -66,18 +71,9 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
 
     try {
       await this.saveAssignmentDocuments(resolved.folder);
-      const metadata = await this.assignmentFileRepository
-        .getDownloadedAssignmentMetadata(
-          resolved.root,
-          resolved.studentEmail,
-          resolved.assignment,
-        );
-      if (!metadata) {
-        throw new Error('Download this assignment before checking its syntax.');
-      }
       const prepared = await this.submissionService.prepare(
         resolved.folder,
-        metadata.submissionFiles,
+        resolved.metadata.submissionFiles,
       );
       const result = await vscode.window.withProgress(
         {
@@ -85,7 +81,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
           title: `Checking syntax for ${resolved.assignment.name}`,
           cancellable: false,
         },
-        () => this.service.check(resolved.assignment, prepared),
+        () => this.service.check(resolved.metadata, prepared),
       );
       await this.presentManualResult(prepared, result);
     } catch (error: unknown) {
@@ -97,10 +93,11 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
 
   public async checkForSubmission(
     assignment: ProgrammingAssignment,
+    metadata: AssignmentMetadata,
     prepared: CollectedSubmission,
   ): Promise<SubmissionSyntaxDecision> {
     if (vscode.env.uiKind !== vscode.UIKind.Desktop ||
-        !this.service.supports(assignment)) {
+        !this.service.supports(metadata)) {
       return 'continue';
     }
     const result = await vscode.window.withProgress(
@@ -109,7 +106,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
         title: `Checking syntax for ${assignment.name}`,
         cancellable: false,
       },
-      () => this.service.check(assignment, prepared),
+      () => this.service.check(metadata, prepared),
     );
     this.setDiagnostics(prepared, result);
     if (result.status === 'passed') {
@@ -159,6 +156,8 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
       void vscode.window.showErrorMessage(
         `Syntax check found ${result.errors.length} ${result.errors.length === 1 ? 'error' : 'errors'}. The first error has been opened.`,
       );
+    } else if (result.pythonNotFound) {
+      await this.pythonCommandUi.showPythonNotFound();
     } else {
       await vscode.window.showWarningMessage(result.message);
     }
@@ -218,8 +217,7 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
   private async resolveCurrentAssignment(): Promise<{
     assignment: ProgrammingAssignment;
     folder: vscode.Uri;
-    root: vscode.Uri;
-    studentEmail: string;
+    metadata: AssignmentMetadata;
   } | undefined> {
     const session = await this.authService.getCurrentSession();
     if (!session) {
@@ -227,18 +225,21 @@ export class PythonSyntaxCheckController implements vscode.Disposable {
     }
     const assignment = this.currentAssignmentRepository.get(session.student.id);
     const root = this.folderRepository.getRoot(session.student.id);
-    if (!assignment || !root ||
-        !await this.assignmentFileRepository.isDownloadedAssignment(
-          root,
-          session.student.email,
-          assignment,
-        ).catch(() => false)) {
+    if (!assignment || !root) {
+      return undefined;
+    }
+    const metadata = await this.assignmentFileRepository
+      .getDownloadedAssignmentMetadata(
+        root,
+        session.student.email,
+        assignment,
+      ).catch(() => undefined);
+    if (!metadata) {
       return undefined;
     }
     return {
       assignment,
-      root,
-      studentEmail: session.student.email,
+      metadata,
       folder: this.assignmentFileRepository.getAssignmentFolder(
         root,
         session.student.email,

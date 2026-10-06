@@ -16,6 +16,7 @@ import {
   AssignmentLockedError,
   AssignmentRepository,
 } from '../features/assignments/assignmentRepository';
+import { detectLocalRuntime } from '../features/assignments/localRuntimeDetector';
 import { detectPublicTestRunner } from '../features/assignments/publicTestRunnerDetector';
 import { ApiClient } from '../infrastructure/apiClient';
 import {
@@ -38,6 +39,12 @@ const crossPlatformAssignment: ProgrammingAssignment = {
   exerciseUuid: '22222222-2222-4222-8222-222222222222',
   name: 'Dart exercise',
   courseSlug: 'cross-platform-development',
+};
+const pythonTestCourseAssignment: ProgrammingAssignment = {
+  ...assignment,
+  exerciseUuid: '33333333-3333-4333-8333-333333333333',
+  name: 'Python exercise',
+  courseSlug: 'introduction-to-programming-test',
 };
 
 suite('Assignment download', () => {
@@ -541,6 +548,101 @@ suite('Assignment download', () => {
         );
 
       assert.strictEqual(metadata?.publicTestRunner, 'dart-test');
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('detects the Python runtime only from a root main.py', async () => {
+    const python = new JSZip();
+    python.file('./main.py', 'print("Hello")\n');
+    const nested = new JSZip();
+    nested.file('src/main.py', 'print("Hello")\n');
+
+    assert.strictEqual(
+      await detectLocalRuntime(
+        await python.generateAsync({ type: 'uint8array' }),
+      ),
+      'python',
+    );
+    assert.strictEqual(
+      await detectLocalRuntime(
+        await nested.generateAsync({ type: 'uint8array' }),
+      ),
+      undefined,
+    );
+    assert.strictEqual(
+      await detectLocalRuntime(await createStarterArchive()),
+      undefined,
+    );
+  });
+
+  test('persists the Python runtime from the starter for any course', async () => {
+    const root = await createTemporaryRoot();
+    const archive = new JSZip();
+    archive.file('main.py', 'print("Hello")\n');
+
+    try {
+      const service = new AssignmentDownloadService(
+        createAssignmentRepository(
+          await archive.generateAsync({ type: 'uint8array' }),
+          null,
+          pythonTestCourseAssignment,
+        ),
+        new AssignmentFileRepository(),
+      );
+      await service.download(
+        pythonTestCourseAssignment,
+        vscode.Uri.file(root),
+        userEmail,
+      );
+      const metadata = await new AssignmentFileRepository()
+        .getDownloadedAssignmentMetadata(
+          vscode.Uri.file(root),
+          userEmail,
+          pythonTestCourseAssignment,
+        );
+
+      assert.strictEqual(metadata?.localRuntime, 'python');
+      assert.strictEqual(metadata?.publicTestRunner, undefined);
+    } finally {
+      await rm(root, { recursive: true, force: true });
+    }
+  });
+
+  test('rejects metadata that claims both a runtime and a public-test runner', async () => {
+    const root = await createTemporaryRoot();
+    const files = new AssignmentFileRepository();
+    const folder = files.getAssignmentFolder(
+      vscode.Uri.file(root),
+      userEmail,
+      crossPlatformAssignment,
+    );
+
+    try {
+      await vscode.workspace.fs.createDirectory(folder);
+      await writeFile(
+        join(folder.fsPath, '.aalto-opencs-assignment.json'),
+        JSON.stringify({
+          schemaVersion: 3,
+          exerciseUuid: crossPlatformAssignment.exerciseUuid,
+          exerciseType: 'programming-exercise',
+          courseSlug: crossPlatformAssignment.courseSlug,
+          courseInstanceId: crossPlatformAssignment.courseInstanceId,
+          contentHash: '0123456789abcdef0123456789abcdef',
+          publicTestRunner: 'dart-test',
+          localRuntime: 'python',
+        }),
+      );
+
+      assert.strictEqual(
+        await files.getDownloadedAssignmentMetadata(
+          vscode.Uri.file(root),
+          userEmail,
+          crossPlatformAssignment,
+        ),
+        undefined,
+      );
     } finally {
       await rm(root, { recursive: true, force: true });
     }

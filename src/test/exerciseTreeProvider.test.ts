@@ -163,6 +163,49 @@ suite('ExerciseTreeProvider', function () {
         'aaltoOpenCsIde.runCurrentAssignment',
       );
 
+      const testCourseAssignment: ProgrammingAssignment = {
+        ...pythonAssignment,
+        exerciseUuid: 'exercise-python-test-course',
+        courseSlug: 'introduction-to-programming-test',
+      };
+      const testCourseFolder = files.getAssignmentFolder(
+        root,
+        session.student.email,
+        testCourseAssignment,
+      );
+      await mkdir(testCourseFolder.fsPath, { recursive: true });
+      await writeFile(
+        vscode.Uri.joinPath(
+          testCourseFolder,
+          '.aalto-opencs-assignment.json',
+        ).fsPath,
+        JSON.stringify({
+          schemaVersion: 3,
+          exerciseUuid: testCourseAssignment.exerciseUuid,
+          exerciseType: testCourseAssignment.type,
+          courseSlug: testCourseAssignment.courseSlug,
+          courseInstanceId: testCourseAssignment.courseInstanceId,
+          contentHash: '0123456789abcdef0123456789abcdef',
+          localRuntime: 'python',
+        }),
+      );
+      await writeFile(
+        vscode.Uri.joinPath(testCourseFolder, 'main.py').fsPath,
+        'print("Hello")',
+      );
+      await current.save(session.student.id, testCourseAssignment);
+      assert.deepStrictEqual(
+        (await provider.getChildren())
+          .slice(0, 4)
+          .map((item) => String(item.label)),
+        [
+          'Show Assignment Handout',
+          'Run Current Exercise',
+          'Check Syntax',
+          'Submit Current Exercise',
+        ],
+      );
+
       const otherExerciseFolder = vscode.Uri.joinPath(root, 'other-exercise');
       const otherMainFile = vscode.Uri.joinPath(otherExerciseFolder, 'main.ts');
       await mkdir(otherExerciseFolder.fsPath, { recursive: true });

@@ -3,10 +3,11 @@ import { mkdtemp, rm, writeFile } from 'fs/promises';
 import { tmpdir } from 'os';
 import { join } from 'path';
 import * as vscode from 'vscode';
-import { ProgrammingAssignment } from '../features/assignments/assignmentModels';
 import { isEqualOrChild } from '../features/localExecution/localPythonExecutionController';
 import {
+  LocalExecutionMetadata,
   LocalPythonExecutionService,
+  PythonCommandUnavailableError,
 } from '../features/localExecution/localPythonExecutionService';
 import {
   PublicTestExecutionService,
@@ -19,28 +20,35 @@ import {
   PythonSyntaxCheckService,
 } from '../features/localExecution/pythonSyntaxCheckService';
 
-const pythonAssignment: ProgrammingAssignment = {
-  exerciseUuid: 'python-exercise',
-  name: 'Printing a greeting',
-  type: 'programming-exercise',
-  courseSlug: 'introduction-to-programming',
-  courseInstanceId: 1,
+const pythonMetadata: LocalExecutionMetadata = {
+  courseSlug: 'introduction-to-programming-test',
+  localRuntime: 'python',
 };
 
-const crossPlatformAssignment: ProgrammingAssignment = {
-  ...pythonAssignment,
-  exerciseUuid: 'dart-exercise',
-  name: 'Dart exercise',
+const crossPlatformMetadata: LocalExecutionMetadata = {
   courseSlug: 'cross-platform-development',
 };
 
 suite('LocalPythonExecutionService', () => {
-  test('supports only the Introduction to Programming course', () => {
-    const service = new LocalPythonExecutionService(() => 'python3');
-    assert.strictEqual(service.supports(pythonAssignment), true);
+  test('supports the Python runtime detected from the starter in any course', () => {
+    const service = new LocalPythonExecutionService(async () => 'python3');
+    assert.strictEqual(service.supports(pythonMetadata), true);
     assert.strictEqual(service.supports({
-      ...pythonAssignment,
+      courseSlug: 'databases',
+      localRuntime: 'python',
+    }), true);
+    assert.strictEqual(service.supports({
       courseSlug: 'web-software-development',
+    }), false);
+  });
+
+  test('keeps legacy Introduction to Programming downloads runnable', () => {
+    const service = new LocalPythonExecutionService(async () => 'python3');
+    assert.strictEqual(service.supports({
+      courseSlug: 'introduction-to-programming',
+    }), true);
+    assert.strictEqual(service.supports({
+      courseSlug: 'introduction-to-programming-test',
     }), false);
   });
 
@@ -49,8 +57,8 @@ suite('LocalPythonExecutionService', () => {
     const folder = vscode.Uri.file(temporaryRoot);
     await writeFile(join(temporaryRoot, 'main.py'), 'print("Hello")\n');
     try {
-      const service = new LocalPythonExecutionService(() => 'python3 -u');
-      const run = await service.prepare(pythonAssignment, folder);
+      const service = new LocalPythonExecutionService(async () => 'python3 -u');
+      const run = await service.prepare(pythonMetadata, folder);
       assert.strictEqual(run.cwd.toString(), folder.toString());
       assert.strictEqual(run.command, 'python3 -u main.py');
     } finally {
@@ -61,9 +69,9 @@ suite('LocalPythonExecutionService', () => {
   test('rejects a downloaded assignment without main.py', async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-python-run-'));
     try {
-      const service = new LocalPythonExecutionService(() => 'python3');
+      const service = new LocalPythonExecutionService(async () => 'python3');
       await assert.rejects(
-        () => service.prepare(pythonAssignment, vscode.Uri.file(temporaryRoot)),
+        () => service.prepare(pythonMetadata, vscode.Uri.file(temporaryRoot)),
         /does not contain main\.py/,
       );
     } finally {
@@ -71,16 +79,14 @@ suite('LocalPythonExecutionService', () => {
     }
   });
 
-  test('rejects unsafe multiline Python commands', async () => {
+  test('reports when no Python command is available', async () => {
     const temporaryRoot = await mkdtemp(join(tmpdir(), 'aalto-python-run-'));
     await writeFile(join(temporaryRoot, 'main.py'), '');
     try {
-      const service = new LocalPythonExecutionService(
-        () => 'python3\nunexpected',
-      );
+      const service = new LocalPythonExecutionService(async () => undefined);
       await assert.rejects(
-        () => service.prepare(pythonAssignment, vscode.Uri.file(temporaryRoot)),
-        /valid Python command/,
+        () => service.prepare(pythonMetadata, vscode.Uri.file(temporaryRoot)),
+        PythonCommandUnavailableError,
       );
     } finally {
       await rm(temporaryRoot, { recursive: true, force: true });
@@ -92,28 +98,25 @@ suite('LocalPythonExecutionService', () => {
     try {
       await writeFile(join(temporaryRoot, 'main.dart'), 'void main() {}\n');
       await writeFile(join(temporaryRoot, 'pubspec.yaml'), 'name: sample\n');
-      const service = new LocalPythonExecutionService(() => 'python3');
+      const service = new LocalPythonExecutionService(async () => 'python3');
       assert.strictEqual(
         (await service.prepare(
-          crossPlatformAssignment,
+          { ...crossPlatformMetadata, publicTestRunner: 'dart-main-test' },
           vscode.Uri.file(temporaryRoot),
-          'dart-main-test',
         )).command,
         'dart run main.dart',
       );
       assert.strictEqual(
         (await service.prepare(
-          crossPlatformAssignment,
+          { ...crossPlatformMetadata, publicTestRunner: 'dart-test' },
           vscode.Uri.file(temporaryRoot),
-          'dart-test',
         )).command,
         'dart run',
       );
       assert.strictEqual(
         (await service.prepare(
-          crossPlatformAssignment,
+          { ...crossPlatformMetadata, publicTestRunner: 'flutter-test' },
           vscode.Uri.file(temporaryRoot),
-          'flutter-test',
         )).command,
         'flutter run',
       );
@@ -165,14 +168,14 @@ suite('PythonSyntaxCheckService', () => {
   test('checks only submitted Python files', async () => {
     let checkedFiles: Record<string, string> | undefined;
     const service = new PythonSyntaxCheckService(
-      () => 'python3',
+      async () => 'python3',
       async (_command, files) => {
         checkedFiles = files;
         return { exitCode: 0, stdout: '[]' };
       },
     );
 
-    const result = await service.check(pythonAssignment, {
+    const result = await service.check(pythonMetadata, {
       folder: vscode.Uri.file('/assignment'),
       files: {
         'main.py': 'print("Hello")\n',
@@ -190,7 +193,7 @@ suite('PythonSyntaxCheckService', () => {
 
   test('returns structured Python syntax errors', async () => {
     const service = new PythonSyntaxCheckService(
-      () => 'python3',
+      async () => 'python3',
       async () => ({
         exitCode: 1,
         stdout: JSON.stringify([{
@@ -202,7 +205,7 @@ suite('PythonSyntaxCheckService', () => {
       }),
     );
 
-    const result = await service.check(pythonAssignment, {
+    const result = await service.check(pythonMetadata, {
       folder: vscode.Uri.file('/assignment'),
       files: { 'main.py': 'print("Hello"\n' },
     });
@@ -217,6 +220,40 @@ suite('PythonSyntaxCheckService', () => {
         message: "'(' was never closed",
       }],
     });
+  });
+
+  test('reports Python as not found when no command is available', async () => {
+    const prepared = {
+      folder: vscode.Uri.file('/assignment'),
+      files: { 'main.py': 'print("Hello")\n' },
+    };
+    const missingCommand = new PythonSyntaxCheckService(async () => undefined);
+    const missingExecutable = new PythonSyntaxCheckService(
+      async () => 'python3',
+      async () => {
+        throw Object.assign(new Error('spawn python3 ENOENT'), {
+          code: 'ENOENT',
+        });
+      },
+    );
+
+    for (const service of [missingCommand, missingExecutable]) {
+      const result = await service.check(pythonMetadata, prepared);
+      assert.strictEqual(result.status, 'unavailable');
+      assert.strictEqual(
+        result.status === 'unavailable' && result.pythonNotFound,
+        true,
+      );
+    }
+  });
+
+  test('supports the starter-detected Python runtime and legacy downloads', () => {
+    const service = new PythonSyntaxCheckService(async () => 'python3');
+    assert.strictEqual(service.supports(pythonMetadata), true);
+    assert.strictEqual(service.supports({
+      courseSlug: 'introduction-to-programming',
+    }), true);
+    assert.strictEqual(service.supports(crossPlatformMetadata), false);
   });
 
   test('parses configured interpreter paths and arguments', () => {
@@ -246,7 +283,7 @@ suite('DartFlutterSyntaxCheckService', () => {
         };
       },
     );
-    const result = await service.check(crossPlatformAssignment, {
+    const result = await service.check(crossPlatformMetadata, {
       folder,
       files: {
         'pubspec.yaml': 'name: sample\n',
@@ -282,7 +319,7 @@ suite('DartFlutterSyntaxCheckService', () => {
         return { exitCode: 0, stdout: '' };
       },
     );
-    const result = await service.check(crossPlatformAssignment, {
+    const result = await service.check(crossPlatformMetadata, {
       folder: vscode.Uri.file('/assignment'),
       files: {
         'pubspec.yaml': 'dependencies:\n  flutter:\n    sdk: flutter\n',
@@ -305,7 +342,7 @@ suite('DartFlutterSyntaxCheckService', () => {
       ].join('\n'),
     }));
 
-    const result = await service.check(crossPlatformAssignment, {
+    const result = await service.check(crossPlatformMetadata, {
       folder,
       files: {
         'pubspec.yaml': 'dependencies:\n  flutter:\n    sdk: flutter\n',
@@ -345,7 +382,7 @@ suite('DartFlutterSyntaxCheckService', () => {
       ].join('\n'),
     }));
 
-    const result = await service.check(crossPlatformAssignment, {
+    const result = await service.check(crossPlatformMetadata, {
       folder,
       files: {
         'pubspec.yaml': 'dependencies:\n  flutter:\n    sdk: flutter\n',

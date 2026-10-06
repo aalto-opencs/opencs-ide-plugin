@@ -115,7 +115,7 @@ export class SubmissionController {
       );
       const filePaths = Object.keys(prepared.files).sort();
       const syntaxDecision = await this.syntaxCheckController
-        ?.checkForSubmission(assignment, prepared) ?? 'continue';
+        ?.checkForSubmission(assignment, metadata, prepared) ?? 'continue';
       if (syntaxDecision === 'cancel') {
         return;
       }

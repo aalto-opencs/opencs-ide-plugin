@@ -4,10 +4,12 @@ import * as vscode from 'vscode';
 import {
   AssignmentMetadata,
   DownloadedAssignment,
+  LocalRuntime,
   PROGRAMMING_EXERCISE_TYPE,
   ProgrammingAssignment,
   ProgrammingExerciseStarter,
   PublicTestRunner,
+  isLocalRuntime,
   isPublicTestRunner,
 } from './assignmentModels';
 import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from './publicTestRunnerDetector';
@@ -93,6 +95,7 @@ export class AssignmentFileRepository {
     archiveBytes: Uint8Array,
     overwrite = false,
     publicTestRunner?: PublicTestRunner,
+    localRuntime?: LocalRuntime,
   ): Promise<DownloadedAssignment> {
     const submissionFiles = validateSubmissionFiles(starter.submission_files);
     if (archiveBytes.byteLength > MAX_ARCHIVE_BYTES) {
@@ -193,6 +196,7 @@ export class AssignmentFileRepository {
         contentHash,
         ...(submissionFiles ? { submissionFiles } : {}),
         ...(publicTestRunner ? { publicTestRunner } : {}),
+        ...(localRuntime ? { localRuntime } : {}),
       };
       await vscode.workspace.fs.writeFile(
         vscode.Uri.joinPath(temporaryFolder, METADATA_FILENAME),
@@ -409,7 +413,10 @@ function isMatchingMetadata(
     (metadata.publicTestRunner === undefined ||
       isPublicTestRunner(metadata.publicTestRunner)) &&
     (metadata.publicTestRunner === undefined ||
-      metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG);
+      metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG) &&
+    (metadata.localRuntime === undefined ||
+      (isLocalRuntime(metadata.localRuntime) &&
+        metadata.publicTestRunner === undefined));
 
   return versionIsValid &&
     metadata.exerciseUuid === assignment.exerciseUuid &&

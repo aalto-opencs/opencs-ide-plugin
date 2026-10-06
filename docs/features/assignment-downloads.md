@@ -54,7 +54,8 @@ copy while protecting the old copy if preparation or installation fails.
 - Generated metadata records the exercise, course, course instance, content
   hash, schema version, any validated submission-file allowlist, and—when a
   supported Cross-Platform Development starter is detected—one closed public
-  test runner value.
+  test runner value, or—when the starter has a root-level `main.py` and no
+  public-test runner—the closed local runtime value `python`.
 - Public-test runner detection uses the original starter archive. Supported
   shapes are root-level `main_test.dart`, Dart package tests under `test/`, and
   Flutter tests under `test/`; ambiguous or unsupported layouts receive no

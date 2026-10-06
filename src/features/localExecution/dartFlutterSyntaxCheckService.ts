@@ -1,8 +1,8 @@
 import * as path from 'path';
 import * as vscode from 'vscode';
 import { CROSS_PLATFORM_DEVELOPMENT_SLUG } from '../assignments/publicTestRunnerDetector';
-import { ProgrammingAssignment } from '../assignments/assignmentModels';
 import { CollectedSubmission } from '../submissions/submissionModels';
+import { LocalExecutionMetadata } from './localPythonExecutionService';
 import {
   SyntaxCheckError,
   SyntaxCheckResult,
@@ -28,15 +28,15 @@ export class DartFlutterSyntaxCheckService implements SyntaxCheckService {
       executeAnalyzer(executable, args, cwd, { shell: vscode.env.shell }),
   ) {}
 
-  public supports(assignment: ProgrammingAssignment): boolean {
-    return assignment.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
+  public supports(metadata: LocalExecutionMetadata): boolean {
+    return metadata.courseSlug === CROSS_PLATFORM_DEVELOPMENT_SLUG;
   }
 
   public async check(
-    assignment: ProgrammingAssignment,
+    metadata: LocalExecutionMetadata,
     prepared: CollectedSubmission,
   ): Promise<SyntaxCheckResult> {
-    if (!this.supports(assignment)) {
+    if (!this.supports(metadata)) {
       return {
         status: 'unavailable',
         message: 'Syntax checking is not available for this assignment.',
