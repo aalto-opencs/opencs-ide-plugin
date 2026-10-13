@@ -50,10 +50,15 @@ npx extest get-chromedriver --storage "$storage" --code_version "$code_version"
 npx extest install-vsix --storage "$storage" --extensions_dir "$extensions" \
   --vsix_file "$vsix"
 
+# The CLI forwards the callback through a short-lived Electron process. On
+# Linux it needs the same sandbox flags ExTester gives the test window, or it
+# exits before forwarding anything.
 if [ "$(uname)" = Darwin ]; then
   code_cli="$storage/Visual Studio Code.app/Contents/Resources/app/bin/code"
+  cli_flags=""
 else
   code_cli="$storage/VSCode-linux-x64/bin/code"
+  cli_flags="--no-sandbox --disable-gpu-sandbox"
 fi
 
 mkdir -p "$browser"
@@ -64,7 +69,7 @@ exec >> "$browser/open.log" 2>&1
 echo "\$(date -u +%FT%TZ) stand-in browser started with \$# argument(s)"
 callback=\$(curl --silent --show-error --output /dev/null --write-out '%{redirect_url}' "\${@: -1}")
 echo "sign-in page redirected to \${callback%%\?*}"
-"$code_cli" --user-data-dir "$storage/settings" --open-url "\$callback"
+"$code_cli" $cli_flags --user-data-dir "$storage/settings" --open-url "\$callback"
 echo "VS Code CLI exited with \$?"
 SCRIPT
 chmod +x "$browser/open.sh"
