@@ -57,10 +57,15 @@ else
 fi
 
 mkdir -p "$browser"
+# The log records each step but never the authorization code or state.
 cat > "$browser/open.sh" <<SCRIPT
 #!/usr/bin/env bash
-callback=\$(curl --silent --output /dev/null --write-out '%{redirect_url}' "\${@: -1}")
-exec "$code_cli" --user-data-dir "$storage/settings" --open-url "\$callback"
+exec >> "$browser/open.log" 2>&1
+echo "\$(date -u +%FT%TZ) stand-in browser started with \$# argument(s)"
+callback=\$(curl --silent --show-error --output /dev/null --write-out '%{redirect_url}' "\${@: -1}")
+echo "sign-in page redirected to \${callback%%\?*}"
+"$code_cli" --user-data-dir "$storage/settings" --open-url "\$callback"
+echo "VS Code CLI exited with \$?"
 SCRIPT
 chmod +x "$browser/open.sh"
 
