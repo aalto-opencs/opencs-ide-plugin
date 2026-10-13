@@ -430,9 +430,13 @@
     "pretest": "npm run compile-tests && npm run compile && npm run lint",
     "check-types": "tsc --noEmit",
     "lint": "eslint src",
-    "test": "vscode-test --code-version 1.130.0",
+    "test": "vscode-test",
+    "test:ui": "./scripts/run-ui-tests.sh",
     "test:integration": "./scripts/run-integration-tests.sh",
     "test:backend-auth": "./scripts/run-integration-tests.sh"
+  },
+  "config": {
+    "vscodeTestVersion": "1.130.0"
   },
   "devDependencies": {
     "@types/mocha": "^10.0.10",

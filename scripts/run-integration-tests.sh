@@ -4,9 +4,9 @@ set -euo pipefail
 
 script_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd -P)
 repository_root=$(CDPATH= cd -- "$script_dir/.." && pwd -P)
-code_version=${AALTO_FITECH_TEST_VSCODE_VERSION:-1.130.0}
 
 cd "$repository_root"
+code_version=${AALTO_FITECH_TEST_VSCODE_VERSION:-$(node -p 'require("./package.json").config.vscodeTestVersion')}
 
 if [ ! -f ".env.test.local" ]; then
   echo "Missing .env.test.local."

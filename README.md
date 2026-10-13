@@ -116,6 +116,19 @@ Development Host. The provided launch configurations support a fresh user
 layout, a fresh production-connected profile, and the existing development
 layout.
 
+UI tests drive a real VS Code window with
+[ExTester](https://github.com/redhat-developer/vscode-extension-tester):
+
+```bash
+npm run test:ui
+```
+
+They install a test build into a fresh profile under the system temp
+directory, never into your own editor. Only the latest run's failure
+screenshots are kept there. CI runs them on Linux as an advisory job. A
+failure shows red but does not block merging. `npm test` and the UI tests use
+the VS Code version pinned in `package.json` under `config.vscodeTestVersion`.
+
 Start the sibling IntroCS platform with Docker-backed execution and grading:
 
 ```bash
