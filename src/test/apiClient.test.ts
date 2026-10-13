@@ -84,23 +84,27 @@ suite('ApiClient', () => {
   test('limits background work to two slots while foreground uses the third', async () => {
     const startedPaths: string[] = [];
     let releaseImmediately = false;
-    let threeRequestsStarted: (() => void) | undefined;
-    const threeStarted = new Promise<void>((resolve) => {
-      threeRequestsStarted = resolve;
-    });
+    const startedWaiters = new Map<number, () => void>();
+    const waitForStarted = (count: number): Promise<void> => {
+      if (startedPaths.length >= count) {
+        return Promise.resolve();
+      }
+      return new Promise<void>((resolve) => {
+        startedWaiters.set(count, resolve);
+      });
+    };
     const heldResponses: import('http').ServerResponse[] = [];
     const server = await startTestHttpServer((request, response) => {
       startedPaths.push(request.url ?? '');
-      if (startedPaths.length === 3) {
-        threeRequestsStarted?.();
-      }
       response.writeHead(200, { 'Content-Type': 'application/json' });
       if (releaseImmediately) {
         response.end('{}');
       } else {
         heldResponses.push(response);
       }
+      startedWaiters.get(startedPaths.length)?.();
     });
+    const requests: Promise<unknown>[] = [];
 
     try {
       const client = new ApiClient(
@@ -109,36 +113,34 @@ suite('ApiClient', () => {
         10_000,
         new ApiRequestScheduler(),
       );
-      const requests = [
+      requests.push(
         client.get('/background-one', { priority: 'background' }),
         client.get('/background-two', { priority: 'background' }),
         client.get('/background-three', { priority: 'background' }),
-      ];
+      );
 
-      await new Promise((resolve) => setTimeout(resolve, 25));
-      assert.deepStrictEqual(startedPaths, [
+      // The first two start concurrently, so their arrival order may vary.
+      await waitForStarted(2);
+      assert.deepStrictEqual([...startedPaths].sort(), [
         '/background-one',
         '/background-two',
       ]);
 
       requests.push(client.get('/foreground'));
-      await threeStarted;
-      assert.deepStrictEqual(startedPaths, [
-        '/background-one',
-        '/background-two',
-        '/foreground',
-      ]);
+      await waitForStarted(3);
+      assert.strictEqual(startedPaths[2], '/foreground');
 
       releaseImmediately = true;
       heldResponses.splice(0).forEach((response) => response.end('{}'));
       await Promise.all(requests);
-      assert.deepStrictEqual(startedPaths, [
-        '/background-one',
-        '/background-two',
+      assert.deepStrictEqual(startedPaths.slice(2), [
         '/foreground',
         '/background-three',
       ]);
     } finally {
+      releaseImmediately = true;
+      heldResponses.splice(0).forEach((response) => response.end('{}'));
+      await Promise.allSettled(requests);
       await server.close();
     }
   });
