@@ -47,3 +47,56 @@ jobs:
 
       - name: Build production bundle
         run: npm run package
+
+  # Advisory UI tests (ADR 0006): a failure shows red but is not a required
+  # check, and there are no retries so flakiness stays visible.
+  ui-test:
+    name: UI tests on Linux
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    concurrency:
+      group: ui-test-${{ github.ref }}
+      cancel-in-progress: true
+    env:
+      # scripts/run-ui-tests.sh keeps ExTester resources here.
+      TMPDIR: /tmp
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Read pinned VS Code version
+        id: vscode
+        run: echo "version=$(node -p 'require("./package.json").config.vscodeTestVersion')" >> "$GITHUB_OUTPUT"
+
+      # Only the downloaded archives are cached; ExTester unpacks them when
+      # the unpacked copy is missing.
+      - name: Cache VS Code and ChromeDriver downloads
+        uses: actions/cache@v4
+        with:
+          path: |
+            /tmp/aalto-opencs-extest/*.tar.gz
+            /tmp/aalto-opencs-extest/*.zip
+          key: extest-${{ runner.os }}-vscode-${{ steps.vscode.outputs.version }}
+
+      - name: Run UI tests
+        run: xvfb-run -a npm run test:ui
+
+      - name: Upload UI test diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ui-test-diagnostics
+          path: |
+            /tmp/aalto-opencs-extest/screenshots/
+            /tmp/aalto-opencs-extest/chromedriver.log
+          if-no-files-found: ignore
