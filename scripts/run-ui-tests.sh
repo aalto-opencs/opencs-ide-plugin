@@ -5,6 +5,10 @@
 # Test resources live in the temp directory because VS Code's IPC socket path
 # must stay under about 100 bytes, which deep checkouts exceed. Each run starts
 # from a fresh profile and extensions folder and keeps only its own screenshots.
+#
+# The tests serve a fake platform on a fixed local port. Sign-in still runs the
+# real browser flow: VS Code opens the sign-in page in a stand-in "browser" that
+# fetches it and hands the callback to the test window through the VS Code CLI.
 
 set -euo pipefail
 
@@ -15,13 +19,17 @@ storage="${TMPDIR:-/tmp}"; storage="${storage%/}/aalto-opencs-extest"
 staging="$storage/package"
 vsix="$storage/aalto-opencs-ide-ui-test.vsix"
 extensions="$storage/extensions"
+browser="$storage/stand-in-browser"
+settings="$storage/ui-test-settings.json"
+export OPENCS_UI_TEST_PLATFORM_PORT=${OPENCS_UI_TEST_PLATFORM_PORT:-47123}
 
 cd "$repository_root"
 code_version=$(node -p 'require("./package.json").config.vscodeTestVersion')
 npm run compile-tests
 npm run compile
 
-rm -rf "$staging" "$extensions" "$storage/settings" "$storage/screenshots"
+rm -rf "$staging" "$extensions" "$storage/settings" "$storage/screenshots" \
+  "$browser"
 mkdir -p "$staging"
 cp -R dist media LICENSE CHANGELOG.md "$staging/"
 cp README.marketplace.md "$staging/README.md"
@@ -41,8 +49,44 @@ npx extest get-vscode --storage "$storage" --code_version "$code_version"
 npx extest get-chromedriver --storage "$storage" --code_version "$code_version"
 npx extest install-vsix --storage "$storage" --extensions_dir "$extensions" \
   --vsix_file "$vsix"
+
+if [ "$(uname)" = Darwin ]; then
+  code_cli="$storage/Visual Studio Code.app/Contents/Resources/app/bin/code"
+else
+  code_cli="$storage/VSCode-linux-x64/bin/code"
+fi
+
+mkdir -p "$browser"
+cat > "$browser/open.sh" <<SCRIPT
+#!/usr/bin/env bash
+callback=\$(curl --silent --output /dev/null --write-out '%{redirect_url}' "\${@: -1}")
+exec "$code_cli" --user-data-dir "$storage/settings" --open-url "\$callback"
+SCRIPT
+chmod +x "$browser/open.sh"
+
+# VS Code starts the browser with `open -a` on macOS, which only accepts apps.
+browser_app="$browser/open.sh"
+if [ "$(uname)" = Darwin ]; then
+  browser_app="$browser/StandInBrowser.app"
+  osacompile -o "$browser_app" -e "on open location theURL
+  do shell script quoted form of \"$browser/open.sh\" & \" \" & quoted form of theURL
+end open location"
+  /usr/libexec/PlistBuddy -c "Add :LSUIElement bool true" \
+    "$browser_app/Contents/Info.plist"
+fi
+
+cat > "$settings" <<SETTINGS
+{
+  "aaltoOpenCsIde.apiBaseUrl": "http://127.0.0.1:$OPENCS_UI_TEST_PLATFORM_PORT/api",
+  "aaltoOpenCsIde.platformBaseUrl": "http://127.0.0.1:$OPENCS_UI_TEST_PLATFORM_PORT",
+  "workbench.externalBrowser": "$browser_app",
+  "files.simpleDialog.enable": true
+}
+SETTINGS
+
 npx extest run-tests "out/ui-test/*.ui.test.js" \
   --storage "$storage" \
   --extensions_dir "$extensions" \
   --code_version "$code_version" \
-  --mocha_config .mocharc.ui-test.json
+  --mocha_config .mocharc.ui-test.json \
+  --code_settings "$settings"
