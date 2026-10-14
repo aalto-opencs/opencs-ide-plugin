@@ -129,6 +129,11 @@ screenshots are kept there. CI runs them on Linux as an advisory job. A
 failure shows red but does not block merging. `npm test` and the UI tests use
 the VS Code version pinned in `package.json` under `config.vscodeTestVersion`.
 
+The student-workflow UI test walks through sign-in, assignment folder, course
+selection, download, submission, and grading against a fake platform served on
+local port 47123 (override with `OPENCS_UI_TEST_PLATFORM_PORT`). Sign-in uses
+the real browser flow with a stand-in browser, so no real browser opens.
+
 Start the sibling IntroCS platform with Docker-backed execution and grading:
 
 ```bash

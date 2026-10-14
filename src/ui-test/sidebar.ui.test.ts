@@ -1,9 +1,10 @@
 import * as assert from 'assert';
+import { SideBarView } from 'vscode-extension-tester';
 import {
-  ActivityBar,
-  SideBarView,
-  VSBrowser,
-} from 'vscode-extension-tester';
+  openOpenCsSideBar,
+  waitFor,
+  waitForSection,
+} from './uiTestUtilities';
 
 suite('OpenCS sidebar UI', function () {
   this.timeout(60_000);
@@ -11,20 +12,11 @@ suite('OpenCS sidebar UI', function () {
   let sideBar: SideBarView;
 
   suiteSetup(async () => {
-    await VSBrowser.instance.waitForWorkbench();
-
-    const container = await waitFor(
-      async () => (new ActivityBar()).getViewControl('Aalto OpenCS IDE'),
-      'OpenCS activity bar entry',
-    );
-    sideBar = await container.openView();
+    sideBar = await openOpenCsSideBar();
   });
 
   test('shows the sign-in prompt in a fresh profile', async () => {
-    const section = await waitFor(
-      async () => sideBar.getContent().getSection('Authentication'),
-      'Authentication view',
-    );
+    const section = await waitForSection(sideBar, 'Authentication');
     const welcome = await waitFor(
       async () => section.findWelcomeContent(),
       'Authentication welcome content',
@@ -39,19 +31,3 @@ suite('OpenCS sidebar UI', function () {
     assert.deepStrictEqual(buttonTitles, ['Sign In with Browser']);
   });
 });
-
-async function waitFor<T>(
-  read: () => Promise<T | undefined>,
-  description: string,
-): Promise<T> {
-  let found: T | undefined;
-  await VSBrowser.instance.driver.wait(async () => {
-    try {
-      found = await read();
-    } catch {
-      found = undefined;
-    }
-    return found !== undefined;
-  }, 20_000, `Timed out waiting for ${description}`);
-  return found as T;
-}

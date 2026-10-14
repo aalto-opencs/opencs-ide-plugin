@@ -99,4 +99,6 @@ jobs:
           path: |
             /tmp/aalto-opencs-extest/screenshots/
             /tmp/aalto-opencs-extest/chromedriver.log
+            /tmp/aalto-opencs-extest/stand-in-browser/open.log
+            /tmp/aalto-opencs-extest/settings/logs/
           if-no-files-found: ignore
