@@ -23,7 +23,7 @@ and forth to the browser.
    **Submissions**.
 
 For step-by-step instructions with pictures, see
-[Guide: OpenCS extension for VS Code](https://opencs.aalto.fi/en/information/vscode-extension)
+[Guide: OpenCS IDE extension](https://opencs.aalto.fi/en/information/opencs-ide-extension)
 on the OpenCS website.
 
 ## What you can do
