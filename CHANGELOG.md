@@ -4,6 +4,11 @@ All notable changes to OpenCS will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.5.4] - 2026-10-29
+
+- Fix the Marketplace description's link to the step-by-step guide on OpenCS
+- Update markdown-it to 15.0.3
+
 ## [0.5.3] - 2026-10-06
 
 - Offer Run and Check Syntax for every Python exercise, including test, seasonal, and Finnish course versions
