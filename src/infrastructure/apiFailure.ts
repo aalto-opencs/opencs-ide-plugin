@@ -39,12 +39,14 @@ export class InvalidPlatformResponseError extends Error {
   }
 }
 
+/**
+ * Why a platform refresh failed. Expired sessions are excluded: they are
+ * handled by the sign-in flow before any failure is classified.
+ */
 export type ApiFailureKind =
-  | 'sessionExpired'
   | 'network'
   | 'timeout'
   | 'server'
-  | 'rateLimited'
   | 'invalidResponse'
   | 'other';
 
@@ -64,22 +66,14 @@ export function isInvalidTokenResponse(
 }
 
 export function classifyApiFailure(error: unknown): ApiFailureKind {
-  if (error instanceof SessionExpiredError) {
-    return 'sessionExpired';
-  }
   if (error instanceof ApiConnectionError) {
     return error.kind;
   }
   if (error instanceof InvalidPlatformResponseError) {
     return 'invalidResponse';
   }
-  if (error instanceof ApiError) {
-    if (error.status === 429) {
-      return 'rateLimited';
-    }
-    if (error.status >= 500) {
-      return 'server';
-    }
+  if (error instanceof ApiError && error.status >= 500) {
+    return 'server';
   }
   return 'other';
 }
@@ -89,16 +83,12 @@ export function describeRefreshFailure(
   kind: ApiFailureKind | undefined,
 ): string {
   switch (kind) {
-    case 'sessionExpired':
-      return 'Your sign-in has expired.';
     case 'network':
       return `Cannot reach the ${PLATFORM_NAME}. Check your connection.`;
     case 'timeout':
       return `The ${PLATFORM_NAME} is not responding.`;
     case 'server':
       return `The ${PLATFORM_NAME} has a server problem.`;
-    case 'rateLimited':
-      return `The ${PLATFORM_NAME} is busy.`;
     case 'invalidResponse':
       return `The ${PLATFORM_NAME} returned unexpected data.`;
     default:
@@ -108,10 +98,6 @@ export function describeRefreshFailure(
 
 /** HTTP failure text used when the platform response has no usable message. */
 export function describeHttpStatus(status: number): string {
-  if (status === 429) {
-    return `The ${PLATFORM_NAME} received too many requests. ` +
-      'Wait a moment and try again.';
-  }
   if (status >= 500) {
     return `The ${PLATFORM_NAME} had a server error (HTTP ${status}). ` +
       'Try again later.';

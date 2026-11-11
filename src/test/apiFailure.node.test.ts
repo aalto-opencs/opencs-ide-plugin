@@ -83,12 +83,10 @@ suite('API failure handling', () => {
     });
   });
 
-  test('explains server, rate-limit, and malformed responses', async () => {
+  test('explains server errors and malformed responses', async () => {
     await withServer((request, response) => {
       if (request.url === '/server') {
         sendJson(response, 500, { message: 'TypeError: x is undefined' });
-      } else if (request.url === '/busy') {
-        sendJson(response, 429, {});
       } else {
         response.writeHead(200, { 'Content-Type': 'application/json' });
         response.end('not json');
@@ -99,10 +97,6 @@ suite('API failure handling', () => {
       await assert.rejects(client.get('/server'), (error: unknown) => {
         assert.strictEqual(classifyApiFailure(error), 'server');
         assert.match((error as Error).message, /server error \(HTTP 500\)/);
-        return true;
-      });
-      await assert.rejects(client.get('/busy'), (error: unknown) => {
-        assert.strictEqual(classifyApiFailure(error), 'rateLimited');
         return true;
       });
       await assert.rejects(client.get('/malformed'), (error: unknown) => {

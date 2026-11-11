@@ -18,8 +18,8 @@ tree never acts as a synchronous backend safety check.
 - Stale cached state remains visible during revalidation. Views show a
   refreshing message during revalidation and the established Cached/offline
   state after a transient failure. The offline message names the reason: the
-  platform cannot be reached, did not respond in time, had a server error, is
-  rate limiting, or returned unexpected data.
+  platform cannot be reached, did not respond in time, had a server error, or
+  returned unexpected data.
 - An expired session is not an offline state. It stops synchronization and
   starts the expired-session flow described in
   [Authentication](./authentication.md).

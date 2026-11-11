@@ -147,7 +147,7 @@ export class SubmissionHistorySyncService implements vscode.Disposable {
       lastValidatedAt: this.getLastValidatedAt(userId, assignment),
       refreshing: state?.refreshing ?? false,
       offline: state?.offline ?? false,
-      ...(state?.offline && state.failure ? { failure: state.failure } : {}),
+      ...(state?.failure ? { failure: state.failure } : {}),
     };
   }
 

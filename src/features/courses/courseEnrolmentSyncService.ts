@@ -214,7 +214,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
       source: state.source,
       refreshing: state.refreshing,
       offline: state.offline,
-      ...(state.offline && state.failure ? { failure: state.failure } : {}),
+      ...(state.failure ? { failure: state.failure } : {}),
     };
   }
 }
