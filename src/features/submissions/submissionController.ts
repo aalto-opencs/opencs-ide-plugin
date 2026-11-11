@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
-import {
-  isSessionExpiredError,
-} from '../../infrastructure/apiFailure';
+import { showRequestError } from '../../infrastructure/showRequestError';
 import { randomUUID } from 'crypto';
 import { AssignmentActivityRepository } from '../assignmentActivity/assignmentActivityRepository';
 import { AssignmentActivityDeliveryService } from '../assignmentActivity/assignmentActivityDeliveryService';
@@ -246,17 +244,16 @@ export class SubmissionController {
         'aaltoOpenCsIde.submissions.focus',
       );
     } catch (error: unknown) {
-      // The session-expiry handler already asked the student to sign in.
-      if (isSessionExpiredError(error)) {
+      if (
+        error instanceof vscode.FileSystemError &&
+        error.code === 'FileNotFound'
+      ) {
+        await vscode.window.showErrorMessage(
+          'Download this assignment before submitting it.',
+        );
         return;
       }
-      const message = error instanceof vscode.FileSystemError &&
-          error.code === 'FileNotFound'
-        ? 'Download this assignment before submitting it.'
-        : error instanceof Error
-          ? error.message
-          : 'Failed to submit the assignment.';
-      await vscode.window.showErrorMessage(message);
+      await showRequestError(error, 'Failed to submit the assignment.');
     }
   }
 

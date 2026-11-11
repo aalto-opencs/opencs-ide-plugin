@@ -59,10 +59,7 @@ import {
   SubmissionRepository,
 } from '../features/submissions/submissionRepository';
 import { SubmissionService } from '../features/submissions/submissionService';
-import {
-  ApiClient,
-  SessionExpiredHandler,
-} from '../infrastructure/apiClient';
+import { ApiClient } from '../infrastructure/apiClient';
 import {
   ApiRequestPriority,
   ApiRequestScheduler,
@@ -103,7 +100,7 @@ export function registerCommands(
   const sessionRepository = new SessionRepository(context.secrets);
   const apiRequestScheduler = new ApiRequestScheduler();
   // Bound after the feature graph exists; see handleSessionExpired below.
-  let onSessionExpired: SessionExpiredHandler | undefined;
+  let onSessionExpired: ((rejectedToken: string) => void) | undefined;
   const apiClient = new ApiClient(
     apiBaseUrl,
     async () => (await sessionRepository.get())?.token,

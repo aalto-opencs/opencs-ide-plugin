@@ -6,8 +6,7 @@ import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import {
   ApiFailureKind,
   classifyApiFailure,
-  InvalidPlatformResponseError,
-  isSessionExpiredError,
+  SessionExpiredError,
 } from '../../infrastructure/apiFailure';
 
 export const COURSE_ENROLMENT_FRESHNESS_MS = 5 * 60 * 1_000;
@@ -75,7 +74,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
       await this.synchronize(userId, true);
     } catch (error: unknown) {
       const state = this.states.get(userId);
-      if (!state || isSessionExpiredError(error)) {
+      if (!state || error instanceof SessionExpiredError) {
         throw error;
       }
     }
@@ -131,9 +130,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
     const request = this.courseService.getEnrolments(priority)
       .then(async (enrolments) => {
         if (!isCourseEnrolments(enrolments)) {
-          throw new InvalidPlatformResponseError(
-            'The platform returned invalid course enrolments.',
-          );
+          throw new Error('The platform returned invalid course enrolments.');
         }
         if ((this.generations.get(userId) ?? 0) !== generation) {
           return enrolments;
@@ -159,7 +156,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
         if (current && (this.generations.get(userId) ?? 0) === generation) {
           current.refreshing = false;
           // An expired session is not an outage; the sign-in flow handles it.
-          if (!isSessionExpiredError(error)) {
+          if (!(error instanceof SessionExpiredError)) {
             current.offline = true;
             current.failure = classifyApiFailure(error);
           }
@@ -214,7 +211,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
       source: state.source,
       refreshing: state.refreshing,
       offline: state.offline,
-      ...(state.failure ? { failure: state.failure } : {}),
+      failure: state.failure,
     };
   }
 }

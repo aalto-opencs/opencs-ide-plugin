@@ -1,4 +1,4 @@
-import { isSessionExpiredError } from '../../infrastructure/apiFailure';
+import { SessionExpiredError } from '../../infrastructure/apiFailure';
 import { PlatformStatusService } from '../platformStatus/platformStatusService';
 import { AssignmentMetadata } from './assignmentModels';
 import { AssignmentRepository } from './assignmentRepository';
@@ -27,7 +27,7 @@ export class AssignmentVersionService {
     } catch (error: unknown) {
       // An expired session cannot be resolved by submitting anyway; the
       // sign-in prompt is already handling it.
-      if (isSessionExpiredError(error)) {
+      if (error instanceof SessionExpiredError) {
         throw error;
       }
       return await this.platformStatusService.isAvailable()

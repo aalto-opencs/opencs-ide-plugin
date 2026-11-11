@@ -3,8 +3,7 @@ import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import {
   ApiFailureKind,
   classifyApiFailure,
-  InvalidPlatformResponseError,
-  isSessionExpiredError,
+  SessionExpiredError,
 } from '../../infrastructure/apiFailure';
 import {
   CoursePart,
@@ -516,9 +515,7 @@ export class CourseSyncService implements vscode.Disposable {
     const request = load()
       .then(async (value: unknown) => {
         if (!validate(value)) {
-          throw new InvalidPlatformResponseError(
-            'The platform returned invalid course data.',
-          );
+          throw new Error('The platform returned invalid course data.');
         }
         if ((this.generations.get(key) ?? 0) === generation) {
           const timestamp = this.nowMs();
@@ -539,7 +536,7 @@ export class CourseSyncService implements vscode.Disposable {
         if (state && (this.generations.get(key) ?? 0) === generation) {
           state.refreshing = false;
           // An expired session is not an outage; the sign-in flow handles it.
-          if (!isSessionExpiredError(error)) {
+          if (!(error instanceof SessionExpiredError)) {
             state.offline = true;
             state.failure = classifyApiFailure(error);
           }

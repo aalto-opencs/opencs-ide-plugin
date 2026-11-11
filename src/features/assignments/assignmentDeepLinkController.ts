@@ -1,7 +1,5 @@
 import * as vscode from 'vscode';
-import {
-  isSessionExpiredError,
-} from '../../infrastructure/apiFailure';
+import { showRequestError } from '../../infrastructure/showRequestError';
 import { AuthService } from '../auth/authService';
 import {
   AssignmentCourseEnrolmentRequiredError,
@@ -82,15 +80,10 @@ export class AssignmentDeepLinkController {
         `${assignment.name} is selected. Download it from the Exercise view.`,
       );
     } catch (error: unknown) {
-      // The session-expiry handler already asked the student to sign in.
-      if (isSessionExpiredError(error)) {
-        return;
-      }
-      const message = error instanceof AssignmentDeepLinkError ||
-          error instanceof Error
-        ? error.message
-        : 'The assignment could not be opened in the IDE.';
-      await vscode.window.showErrorMessage(message);
+      await showRequestError(
+        error,
+        'The assignment could not be opened in the IDE.',
+      );
     }
   }
 

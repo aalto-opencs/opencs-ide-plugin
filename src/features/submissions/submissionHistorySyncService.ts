@@ -11,7 +11,7 @@ import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import {
   ApiFailureKind,
   classifyApiFailure,
-  isSessionExpiredError,
+  SessionExpiredError,
 } from '../../infrastructure/apiFailure';
 
 export const SUBMISSION_HISTORY_FRESHNESS_MS = 30_000;
@@ -109,7 +109,7 @@ export class SubmissionHistorySyncService implements vscode.Disposable {
     }).catch((error: unknown) => {
       if ((this.generations.get(userId) ?? 0) === generation) {
         // An expired session is not an outage; the sign-in flow handles it.
-        this.states.set(key, isSessionExpiredError(error)
+        this.states.set(key, error instanceof SessionExpiredError
           ? { refreshing: false, offline: false }
           : {
             refreshing: false,
@@ -147,7 +147,7 @@ export class SubmissionHistorySyncService implements vscode.Disposable {
       lastValidatedAt: this.getLastValidatedAt(userId, assignment),
       refreshing: state?.refreshing ?? false,
       offline: state?.offline ?? false,
-      ...(state?.failure ? { failure: state.failure } : {}),
+      failure: state?.failure,
     };
   }
 

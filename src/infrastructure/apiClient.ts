@@ -1,9 +1,6 @@
 import { ApiError } from './apiError';
 import {
   ApiConnectionError,
-  describeHttpStatus,
-  InvalidPlatformResponseError,
-  isInvalidTokenResponse,
   SessionExpiredError,
 } from './apiFailure';
 import {
@@ -15,9 +12,6 @@ import { validateEndpointUrl } from './endpointUrl';
 export type AuthenticationTokenProvider = () => Promise<
   string | undefined
 >;
-
-/** Called with the token the platform rejected as expired or invalid. */
-export type SessionExpiredHandler = (rejectedToken: string) => void;
 
 export interface ApiRequestOptions {
   priority?: ApiRequestPriority;
@@ -40,7 +34,8 @@ export class ApiClient {
       AuthenticationTokenProvider = async () => undefined,
     private readonly timeoutMs = 10_000,
     private readonly requestScheduler = new ApiRequestScheduler(),
-    private readonly onSessionExpired?: SessionExpiredHandler,
+    /** Called with the token the platform rejected as expired. */
+    private readonly onSessionExpired?: (rejectedToken: string) => void,
   ) {
     this.baseUrl = validateEndpointUrl('API endpoint', baseUrl);
   }
@@ -188,14 +183,20 @@ export class ApiClient {
               // Use the status-based fallback for non-JSON responses.
             }
 
-            if (isInvalidTokenResponse(response.status, errorBody)) {
+            // The platform marks expired sessions with invalidToken; other
+            // 401s (missing role, unverified user) are ordinary errors.
+            if (
+              response.status === 401 &&
+              typeof errorBody === 'object' && errorBody !== null &&
+              'invalidToken' in errorBody && errorBody.invalidToken === true
+            ) {
               // Without a token, the session was already cleared while this
               // workflow was running, so the student has already been asked
               // to sign in again.
               if (token) {
                 this.onSessionExpired?.(token);
               }
-              throw new SessionExpiredError(errorBody);
+              throw new SessionExpiredError();
             }
 
             throw new ApiError(
@@ -213,7 +214,7 @@ export class ApiClient {
                 ? new ApiConnectionError('timeout')
                 : new Error('The API request was cancelled.');
             }
-            throw new InvalidPlatformResponseError();
+            throw error;
           }
         } finally {
           clearTimeout(timeout);
@@ -236,5 +237,9 @@ function getErrorMessage(status: number, body: unknown): string {
   ) {
     return body.message;
   }
-  return describeHttpStatus(status);
+  if (status >= 500) {
+    return 'The Aalto OpenCS platform had a server error ' +
+      `(HTTP ${status}). Try again later.`;
+  }
+  return `API request failed with status ${status}.`;
 }

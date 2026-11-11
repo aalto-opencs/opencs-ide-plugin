@@ -11,7 +11,6 @@ import {
   ApiConnectionError,
   classifyApiFailure,
   describeRefreshFailure,
-  InvalidPlatformResponseError,
   SessionExpiredError,
 } from '../infrastructure/apiFailure';
 
@@ -99,7 +98,7 @@ suite('API failure handling', () => {
         return true;
       });
       await assert.rejects(client.get('/malformed'), (error: unknown) => {
-        assert.ok(error instanceof InvalidPlatformResponseError);
+        assert.strictEqual(classifyApiFailure(error), 'other');
         return true;
       });
     });

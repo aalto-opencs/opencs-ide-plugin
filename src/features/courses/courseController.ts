@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
+import { showRequestError } from '../../infrastructure/showRequestError';
 import {
-  ApiFailureKind,
   classifyApiFailure,
   describeRefreshFailure,
-  isSessionExpiredError,
+  SessionExpiredError,
 } from '../../infrastructure/apiFailure';
 import { AuthService } from '../auth/authService';
 import {
@@ -42,6 +42,9 @@ function isFresh(
   return snapshot.lastValidatedAt !== undefined &&
     now - snapshot.lastValidatedAt < COURSE_ENROLMENT_FRESHNESS_MS;
 }
+
+const UNVERIFIED_SELECTION =
+  'Your active course version could not be verified. Try again before submitting.';
 
 export class CourseController {
   private readonly enrolmentSyncService: CourseEnrolmentSyncService;
@@ -211,15 +214,7 @@ export class CourseController {
       );
       return true;
     } catch (error: unknown) {
-      // The session-expiry handler already asked the student to sign in.
-      if (isSessionExpiredError(error)) {
-        return false;
-      }
-      await vscode.window.showErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load courses.',
-      );
+      await showRequestError(error, 'Failed to load courses.');
       return false;
     }
   }
@@ -273,7 +268,10 @@ export class CourseController {
         session.student.id,
       );
       if (enrolmentSnapshot.offline) {
-        await showUnverifiedSelectionError(enrolmentSnapshot.failure);
+        await vscode.window.showErrorMessage(
+          `${describeRefreshFailure(enrolmentSnapshot.failure)} ` +
+            UNVERIFIED_SELECTION,
+        );
         return false;
       }
       const enrolments = enrolmentSnapshot.enrolments;
@@ -297,23 +295,16 @@ export class CourseController {
       return true;
     } catch (error: unknown) {
       // The session-expiry handler already asked the student to sign in.
-      if (isSessionExpiredError(error)) {
+      if (error instanceof SessionExpiredError) {
         return false;
       }
-      await showUnverifiedSelectionError(classifyApiFailure(error));
+      await vscode.window.showErrorMessage(
+        `${describeRefreshFailure(classifyApiFailure(error))} ` +
+          UNVERIFIED_SELECTION,
+      );
       return false;
     }
   }
-}
-
-async function showUnverifiedSelectionError(
-  failure: ApiFailureKind | undefined,
-): Promise<void> {
-  await vscode.window.showErrorMessage(
-    `${describeRefreshFailure(failure)} ` +
-      'Your active course version could not be verified. ' +
-      'Try again before submitting.',
-  );
 }
 
 export function getSelectionEndWarning(
