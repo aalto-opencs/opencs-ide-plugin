@@ -1,5 +1,12 @@
 import { ApiError } from './apiError';
 import {
+  ApiConnectionError,
+  describeHttpStatus,
+  InvalidPlatformResponseError,
+  isInvalidTokenResponse,
+  SessionExpiredError,
+} from './apiFailure';
+import {
   ApiRequestPriority,
   ApiRequestScheduler,
 } from './apiRequestScheduler';
@@ -8,6 +15,9 @@ import { validateEndpointUrl } from './endpointUrl';
 export type AuthenticationTokenProvider = () => Promise<
   string | undefined
 >;
+
+/** Called with the token the platform rejected as expired or invalid. */
+export type SessionExpiredHandler = (rejectedToken: string) => void;
 
 export interface ApiRequestOptions {
   priority?: ApiRequestPriority;
@@ -30,6 +40,7 @@ export class ApiClient {
       AuthenticationTokenProvider = async () => undefined,
     private readonly timeoutMs = 10_000,
     private readonly requestScheduler = new ApiRequestScheduler(),
+    private readonly onSessionExpired?: SessionExpiredHandler,
   ) {
     this.baseUrl = validateEndpointUrl('API endpoint', baseUrl);
   }
@@ -146,67 +157,59 @@ export class ApiClient {
             headers.Authorization = token;
           }
 
-          const response = await fetch(
-            `${this.baseUrl}${path}`,
-            {
-              method,
-              headers,
-              body,
-              signal: controller.signal,
-            },
-          );
+          let response: Response;
+          try {
+            response = await fetch(
+              `${this.baseUrl}${path}`,
+              {
+                method,
+                headers,
+                body,
+                signal: controller.signal,
+              },
+            );
+          } catch (error: unknown) {
+            if (
+              error instanceof Error &&
+              error.name === 'AbortError' &&
+              !timedOut
+            ) {
+              throw new Error('The API request was cancelled.');
+            }
+            throw new ApiConnectionError(timedOut ? 'timeout' : 'network');
+          }
 
           if (!response.ok) {
-            const fallbackMessage =
-              `API request failed with status ${response.status}.`;
-            let message = fallbackMessage;
             let errorBody: unknown;
 
             try {
               errorBody = await response.json() as unknown;
-
-              if (
-                typeof errorBody === 'object' &&
-                errorBody !== null &&
-                'message' in errorBody &&
-                typeof errorBody.message === 'string' &&
-                errorBody.message.trim()
-              ) {
-                message = errorBody.message;
-              }
             } catch {
               // Use the status-based fallback for non-JSON responses.
             }
 
+            if (token && isInvalidTokenResponse(response.status, errorBody)) {
+              this.onSessionExpired?.(token);
+              throw new SessionExpiredError(errorBody);
+            }
+
             throw new ApiError(
               response.status,
-              message,
+              getErrorMessage(response.status, errorBody),
               errorBody,
             );
           }
 
-          return await parseResponse(response);
-        } catch (error: unknown) {
-          if (error instanceof ApiError) {
-            throw error;
+          try {
+            return await parseResponse(response);
+          } catch (error: unknown) {
+            if (error instanceof Error && error.name === 'AbortError') {
+              throw timedOut
+                ? new ApiConnectionError('timeout')
+                : new Error('The API request was cancelled.');
+            }
+            throw new InvalidPlatformResponseError();
           }
-
-          if (
-            error instanceof Error &&
-            error.name === 'AbortError'
-          ) {
-            throw new Error(
-              timedOut
-                ? 'The API request timed out.'
-                : 'The API request was cancelled.',
-            );
-          }
-
-          throw new Error(
-            error instanceof Error
-              ? error.message
-              : 'An unknown API error occurred.',
-          );
         } finally {
           clearTimeout(timeout);
           options.signal?.removeEventListener('abort', cancelRequest);
@@ -214,4 +217,19 @@ export class ApiClient {
       },
     );
   }
+}
+
+function getErrorMessage(status: number, body: unknown): string {
+  // Server-side failures rarely carry text meant for students.
+  if (
+    status < 500 &&
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string' &&
+    body.message.trim()
+  ) {
+    return body.message;
+  }
+  return describeHttpStatus(status);
 }

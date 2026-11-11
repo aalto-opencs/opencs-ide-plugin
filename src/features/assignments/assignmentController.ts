@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import {
+  isSessionExpiredError,
+} from '../../infrastructure/apiFailure';
 import { AuthService } from '../auth/authService';
 import { AssignmentDownloadService } from './assignmentDownloadService';
 import {
@@ -190,6 +193,10 @@ export class AssignmentController {
         );
         return;
       }
+      // The session-expiry handler already asked the student to sign in.
+      if (isSessionExpiredError(error)) {
+        return;
+      }
 
       await vscode.window.showErrorMessage(
         error instanceof Error
@@ -243,6 +250,10 @@ export class AssignmentController {
     } catch (error: unknown) {
       if (error instanceof AssignmentLockedError) {
         await this.handleLockedAssignment(error, assignment);
+        return;
+      }
+      // The session-expiry handler already asked the student to sign in.
+      if (isSessionExpiredError(error)) {
         return;
       }
 

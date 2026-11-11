@@ -108,7 +108,12 @@ and their current, downloaded, and completed states.
 - Manual Course Parts refresh synchronizes enrolments, selected structure, and
   selected-instance points once. Repeated refreshes join one in-flight request.
 - A failed refresh uses only structurally valid cached data and labels the view
-  **Cached** with a visible offline message.
+  **Cached** with a message that names the failure, for example **Cannot reach
+  the Aalto OpenCS platform. Check your connection. Showing cached data.**
+- **Select Course** with only cached enrolments warns with the same reason
+  before showing cached course choices.
+- An expired session is not treated as offline; see
+  [Authentication](./authentication.md).
 - If neither live nor cached data is available, Course Parts shows an error row
   that can retry the refresh.
 - Local tree expansion does not itself fetch new course structure; the root

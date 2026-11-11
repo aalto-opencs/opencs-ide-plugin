@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { ApiConnectionError } from '../infrastructure/apiFailure';
 import { mkdir, mkdtemp, rm, writeFile } from 'fs/promises';
 import { IncomingMessage } from 'http';
 import { tmpdir } from 'os';
@@ -657,7 +658,7 @@ suite('Assignment submission', () => {
       },
       async () => {
         historyRequests += 1;
-        throw new Error('Network unavailable');
+        throw new ApiConnectionError('network');
       },
     );
     const syncService = new SubmissionHistorySyncService(
@@ -690,7 +691,8 @@ suite('Assignment submission', () => {
       assert.strictEqual(second[0].label, 'Hello platform');
       assert.strictEqual(
         provider.message,
-        'Platform offline - retry later',
+        'Cannot reach the Aalto OpenCS platform. Check your connection. ' +
+          'Showing cached data.',
       );
       assert.strictEqual(historyRequests, 0);
       assert.strictEqual(statusRequests, 0);

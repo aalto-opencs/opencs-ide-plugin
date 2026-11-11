@@ -119,6 +119,15 @@ export class AuthController implements vscode.UriHandler {
     this.finishPendingSignIn(signedIn);
   }
 
+  /** Returns true when the student chose to sign in again. */
+  public async notifySessionExpired(): Promise<boolean> {
+    const action = await vscode.window.showErrorMessage(
+      'Your Aalto OpenCS sign-in has expired. Sign in again to continue.',
+      'Sign In',
+    );
+    return action === 'Sign In';
+  }
+
   public async showCurrentUser(): Promise<void> {
     const session = await this.authService.getCurrentSession();
 

@@ -59,7 +59,10 @@ import {
   SubmissionRepository,
 } from '../features/submissions/submissionRepository';
 import { SubmissionService } from '../features/submissions/submissionService';
-import { ApiClient } from '../infrastructure/apiClient';
+import {
+  ApiClient,
+  SessionExpiredHandler,
+} from '../infrastructure/apiClient';
 import {
   ApiRequestPriority,
   ApiRequestScheduler,
@@ -99,11 +102,14 @@ export function registerCommands(
   // the token provider reads SecretStorage again for every request.
   const sessionRepository = new SessionRepository(context.secrets);
   const apiRequestScheduler = new ApiRequestScheduler();
+  // Bound after the feature graph exists; see handleSessionExpired below.
+  let onSessionExpired: SessionExpiredHandler | undefined;
   const apiClient = new ApiClient(
     apiBaseUrl,
     async () => (await sessionRepository.get())?.token,
     10_000,
     apiRequestScheduler,
+    (rejectedToken) => onSessionExpired?.(rejectedToken),
   );
   // Status is deliberately public: never attach a student's session token to
   // the health-check endpoint or expose API failure details in its controller.
@@ -614,6 +620,33 @@ export function registerCommands(
       }
     },
   );
+
+  // Parallel requests fail together when a session expires; react once.
+  let sessionExpiryInProgress = false;
+  const handleSessionExpired = async (rejectedToken: string): Promise<void> => {
+    if (sessionExpiryInProgress) {
+      return;
+    }
+    sessionExpiryInProgress = true;
+    try {
+      const expired = await authService.expireSession(rejectedToken);
+      if (!expired) {
+        return;
+      }
+      // Keep queued activity and cached course data for the same student;
+      // they resume after the next sign-in.
+      activityDeliveryService.cancelForUser(expired.student.id);
+      await refreshUiState();
+    } finally {
+      sessionExpiryInProgress = false;
+    }
+    if (await authController.notifySessionExpired()) {
+      await vscode.commands.executeCommand('aaltoOpenCsIde.signIn');
+    }
+  };
+  onSessionExpired = (rejectedToken) => {
+    void handleSessionExpired(rejectedToken).catch(() => undefined);
+  };
 
   const showCurrentUserCommand = vscode.commands.registerCommand(
     'aaltoOpenCsIde.showCurrentUser',

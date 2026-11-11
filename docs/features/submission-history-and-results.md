@@ -64,8 +64,10 @@ when a later refresh is temporarily offline.
 
 ## Failure Behavior
 
-- If synchronization fails, valid cached rows stay visible and the view reports
-  **Platform offline - retry later**.
+- If synchronization fails, valid cached rows stay visible and the view names
+  the failure, for example **The Aalto OpenCS platform is not responding.
+  Showing cached data.** An expired session instead starts the sign-in-again
+  flow described in [Authentication](./authentication.md).
 - If no cached rows exist, the view remains empty until a later successful
   refresh.
 - Invalid backend history or status data is rejected rather than persisted.

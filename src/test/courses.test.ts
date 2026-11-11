@@ -1,4 +1,5 @@
 import * as assert from 'assert';
+import { ApiConnectionError } from '../infrastructure/apiFailure';
 import * as vscode from 'vscode';
 import { AuthRepository } from '../features/auth/authRepository';
 import { AuthSession } from '../features/auth/authModels';
@@ -1054,7 +1055,7 @@ suite('Courses', () => {
       {
         getEnrolments: async () => {
           if (offline) {
-            throw new Error('Network unavailable');
+            throw new ApiConnectionError('network');
           }
           return enrolments;
         },
@@ -1062,7 +1063,7 @@ suite('Courses', () => {
       {
         getStructure: async () => {
           if (offline) {
-            throw new Error('Network unavailable');
+            throw new ApiConnectionError('network');
           }
           return structure;
         },
@@ -1093,7 +1094,8 @@ suite('Courses', () => {
       assert.match(provider.description ?? '', /Cached/);
       assert.strictEqual(
         provider.message,
-        'Platform offline - retry later',
+        'Cannot reach the Aalto OpenCS platform. Check your connection. ' +
+          'Showing cached data.',
       );
     } finally {
       provider.dispose();

@@ -1,4 +1,10 @@
 import * as vscode from 'vscode';
+import {
+  ApiFailureKind,
+  classifyApiFailure,
+  describeRefreshFailure,
+  isSessionExpiredError,
+} from '../../infrastructure/apiFailure';
 import { AuthService } from '../auth/authService';
 import {
   CourseEnrolment,
@@ -77,7 +83,8 @@ export class CourseController {
       }
       if (usingCache) {
         await vscode.window.showWarningMessage(
-          'The platform is unavailable. Showing cached course choices.',
+          `${describeRefreshFailure(enrolmentSnapshot.failure)} ` +
+            'Showing cached course choices.',
         );
       }
 
@@ -204,6 +211,10 @@ export class CourseController {
       );
       return true;
     } catch (error: unknown) {
+      // The session-expiry handler already asked the student to sign in.
+      if (isSessionExpiredError(error)) {
+        return false;
+      }
       await vscode.window.showErrorMessage(
         error instanceof Error
           ? error.message
@@ -262,7 +273,8 @@ export class CourseController {
         session.student.id,
       );
       if (enrolmentSnapshot.offline) {
-        throw new Error('The platform could not verify course enrolments.');
+        await showUnverifiedSelectionError(enrolmentSnapshot.failure);
+        return false;
       }
       const enrolments = enrolmentSnapshot.enrolments;
       const enrolment = enrolments.find((candidate) =>
@@ -283,13 +295,25 @@ export class CourseController {
         updateSelectionMetadata(selection, instance, this.now()),
       );
       return true;
-    } catch {
-      await vscode.window.showErrorMessage(
-        'The platform could not verify your active course version. Try again before submitting.',
-      );
+    } catch (error: unknown) {
+      // The session-expiry handler already asked the student to sign in.
+      if (isSessionExpiredError(error)) {
+        return false;
+      }
+      await showUnverifiedSelectionError(classifyApiFailure(error));
       return false;
     }
   }
+}
+
+async function showUnverifiedSelectionError(
+  failure: ApiFailureKind | undefined,
+): Promise<void> {
+  await vscode.window.showErrorMessage(
+    `${describeRefreshFailure(failure)} ` +
+      'Your active course version could not be verified. ' +
+      'Try again before submitting.',
+  );
 }
 
 export function getSelectionEndWarning(

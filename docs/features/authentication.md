@@ -91,6 +91,22 @@ the assignment folder, and sign out.
   not prepend `Bearer`.
 - Public platform-status requests do not include the student's session token.
 
+### Expired session
+
+1. The platform rejects an authenticated request with HTTP 401 and
+   `invalidToken: true` when the session has expired or is otherwise invalid.
+   Other 401 responses, such as missing roles, are ordinary request failures.
+2. The extension removes the stored session only when it still holds the token
+   that was rejected, so a request from before a fresh sign-in cannot sign the
+   student out again.
+3. The views return to the signed-out setup state, and one error message says
+   the sign-in has expired, with a **Sign In** action that starts browser
+   sign-in.
+4. Parallel requests that fail with the same expired session produce one
+   message. Commands that triggered the request do not show a second error.
+5. Unlike **Sign Out**, expiry keeps queued assignment activity, course
+   selections, and caches so they resume after the same student signs in again.
+
 ### Account information
 
 - Opening Account while signed out starts the normal sign-in flow instead of
@@ -126,6 +142,8 @@ the assignment folder, and sign out.
   browser response.
 - If code exchange or session storage fails, the error is shown and sign-in
   remains unsuccessful.
+- An expired session is never reported as the platform being offline, and
+  cached course or submission data does not hide it.
 - **Show Current User** and **Sign Out** report that the student is not signed
   in when no valid session exists. Signing out in that state does not clear
   another student's data.
