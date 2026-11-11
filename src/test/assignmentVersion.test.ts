@@ -4,6 +4,7 @@ import { AssignmentRepository } from '../features/assignments/assignmentReposito
 import { AssignmentVersionService } from '../features/assignments/assignmentVersionService';
 import { PlatformStatusRepository } from '../features/platformStatus/platformStatusRepository';
 import { PlatformStatusService } from '../features/platformStatus/platformStatusService';
+import { SessionExpiredError } from '../infrastructure/apiFailure';
 
 const contentHash = '0123456789abcdef0123456789abcdef';
 const metadata: AssignmentMetadata = {
@@ -50,6 +51,17 @@ suite('Assignment version', () => {
         metadata,
       ),
       'platform-unavailable',
+    );
+  });
+
+  test('does not offer to submit anyway when the session expired', async () => {
+    const service = createService(async () => {
+      throw new SessionExpiredError();
+    }, true);
+
+    await assert.rejects(
+      service.check(metadata.exerciseUuid, metadata),
+      SessionExpiredError,
     );
   });
 });

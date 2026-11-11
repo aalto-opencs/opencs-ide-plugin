@@ -1,3 +1,4 @@
+import { isSessionExpiredError } from '../../infrastructure/apiFailure';
 import { PlatformStatusService } from '../platformStatus/platformStatusService';
 import { AssignmentMetadata } from './assignmentModels';
 import { AssignmentRepository } from './assignmentRepository';
@@ -23,7 +24,12 @@ export class AssignmentVersionService {
         exerciseUuid,
       );
       return currentHash === metadata.contentHash ? 'current' : 'changed';
-    } catch {
+    } catch (error: unknown) {
+      // An expired session cannot be resolved by submitting anyway; the
+      // sign-in prompt is already handling it.
+      if (isSessionExpiredError(error)) {
+        throw error;
+      }
       return await this.platformStatusService.isAvailable()
         ? 'unverified'
         : 'platform-unavailable';

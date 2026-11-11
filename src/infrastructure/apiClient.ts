@@ -188,8 +188,13 @@ export class ApiClient {
               // Use the status-based fallback for non-JSON responses.
             }
 
-            if (token && isInvalidTokenResponse(response.status, errorBody)) {
-              this.onSessionExpired?.(token);
+            if (isInvalidTokenResponse(response.status, errorBody)) {
+              // Without a token, the session was already cleared while this
+              // workflow was running, so the student has already been asked
+              // to sign in again.
+              if (token) {
+                this.onSessionExpired?.(token);
+              }
               throw new SessionExpiredError(errorBody);
             }
 

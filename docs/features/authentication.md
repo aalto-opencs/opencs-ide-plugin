@@ -103,7 +103,10 @@ the assignment folder, and sign out.
    the sign-in has expired, with a **Sign In** action that starts browser
    sign-in.
 4. Parallel requests that fail with the same expired session produce one
-   message. Commands that triggered the request do not show a second error.
+   message. Commands that triggered the request do not show a second error,
+   including requests a running download or submission sends after the
+   session was already cleared. Submission stops instead of offering to
+   submit an unverified assignment version.
 5. Unlike **Sign Out**, expiry keeps queued assignment activity, course
    selections, and caches so they resume after the same student signs in again.
 

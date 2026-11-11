@@ -45,7 +45,7 @@ suite('API failure handling', () => {
     });
   });
 
-  test('keeps other 401 responses as ordinary API errors', async () => {
+  test('keeps other 401s ordinary and prompts only for a sent token', async () => {
     const rejected: string[] = [];
     await withServer((request, response) => {
       if (request.url === '/role') {
@@ -75,10 +75,9 @@ suite('API failure handling', () => {
         assert.strictEqual(error.message, 'Unauthorized');
         return true;
       });
-      await assert.rejects(anonymous.get('/courses'), (error: unknown) => {
-        assert.ok(!(error instanceof SessionExpiredError));
-        return true;
-      });
+      // A workflow whose session was cleared mid-way stays quiet: the
+      // sign-in prompt was already shown for the token that expired.
+      await assert.rejects(anonymous.get('/courses'), SessionExpiredError);
       assert.deepStrictEqual(rejected, []);
     });
   });
