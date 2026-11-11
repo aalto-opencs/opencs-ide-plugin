@@ -3,6 +3,11 @@ import { CourseCacheRepository } from './courseCacheRepository';
 import { CourseEnrolment } from './courseModels';
 import { CourseService } from './courseService';
 import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
+import {
+  ApiFailureKind,
+  classifyApiFailure,
+  SessionExpiredError,
+} from '../../infrastructure/apiFailure';
 
 export const COURSE_ENROLMENT_FRESHNESS_MS = 5 * 60 * 1_000;
 
@@ -12,6 +17,8 @@ export interface CourseEnrolmentSnapshot {
   source: 'cache' | 'live';
   refreshing: boolean;
   offline: boolean;
+  /** Why the latest refresh failed while cached data stays visible. */
+  failure?: ApiFailureKind;
 }
 
 /** Coordinates one validated enrolment snapshot for each signed-in student. */
@@ -67,7 +74,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
       await this.synchronize(userId, true);
     } catch (error: unknown) {
       const state = this.states.get(userId);
-      if (!state) {
+      if (!state || error instanceof SessionExpiredError) {
         throw error;
       }
     }
@@ -148,7 +155,11 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
         const current = this.states.get(userId);
         if (current && (this.generations.get(userId) ?? 0) === generation) {
           current.refreshing = false;
-          current.offline = true;
+          // An expired session is not an outage; the sign-in flow handles it.
+          if (!(error instanceof SessionExpiredError)) {
+            current.offline = true;
+            current.failure = classifyApiFailure(error);
+          }
           this.changeEmitter.fire();
         }
         throw error;
@@ -200,6 +211,7 @@ export class CourseEnrolmentSyncService implements vscode.Disposable {
       source: state.source,
       refreshing: state.refreshing,
       offline: state.offline,
+      failure: state.failure,
     };
   }
 }
@@ -210,6 +222,7 @@ interface State {
   source: 'cache' | 'live';
   refreshing: boolean;
   offline: boolean;
+  failure?: ApiFailureKind;
 }
 
 function isCourseEnrolments(value: unknown): value is CourseEnrolment[] {

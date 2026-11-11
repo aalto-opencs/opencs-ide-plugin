@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { showRequestError } from '../../infrastructure/showRequestError';
 import { AuthService } from '../auth/authService';
 import { AssignmentDownloadService } from './assignmentDownloadService';
 import {
@@ -190,12 +191,7 @@ export class AssignmentController {
         );
         return;
       }
-
-      await vscode.window.showErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Failed to download the assignment.',
-      );
+      await showRequestError(error, 'Failed to download the assignment.');
     }
   }
 
@@ -245,12 +241,7 @@ export class AssignmentController {
         await this.handleLockedAssignment(error, assignment);
         return;
       }
-
-      await vscode.window.showErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Failed to redownload the assignment.',
-      );
+      await showRequestError(error, 'Failed to redownload the assignment.');
       return;
     }
 

@@ -29,4 +29,20 @@ export class AuthService {
   public async signOut(): Promise<void> {
     await this.sessionRepository.clear();
   }
+
+  /**
+   * Forget a session the platform rejected as expired. A request that started
+   * before a fresh sign-in must not clear the new session, so only the
+   * rejected token is removed.
+   */
+  public async expireSession(
+    rejectedToken: string,
+  ): Promise<AuthSession | undefined> {
+    const session = await this.sessionRepository.get();
+    if (!session || session.token !== rejectedToken) {
+      return undefined;
+    }
+    await this.sessionRepository.clear();
+    return session;
+  }
 }

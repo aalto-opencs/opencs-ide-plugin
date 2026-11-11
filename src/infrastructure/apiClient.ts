@@ -1,5 +1,9 @@
 import { ApiError } from './apiError';
 import {
+  ApiConnectionError,
+  SessionExpiredError,
+} from './apiFailure';
+import {
   ApiRequestPriority,
   ApiRequestScheduler,
 } from './apiRequestScheduler';
@@ -30,6 +34,8 @@ export class ApiClient {
       AuthenticationTokenProvider = async () => undefined,
     private readonly timeoutMs = 10_000,
     private readonly requestScheduler = new ApiRequestScheduler(),
+    /** Called with the token the platform rejected as expired. */
+    private readonly onSessionExpired?: (rejectedToken: string) => void,
   ) {
     this.baseUrl = validateEndpointUrl('API endpoint', baseUrl);
   }
@@ -146,67 +152,70 @@ export class ApiClient {
             headers.Authorization = token;
           }
 
-          const response = await fetch(
-            `${this.baseUrl}${path}`,
-            {
-              method,
-              headers,
-              body,
-              signal: controller.signal,
-            },
-          );
+          let response: Response;
+          try {
+            response = await fetch(
+              `${this.baseUrl}${path}`,
+              {
+                method,
+                headers,
+                body,
+                signal: controller.signal,
+              },
+            );
+          } catch (error: unknown) {
+            if (
+              error instanceof Error &&
+              error.name === 'AbortError' &&
+              !timedOut
+            ) {
+              throw new Error('The API request was cancelled.');
+            }
+            throw new ApiConnectionError(timedOut ? 'timeout' : 'network');
+          }
 
           if (!response.ok) {
-            const fallbackMessage =
-              `API request failed with status ${response.status}.`;
-            let message = fallbackMessage;
             let errorBody: unknown;
 
             try {
               errorBody = await response.json() as unknown;
-
-              if (
-                typeof errorBody === 'object' &&
-                errorBody !== null &&
-                'message' in errorBody &&
-                typeof errorBody.message === 'string' &&
-                errorBody.message.trim()
-              ) {
-                message = errorBody.message;
-              }
             } catch {
               // Use the status-based fallback for non-JSON responses.
             }
 
+            // The platform marks expired sessions with invalidToken; other
+            // 401s (missing role, unverified user) are ordinary errors.
+            if (
+              response.status === 401 &&
+              typeof errorBody === 'object' && errorBody !== null &&
+              'invalidToken' in errorBody && errorBody.invalidToken === true
+            ) {
+              // Without a token, the session was already cleared while this
+              // workflow was running, so the student has already been asked
+              // to sign in again.
+              if (token) {
+                this.onSessionExpired?.(token);
+              }
+              throw new SessionExpiredError();
+            }
+
             throw new ApiError(
               response.status,
-              message,
+              getErrorMessage(response.status, errorBody),
               errorBody,
             );
           }
 
-          return await parseResponse(response);
-        } catch (error: unknown) {
-          if (error instanceof ApiError) {
+          try {
+            return await parseResponse(response);
+          } catch (error: unknown) {
+            if (error instanceof Error && error.name === 'AbortError') {
+              throw timedOut
+                ? new ApiConnectionError('timeout')
+                : new Error('The API request was cancelled.');
+            }
             throw error;
           }
-
-          if (
-            error instanceof Error &&
-            error.name === 'AbortError'
-          ) {
-            throw new Error(
-              timedOut
-                ? 'The API request timed out.'
-                : 'The API request was cancelled.',
-            );
-          }
-
-          throw new Error(
-            error instanceof Error
-              ? error.message
-              : 'An unknown API error occurred.',
-          );
         } finally {
           clearTimeout(timeout);
           options.signal?.removeEventListener('abort', cancelRequest);
@@ -214,4 +223,23 @@ export class ApiClient {
       },
     );
   }
+}
+
+function getErrorMessage(status: number, body: unknown): string {
+  // Server-side failures rarely carry text meant for students.
+  if (
+    status < 500 &&
+    typeof body === 'object' &&
+    body !== null &&
+    'message' in body &&
+    typeof body.message === 'string' &&
+    body.message.trim()
+  ) {
+    return body.message;
+  }
+  if (status >= 500) {
+    return 'The Aalto OpenCS platform had a server error ' +
+      `(HTTP ${status}). Try again later.`;
+  }
+  return `API request failed with status ${status}.`;
 }

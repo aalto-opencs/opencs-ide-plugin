@@ -1,5 +1,8 @@
 import * as vscode from 'vscode';
 import {
+  describeRefreshFailure,
+} from '../../infrastructure/apiFailure';
+import {
   PROGRAMMING_EXERCISE_TYPE,
   ProgrammingAssignment,
 } from '../assignments/assignmentModels';
@@ -249,6 +252,8 @@ export class CourseTreeProvider implements
         structure.refreshing || exercisePoints?.refreshing === true;
       const offline = enrolmentSnapshot.offline || structure.offline ||
         exercisePoints?.offline === true;
+      const offlineFailure = enrolmentSnapshot.failure ??
+        structure.failure ?? exercisePoints?.failure;
       this.setDescription([
         enrolment.abbreviation || enrolment.courseName || enrolment.courseSlug,
         instance.label,
@@ -257,7 +262,7 @@ export class CourseTreeProvider implements
       this.setMessage(refreshing
         ? 'Refreshing course data...'
         : offline
-          ? 'Platform offline - retry later'
+          ? `${describeRefreshFailure(offlineFailure)} Showing cached data.`
           : undefined);
       return contentResult;
     } catch (error: unknown) {

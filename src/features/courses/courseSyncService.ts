@@ -1,6 +1,11 @@
 import * as vscode from 'vscode';
 import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
 import {
+  ApiFailureKind,
+  classifyApiFailure,
+  SessionExpiredError,
+} from '../../infrastructure/apiFailure';
+import {
   CoursePart,
   CourseExercise,
 } from '../courseMaterials/courseMaterialModels';
@@ -27,6 +32,8 @@ export interface CourseResourceSnapshot<T> {
   source: 'cache' | 'live';
   refreshing: boolean;
   offline: boolean;
+  /** Why the latest refresh failed while cached data stays visible. */
+  failure?: ApiFailureKind;
 }
 
 export interface CourseSnapshot {
@@ -528,7 +535,11 @@ export class CourseSyncService implements vscode.Disposable {
         const state = states.get(key);
         if (state && (this.generations.get(key) ?? 0) === generation) {
           state.refreshing = false;
-          state.offline = true;
+          // An expired session is not an outage; the sign-in flow handles it.
+          if (!(error instanceof SessionExpiredError)) {
+            state.offline = true;
+            state.failure = classifyApiFailure(error);
+          }
           this.emitChange();
         }
         throw error;
@@ -687,6 +698,7 @@ interface ResourceState<T> {
   source: 'cache' | 'live';
   refreshing: boolean;
   offline: boolean;
+  failure?: ApiFailureKind;
 }
 
 function isCourseParts(value: unknown): value is CoursePart[] {

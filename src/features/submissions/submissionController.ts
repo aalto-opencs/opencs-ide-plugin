@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { showRequestError } from '../../infrastructure/showRequestError';
 import { randomUUID } from 'crypto';
 import { AssignmentActivityRepository } from '../assignmentActivity/assignmentActivityRepository';
 import { AssignmentActivityDeliveryService } from '../assignmentActivity/assignmentActivityDeliveryService';
@@ -243,13 +244,16 @@ export class SubmissionController {
         'aaltoOpenCsIde.submissions.focus',
       );
     } catch (error: unknown) {
-      const message = error instanceof vscode.FileSystemError &&
-          error.code === 'FileNotFound'
-        ? 'Download this assignment before submitting it.'
-        : error instanceof Error
-          ? error.message
-          : 'Failed to submit the assignment.';
-      await vscode.window.showErrorMessage(message);
+      if (
+        error instanceof vscode.FileSystemError &&
+        error.code === 'FileNotFound'
+      ) {
+        await vscode.window.showErrorMessage(
+          'Download this assignment before submitting it.',
+        );
+        return;
+      }
+      await showRequestError(error, 'Failed to submit the assignment.');
     }
   }
 

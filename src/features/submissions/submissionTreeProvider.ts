@@ -1,4 +1,7 @@
 import * as vscode from 'vscode';
+import {
+  describeRefreshFailure,
+} from '../../infrastructure/apiFailure';
 import { AuthService } from '../auth/authService';
 import {
   GRADING_STATUS_ERROR,
@@ -96,7 +99,7 @@ export class SubmissionTreeProvider implements
         entry.exerciseUuid === currentAssignment.exerciseUuid);
     }
     this.setMessage(snapshot?.offline
-      ? 'Platform offline - retry later'
+      ? `${describeRefreshFailure(snapshot.failure)} Showing cached data.`
       : snapshot?.refreshing ? 'Refreshing submissions...' : undefined);
     if (entries.length === 0) {
       return [createMessageItem('No submissions for this exercise', 'info')];

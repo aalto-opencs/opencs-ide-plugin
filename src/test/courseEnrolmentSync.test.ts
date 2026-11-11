@@ -6,6 +6,10 @@ import {
 } from '../features/courses/courseEnrolmentSyncService';
 import { CourseEnrolment } from '../features/courses/courseModels';
 import { CourseService } from '../features/courses/courseService';
+import {
+  ApiConnectionError,
+  SessionExpiredError,
+} from '../infrastructure/apiFailure';
 import { InMemoryMemento } from './testUtilities';
 
 const enrolments: CourseEnrolment[] = [{
@@ -104,6 +108,43 @@ suite('Course enrolment synchronization', () => {
     const refreshed = await refresh;
     assert.deepStrictEqual(refreshed.enrolments, enrolments);
     assert.strictEqual(refreshed.offline, true);
+  });
+
+  test('records why a refresh failed while cached enrolments remain', async () => {
+    const cache = new CourseCacheRepository(new InMemoryMemento());
+    await cache.saveEnrolments(42, enrolments, 1_000);
+    const service = new CourseEnrolmentSyncService(
+      new CourseService({
+        getEnrolments: async () => {
+          throw new ApiConnectionError('timeout');
+        },
+      }),
+      cache,
+      () => 1_000 + COURSE_ENROLMENT_FRESHNESS_MS,
+    );
+
+    const refreshed = await service.refresh(42);
+
+    assert.strictEqual(refreshed.offline, true);
+    assert.strictEqual(refreshed.failure, 'timeout');
+  });
+
+  test('does not hide an expired session behind cached enrolments', async () => {
+    const cache = new CourseCacheRepository(new InMemoryMemento());
+    await cache.saveEnrolments(42, enrolments, 1_000);
+    const service = new CourseEnrolmentSyncService(
+      new CourseService({
+        getEnrolments: async () => {
+          throw new SessionExpiredError();
+        },
+      }),
+      cache,
+      () => 1_000 + COURSE_ENROLMENT_FRESHNESS_MS,
+    );
+
+    await assert.rejects(service.refresh(42), SessionExpiredError);
+    assert.strictEqual(service.getSnapshot(42)?.offline, false);
+    assert.strictEqual(service.getSnapshot(42)?.refreshing, false);
   });
 
   test('treats valid cache without timestamp as stale', async () => {

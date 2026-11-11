@@ -1,4 +1,5 @@
 import * as vscode from 'vscode';
+import { showRequestError } from '../../infrastructure/showRequestError';
 import { AuthService } from '../auth/authService';
 import {
   AssignmentCourseEnrolmentRequiredError,
@@ -79,11 +80,10 @@ export class AssignmentDeepLinkController {
         `${assignment.name} is selected. Download it from the Exercise view.`,
       );
     } catch (error: unknown) {
-      const message = error instanceof AssignmentDeepLinkError ||
-          error instanceof Error
-        ? error.message
-        : 'The assignment could not be opened in the IDE.';
-      await vscode.window.showErrorMessage(message);
+      await showRequestError(
+        error,
+        'The assignment could not be opened in the IDE.',
+      );
     }
   }
 

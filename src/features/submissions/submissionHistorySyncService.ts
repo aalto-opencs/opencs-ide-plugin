@@ -8,6 +8,11 @@ import { SubmissionHistoryRepository } from './submissionHistoryRepository';
 import { SubmissionHistoryEntry } from './submissionModels';
 import { SubmissionRepository } from './submissionRepository';
 import { ApiRequestPriority } from '../../infrastructure/apiRequestScheduler';
+import {
+  ApiFailureKind,
+  classifyApiFailure,
+  SessionExpiredError,
+} from '../../infrastructure/apiFailure';
 
 export const SUBMISSION_HISTORY_FRESHNESS_MS = 30_000;
 
@@ -16,6 +21,8 @@ export interface SubmissionHistorySnapshot {
   lastValidatedAt?: number;
   refreshing: boolean;
   offline: boolean;
+  /** Why the latest refresh failed while cached data stays visible. */
+  failure?: ApiFailureKind;
 }
 
 /** Coordinates one validated history snapshot for each current exercise. */
@@ -101,7 +108,14 @@ export class SubmissionHistorySyncService implements vscode.Disposable {
       this.changeEmitter.fire();
     }).catch((error: unknown) => {
       if ((this.generations.get(userId) ?? 0) === generation) {
-        this.states.set(key, { refreshing: false, offline: true });
+        // An expired session is not an outage; the sign-in flow handles it.
+        this.states.set(key, error instanceof SessionExpiredError
+          ? { refreshing: false, offline: false }
+          : {
+            refreshing: false,
+            offline: true,
+            failure: classifyApiFailure(error),
+          });
         this.changeEmitter.fire();
       }
       throw error;
@@ -133,6 +147,7 @@ export class SubmissionHistorySyncService implements vscode.Disposable {
       lastValidatedAt: this.getLastValidatedAt(userId, assignment),
       refreshing: state?.refreshing ?? false,
       offline: state?.offline ?? false,
+      failure: state?.failure,
     };
   }
 
@@ -218,4 +233,5 @@ export class SubmissionHistorySyncService implements vscode.Disposable {
 interface SynchronizationState {
   refreshing: boolean;
   offline: boolean;
+  failure?: ApiFailureKind;
 }

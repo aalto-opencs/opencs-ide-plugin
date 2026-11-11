@@ -305,7 +305,10 @@ suite('ApiClient', () => {
       const timedRequest = timingOutClient.get('/timeout');
       const queuedRequest = longRunningClient.get('/queued');
 
-      await assert.rejects(timedRequest, /The API request timed out/);
+      await assert.rejects(
+        timedRequest,
+        /did not respond in time/,
+      );
       await queuedStarted;
       await queuedRequest;
 
@@ -430,7 +433,8 @@ suite('ApiClient', () => {
           assert.strictEqual(error.status, 503);
           assert.strictEqual(
             error.message,
-            'API request failed with status 503.',
+            'The Aalto OpenCS platform had a server error (HTTP 503). ' +
+              'Try again later.',
           );
           return true;
         },

@@ -17,7 +17,12 @@ tree never acts as a synchronous backend safety check.
 - Cached state without a freshness timestamp remains renderable but is stale.
 - Stale cached state remains visible during revalidation. Views show a
   refreshing message during revalidation and the established Cached/offline
-  state after a transient failure.
+  state after a transient failure. The offline message names the reason: the
+  platform cannot be reached, did not respond in time, or had a server error;
+  any other failure reports that the data could not be refreshed.
+- An expired session is not an offline state. It stops synchronization and
+  starts the expired-session flow described in
+  [Authentication](./authentication.md).
 - Invalid cache data is ignored. No live or valid cached data produces an error
   row with a retry command.
 

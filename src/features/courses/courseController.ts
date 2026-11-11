@@ -1,4 +1,10 @@
 import * as vscode from 'vscode';
+import { showRequestError } from '../../infrastructure/showRequestError';
+import {
+  classifyApiFailure,
+  describeRefreshFailure,
+  SessionExpiredError,
+} from '../../infrastructure/apiFailure';
 import { AuthService } from '../auth/authService';
 import {
   CourseEnrolment,
@@ -36,6 +42,9 @@ function isFresh(
   return snapshot.lastValidatedAt !== undefined &&
     now - snapshot.lastValidatedAt < COURSE_ENROLMENT_FRESHNESS_MS;
 }
+
+const UNVERIFIED_SELECTION =
+  'Your active course version could not be verified. Try again before submitting.';
 
 export class CourseController {
   private readonly enrolmentSyncService: CourseEnrolmentSyncService;
@@ -77,7 +86,8 @@ export class CourseController {
       }
       if (usingCache) {
         await vscode.window.showWarningMessage(
-          'The platform is unavailable. Showing cached course choices.',
+          `${describeRefreshFailure(enrolmentSnapshot.failure)} ` +
+            'Showing cached course choices.',
         );
       }
 
@@ -204,11 +214,7 @@ export class CourseController {
       );
       return true;
     } catch (error: unknown) {
-      await vscode.window.showErrorMessage(
-        error instanceof Error
-          ? error.message
-          : 'Failed to load courses.',
-      );
+      await showRequestError(error, 'Failed to load courses.');
       return false;
     }
   }
@@ -262,7 +268,11 @@ export class CourseController {
         session.student.id,
       );
       if (enrolmentSnapshot.offline) {
-        throw new Error('The platform could not verify course enrolments.');
+        await vscode.window.showErrorMessage(
+          `${describeRefreshFailure(enrolmentSnapshot.failure)} ` +
+            UNVERIFIED_SELECTION,
+        );
+        return false;
       }
       const enrolments = enrolmentSnapshot.enrolments;
       const enrolment = enrolments.find((candidate) =>
@@ -283,9 +293,14 @@ export class CourseController {
         updateSelectionMetadata(selection, instance, this.now()),
       );
       return true;
-    } catch {
+    } catch (error: unknown) {
+      // The session-expiry handler already asked the student to sign in.
+      if (error instanceof SessionExpiredError) {
+        return false;
+      }
       await vscode.window.showErrorMessage(
-        'The platform could not verify your active course version. Try again before submitting.',
+        `${describeRefreshFailure(classifyApiFailure(error))} ` +
+          UNVERIFIED_SELECTION,
       );
       return false;
     }
