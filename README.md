@@ -1,5 +1,7 @@
 # Aalto OpenCS IDE
 
+<img src="media/aalto-opencs-ide-marketplace.png" alt="OpenCS bracket and cursor symbol on a pink tile" width="96" height="96">
+
 Aalto OpenCS IDE is a student extension for VS Code-compatible desktop editors, including VS Code and VSCodium.
 It brings the OpenCS assignment workflow into the editor, from sign-in through grading results.
 Students work on local files while the OpenCS platform remains authoritative for course and grading data.

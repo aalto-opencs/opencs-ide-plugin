@@ -1,5 +1,7 @@
 # OpenCS
 
+<img src="media/aalto-opencs-ide-marketplace.png" alt="OpenCS bracket and cursor symbol on a pink tile" width="96" height="96">
+
 Do your [Aalto OpenCS](https://opencs.aalto.fi/en) programming exercises right
 in your editor. Browse your course, download an exercise, write and test your
 code locally, submit it, and see your grading results without switching back
