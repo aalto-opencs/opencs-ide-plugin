@@ -14,12 +14,12 @@ Students work on local files while the OpenCS platform remains authoritative for
 - [How to use this repository](#how-to-use-this-repository)
 - [Configuration](#configuration)
 - [Development](#development)
+- [Releases](#releases)
 
 ## Overview
 
 The OpenCS platform remains authoritative for authentication, enrolments,
-course structure, submissions, grading, points, and completion. The extension
-is currently published as a preview.
+course structure, submissions, grading, points, and completion.
 
 ## Student workflow
 
@@ -166,12 +166,21 @@ counts because missing configuration causes integration cases to skip.
 - Preserve student files during normal cleanup and sign-out.
 - Leave grading, points, completion, and hidden tests to the platform.
 
+## Releases
+
+Merge the version update in `package.json` and `package-lock.json` into `main`,
+then push the matching `vMAJOR.MINOR.PATCH` tag. GitHub Actions runs the release
+checks and tests, builds the production VSIX, and publishes that same package to
+**Visual Studio Marketplace and Open VSX** automatically after the build succeeds.
+
+The [publishing guide](docs/publishing.md) explains the one-time trusted-publisher
+setup, tag commands, manual publication, and retrying a failed marketplace job.
+
 ## Package status
 
 - Package: `aalto-opencs-ide`
 - Publisher: `aalto-opencs`
 - Extension identifier: `aalto-opencs.aalto-opencs-ide`
-- Marketplace status: Preview
 - License: MIT
 
 ## Licensing and contributions

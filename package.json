@@ -2,7 +2,7 @@
   "name": "aalto-opencs-ide",
   "displayName": "OpenCS",
   "description": "Access Aalto OpenCS programming courses, download exercises, submit solutions, and review automated grading feedback.",
-  "version": "0.5.4",
+  "version": "0.5.5",
   "publisher": "aalto-opencs",
   "author": {
     "name": "Aalto OpenCS IDE extension contributors"
@@ -12,7 +12,6 @@
     "url": "https://github.com/aalto-opencs/opencs-ide-plugin.git"
   },
   "license": "MIT",
-  "preview": true,
   "pricing": "Free",
   "icon": "media/aalto-opencs-ide-marketplace.png",
   "galleryBanner": {
@@ -444,10 +443,12 @@
     "@types/vscode": "^1.125.0",
     "@vscode/test-cli": "^0.0.15",
     "@vscode/test-electron": "^3.0.0",
+    "@vscode/vsce": "4.1.0",
     "esbuild": "^0.28.1",
     "eslint": "^10.5.0",
     "mocha": "^11.7.6",
     "npm-run-all": "^4.1.5",
+    "ovsx": "1.4.0",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.61.1",
     "vscode-extension-tester": "^8.28.1"

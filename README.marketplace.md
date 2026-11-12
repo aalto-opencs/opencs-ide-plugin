@@ -7,7 +7,7 @@ in your editor. Browse your course, download an exercise, write and test your
 code locally, submit it, and see your grading results without switching back
 and forth to the browser.
 
-> **Preview:** for students enrolled in courses on
+> For students enrolled in courses on
 > [opencs.aalto.fi](https://opencs.aalto.fi/en). You need an OpenCS account.
 > Works in VS Code and VSCodium.
 
@@ -48,9 +48,9 @@ on the OpenCS website.
 
 ## Good to know
 
-- **The OpenCS platform decides your grade.** Local runs and public tests are
-  only a preview. Points and completion come from grading on the platform,
-  which may also use hidden tests.
+- **The OpenCS platform decides your grade.** Local runs and public tests give
+  feedback while you work. Points and completion come from grading on the
+  platform, which may also use hidden tests.
 - **Only some courses and exercises are listed.** You see only the courses and
   programming exercises that your teacher has made available in the editor.
   Other exercises are done on the OpenCS website.
@@ -111,8 +111,3 @@ Check Platform Status** from the Command Palette.
 When asking for help, include the extension version, your editor and operating
 system, what you were doing, and the error message you saw. Never share
 passwords, access tokens, or login codes.
-
-## Preview status
-
-This extension is a preview. Features and screens may change as more OpenCS
-courses are supported.
