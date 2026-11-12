@@ -31,7 +31,13 @@ function fixture(t, { manifest = {}, lock = {}, env = {}, unmerged = false } = {
   }));
   return spawnSync(process.execPath, [script], {
     cwd, encoding: 'utf8',
-    env: { ...process.env, GITHUB_EVENT_NAME: 'push', GITHUB_REF: 'refs/tags/v1.2.3', ...env },
+    env: {
+      ...process.env,
+      GITHUB_EVENT_NAME: 'push',
+      GITHUB_REF: 'refs/tags/v1.2.3',
+      PUBLISH_REQUESTED: '',
+      ...env,
+    },
   });
 }
 
@@ -40,10 +46,22 @@ test('accepts a matching release from main', (t) => {
   assert.equal(result.status, 0, result.stderr);
 });
 
+const manualEnv = { GITHUB_EVENT_NAME: 'workflow_dispatch', PUBLISH_REQUESTED: 'true' };
+
+test('accepts explicitly requested manual publication of a matching tag from main', (t) => {
+  const result = fixture(t, { env: manualEnv });
+  assert.equal(result.status, 0, result.stderr);
+});
+
 for (const [name, options, message] of [
   ['mismatched tag', { env: { GITHUB_REF: 'refs/tags/v1.2.4' } }, /tag must match/],
   ['branch push', { env: { GITHUB_REF: 'refs/heads/main' } }, /tag must match/],
-  ['manual run', { env: { GITHUB_EVENT_NAME: 'workflow_dispatch' } }, /Only tag pushes/],
+  ['manual run without opt-in', { env: { GITHUB_EVENT_NAME: 'workflow_dispatch' } }, /explicit manual request/],
+  ['manual dry run', { env: { ...manualEnv, PUBLISH_REQUESTED: 'false' } }, /explicit manual request/],
+  ['manual publication from a branch', { env: { ...manualEnv, GITHUB_REF: 'refs/heads/main' } }, /tag must match/],
+  ['manual publication of a mismatched tag', { env: { ...manualEnv, GITHUB_REF: 'refs/tags/v1.2.4' } }, /tag must match/],
+  ['manual publication of an unmerged commit', { env: manualEnv, unmerged: true }, /must already belong to origin\/main/],
+  ['pull request even with opt-in', { env: { GITHUB_EVENT_NAME: 'pull_request', PUBLISH_REQUESTED: 'true' } }, /explicit manual request/],
   ['wrong publisher', { manifest: { publisher: 'someone-else' } }, /Unexpected extension publisher/],
   ['wrong extension', { manifest: { name: 'another-extension' } }, /Unexpected extension name/],
   ['preview package', { manifest: { preview: true } }, /must not be marked as preview/],

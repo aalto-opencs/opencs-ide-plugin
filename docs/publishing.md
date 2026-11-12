@@ -3,7 +3,8 @@
 The `.github/workflows/publish.yml` workflow builds one VSIX and publishes it
 to Visual Studio Marketplace and Open VSX on a `vMAJOR.MINOR.PATCH` tag push.
 Pull requests validate and package without publishing.
-**Run workflow** is also a packaging-only dry run, even when a tag is selected.
+Manual runs default to packaging only. Set the `publish` input to `true` and
+run against an existing release tag to publish later.
 
 ## One-time setup
 
@@ -76,6 +77,31 @@ artifact. Only the two publishing jobs have `id-token: write`; they install
 locked dependencies with lifecycle scripts disabled and upload the existing
 VSIX without rebuilding it.
 
+## Publish an existing tag later
+
+After merging the workflow and configuring both registries, a maintainer can
+start publication for an existing release tag. The tag must include this
+workflow and point to a commit on `main`; its version must match the manifests.
+Replace `vX.Y.Z` below with that tag:
+
+```sh
+gh workflow run publish.yml \
+  --repo aalto-opencs/opencs-ide-plugin \
+  --ref vX.Y.Z \
+  -f publish=true
+```
+
+The [GitHub CLI `--ref` option](https://cli.github.com/manual/gh_workflow_run)
+accepts a tag. Run the workflow at the tag itself so the `marketplace`
+environment's tag restriction still applies. Requesting publication from a
+branch fails validation. Omitting `publish=true` keeps the manual run as a dry
+run, including when a tag is selected.
+
+Manual publication runs the same validation, tests, packaging, and publishing
+jobs as a tag push. The publishing jobs run only after the release gate succeeds.
+This starts a fresh build; for a partially successful release, retry the failed
+job below to keep using the original VSIX.
+
 ## Retry and local checks
 
 The registries run in separate jobs. If only one fails, fix its policy or
@@ -92,4 +118,5 @@ node --test tests/release/*.test.mjs
 
 Run `./scripts/prepare-release.sh` to create the production VSIX locally.
 Neither local command publishes anything. Live OIDC authentication is exercised
-only by an authorized tag run after the registry policies are configured.
+by a tag push or an explicitly requested manual tag run after the registry
+policies are configured.
