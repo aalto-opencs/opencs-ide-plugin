@@ -39,7 +39,14 @@ test('rejects an empty version before another section', () => {
 });
 
 test('rejects an empty or comment-only final version', () => {
-  for (const body of ['', '\n', '<!-- Write notes before releasing. -->']) {
+  for (const body of ['', '\n', '<!-- Write notes before releasing. -->',
+    '<!-- First -->\n<!-- Second -->', '<!-- Unfinished comment']) {
     assert.throws(() => extractReleaseNotes(`## [0.5.5]\n${body}`, '0.5.5'), /is empty/);
   }
+});
+
+test('preserves author content and comments without trying to sanitize Markdown', () => {
+  const source = '## [0.5.5]\n<!-- Internal note -->\n- Shipped.\n<!-- Footer note -->';
+  assert.equal(extractReleaseNotes(source, '0.5.5'),
+    '## [0.5.5]\n\n<!-- Internal note -->\n- Shipped.\n<!-- Footer note -->\n');
 });
