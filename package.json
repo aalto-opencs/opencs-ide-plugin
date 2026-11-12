@@ -15,7 +15,7 @@
   "pricing": "Free",
   "icon": "media/aalto-opencs-ide-marketplace.png",
   "galleryBanner": {
-    "color": "#202124",
+    "color": "#0B0B0C",
     "theme": "dark"
   },
   "engines": {
