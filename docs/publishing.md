@@ -2,6 +2,7 @@
 
 The `.github/workflows/publish.yml` workflow builds one VSIX and publishes it
 to Visual Studio Marketplace and Open VSX on a `vMAJOR.MINOR.PATCH` tag push.
+It also creates a GitHub Release with that VSIX and the matching changelog entry.
 Pull requests validate and package without publishing.
 Manual runs default to packaging only. Set the `publish` input to `true` and
 run against an existing release tag to publish later.
@@ -65,6 +66,14 @@ trusted-publisher policies are configured, a tag push runs this sequence:
 2. Run the tests and build the installable VSIX.
 3. Publish the tested VSIX to both registries automatically after the build job
    succeeds. A failed test or build prevents both publishing jobs from running.
+4. Create the GitHub Release for the same tag, attaching the tested VSIX and using
+   that version's `CHANGELOG.md` entry as the release notes. This job also requires
+   the successful build; it runs independently of the two registry uploads.
+
+The build requires exactly one non-empty `## [MAJOR.MINOR.PATCH]` changelog entry
+matching `package.json` (an optional ` - YYYY-MM-DD` suffix is supported). It saves
+that section as `release-notes.md` alongside the VSIX in the workflow artifact.
+Pull requests check the changelog too, but do not create a release or publish.
 
 To prepare a release:
 
@@ -94,10 +103,11 @@ The build runs the extension tests and `npm run prepare:release`, then packages
 the prepared `release/` directory with `--no-dependencies`. This uses the
 Marketplace README and excludes development settings and tools.
 
-Both registries receive the same `extension.vsix` from the **opencs-vsix**
-artifact. Only the two publishing jobs have `id-token: write`; they install
-locked dependencies with lifecycle scripts disabled and upload the existing
-VSIX without rebuilding it.
+Both registries and the GitHub Release receive the same `extension.vsix` from the
+**opencs-vsix** artifact. The GitHub Release also uses the artifact's changelog;
+only its job has `contents: write`. Only the two marketplace publishing jobs have
+`id-token: write`; they install locked dependencies with lifecycle scripts disabled
+and upload the existing VSIX without rebuilding it.
 
 ## Publish an existing tag later
 
@@ -126,9 +136,9 @@ job below to keep using the original VSIX.
 
 ## Retry and local checks
 
-The registries run in separate jobs. If only one fails, fix its policy or
-service issue and use **Re-run failed jobs** to retry it with the original
-artifact. Existing versions deliberately fail instead of silently skipping;
+The two registries and GitHub Release run in separate jobs. If only one fails,
+fix its policy or service issue and use **Re-run failed jobs** to retry it with the
+original artifact. Existing marketplace versions deliberately fail instead of silently skipping;
 do not move a release tag or reuse a version to ship different bytes. For a
 code fix or an expired artifact, prepare a new version.
 

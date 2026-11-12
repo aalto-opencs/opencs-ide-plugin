@@ -172,6 +172,9 @@ Merge the version update in `package.json` and `package-lock.json` into `main`,
 then push the matching `vMAJOR.MINOR.PATCH` tag. GitHub Actions runs the release
 checks and tests, builds the production VSIX, and publishes that same package to
 **Visual Studio Marketplace and Open VSX** automatically after the build succeeds.
+It also creates the **GitHub Release**, with the matching `CHANGELOG.md` entry
+and that same VSIX attached. Missing, duplicate or empty changelog entries fail
+validation before publication.
 
 The [publishing guide](docs/publishing.md) explains the one-time trusted-publisher
 setup, tag commands, manual publication, and retrying a failed marketplace job.

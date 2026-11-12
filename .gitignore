@@ -7,6 +7,7 @@ node_modules
 DEVELOPMENT_DIARY.md
 .env.test.local
 /release/
+/release-notes.md
 .agents
 AGENTS.md
 skills-lock.json
