@@ -1,11 +1,13 @@
 # Publishing OpenCS
 
-The `.github/workflows/publish.yml` workflow builds one VSIX and publishes it
-to Visual Studio Marketplace and Open VSX on a `vMAJOR.MINOR.PATCH` tag push.
-It also creates a GitHub Release with that VSIX and the matching changelog entry.
-Pull requests validate and package without publishing.
-Manual runs default to packaging only. Set the `publish` input to `true` and
-run against an existing release tag to publish later.
+The `.github/workflows/publish.yml` workflow publishes only after a **new
+`vMAJOR.MINOR.PATCH` tag is pushed**. The maintainer or AI prepares the version
+and tag; the workflow never creates tags or bumps versions itself.
+OpenCS and STLC++ follow the same release process.
+
+Pushes to `main`, pull requests and manual workflow runs validate and package only.
+There is no manual publishing input. Use the original tag run's failed-job retry
+for release recovery.
 
 ## One-time setup
 
@@ -59,96 +61,68 @@ Open VSX gives a PAT precedence over trusted publishing.
 
 ## Release procedure
 
-The release tag is the publishing trigger. Once the environment and both
-trusted-publisher policies are configured, a tag push runs this sequence:
+1. Update `package.json` and `package-lock.json` together, for example with
+   `npm version patch --no-git-tag-version`.
+2. Add exactly one non-empty `## [MAJOR.MINOR.PATCH]` section to `CHANGELOG.md`
+   for that version. An optional ` - YYYY-MM-DD` suffix is supported.
+3. Merge the changes into `main` and wait for CI to pass.
+4. Create and push a new tag on the tested merged commit. Replace `X.Y.Z` with
+   the exact package version; do not reuse a published version or move a tag:
 
-1. Validate the tag, package versions, extension identity, and membership in `main`.
-2. Run the tests and build the installable VSIX.
-3. Publish the tested VSIX to both registries automatically after the build job
-   succeeds. A failed test or build prevents both publishing jobs from running.
-4. Create the GitHub Release for the same tag, attaching the tested VSIX and using
-   that version's `CHANGELOG.md` entry as the release notes. This job also requires
-   the successful build; it runs independently of the two registry uploads.
+   ```sh
+   git fetch origin main
+   git tag -a vX.Y.Z origin/main -m "Release X.Y.Z"
+   git push origin vX.Y.Z
+   ```
 
-The build requires exactly one non-empty `## [MAJOR.MINOR.PATCH]` changelog entry
-matching `package.json` (an optional ` - YYYY-MM-DD` suffix is supported). It saves
-that section as `release-notes.md` alongside the VSIX in the workflow artifact.
-Pull requests check the changelog too, but do not create a release or publish.
+A local tag alone does not start GitHub Actions; pushing it starts this sequence:
 
-To prepare a release:
+1. Validate that this is a newly created tag from a push event, the tag and package
+   versions match, the lockfile agrees, the extension identity is correct, the
+   package is not a preview, and the commit belongs to `main`.
+2. Extract the matching changelog section, run the tests and build the VSIX.
+   Missing, duplicate or empty changelog entries fail the build.
+3. Create the GitHub Release for the tag, using the extracted changelog and
+   attaching the tested VSIX.
+4. After the GitHub Release succeeds, upload that same VSIX to Visual Studio
+   Marketplace and Open VSX in separate jobs. A failed validation, test, build
+   or GitHub Release prevents both marketplace jobs from running.
 
-1. Merge the changes to release, including any branding updates.
-2. Update `package.json` and `package-lock.json` together, for example with
-   `npm version patch --no-git-tag-version`. Use a new version in both registries,
-   update the changelog, and merge the version change into `main`.
-3. Wait for the repository's CI checks to pass.
-4. Tag that merged commit with exactly `v` followed by the package version, and
-   push the tag to `origin`.
+The release build runs the extension tests and `npm run prepare:release`, then packages
+the production `release/` directory with `--no-dependencies`.
 
-For the release prepared here, run these commands after the version change is
-merged and CI passes:
+The **opencs-vsix** artifact contains `extension.vsix` and `release-notes.md`.
+The GitHub Release and both marketplaces use this build's artifact without
+rebuilding it. Only the GitHub Release job has `contents: write`; only the
+marketplace jobs have `id-token: write`. Marketplace jobs install locked tools
+with lifecycle scripts disabled and use the `marketplace` environment, restricted
+to `v*` tags.
 
-```sh
-git fetch origin main
-git tag -a v0.5.5 origin/main -m "Release 0.5.5"
-git push origin v0.5.5
-```
+## Dry runs and retries
 
-For later releases, replace the version in both tag commands with the new
-manifest version. Do not reuse a published version or move an existing tag.
-
-The release gate rejects a mismatched version, a stale lockfile, an unexpected
-extension identity, a preview package, or a commit outside `main`.
-The build runs the extension tests and `npm run prepare:release`, then packages
-the prepared `release/` directory with `--no-dependencies`. This uses the
-Marketplace README and excludes development settings and tools.
-
-Both registries and the GitHub Release receive the same `extension.vsix` from the
-**opencs-vsix** artifact. The GitHub Release also uses the artifact's changelog;
-only its job has `contents: write`. Only the two marketplace publishing jobs have
-`id-token: write`; they install locked dependencies with lifecycle scripts disabled
-and upload the existing VSIX without rebuilding it.
-
-## Publish an existing tag later
-
-After merging the workflow and configuring both registries, a maintainer can
-start publication for an existing release tag. The tag must include this
-workflow and point to a commit on `main`; its version must match the manifests.
-Replace `vX.Y.Z` below with that tag:
+A manual run is always a build-only check, even if a tag is selected:
 
 ```sh
-gh workflow run publish.yml \
-  --repo aalto-opencs/opencs-ide-plugin \
-  --ref vX.Y.Z \
-  -f publish=true
+gh workflow run publish.yml --repo aalto-opencs/opencs-ide-plugin --ref main
 ```
 
-The [GitHub CLI `--ref` option](https://cli.github.com/manual/gh_workflow_run)
-accepts a tag. Run the workflow at the tag itself so the `marketplace`
-environment's tag restriction still applies. Requesting publication from a
-branch fails validation. Omitting `publish=true` keeps the manual run as a dry
-run, including when a tag is selected.
+To recover a failed tag release, open the original **Build and publish** run in
+GitHub Actions and choose **Re-run failed jobs**. The tag event and its validated
+version remain the release trigger. If just one marketplace failed, its retry
+uses the original tested artifact; leave the successful marketplace job alone.
 
-Manual publication runs the same validation, tests, packaging, and publishing
-jobs as a tag push. The publishing jobs run only after the release gate succeeds.
-This starts a fresh build; for a partially successful release, retry the failed
-job below to keep using the original VSIX.
+Existing marketplace versions deliberately fail instead of silently skipping.
+Do not use a new manual run to republish an existing release, move a tag, or upload
+different bytes under the same version. For a code fix or an expired artifact,
+prepare a new version and tag.
 
-## Retry and local checks
-
-The two registries and GitHub Release run in separate jobs. If only one fails,
-fix its policy or service issue and use **Re-run failed jobs** to retry it with the
-original artifact. Existing marketplace versions deliberately fail instead of silently skipping;
-do not move a release tag or reuse a version to ship different bytes. For a
-code fix or an expired artifact, prepare a new version.
-
-Run the release-gate tests locally with:
+## Local checks
 
 ```sh
 node --test tests/release/*.test.mjs
+node scripts/release-notes.mjs
 ```
 
 Run `./scripts/prepare-release.sh` to create the production VSIX locally.
-Neither local command publishes anything. Live OIDC authentication is exercised
-by a tag push or an explicitly requested manual tag run after the registry
-policies are configured.
+These local checks do not publish. Live OIDC authentication is exercised by the
+new-tag release workflow after the registry policies are configured.

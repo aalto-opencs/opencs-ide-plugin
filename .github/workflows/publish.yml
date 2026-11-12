@@ -2,15 +2,11 @@ name: Build and publish
 
 on:
   push:
+    branches: [main]
     tags: ['v*']
   pull_request:
+    branches: [main]
   workflow_dispatch:
-    inputs:
-      publish:
-        description: 'Publish to both marketplaces (requires a version tag ref)'
-        type: boolean
-        required: false
-        default: false
 
 permissions:
   contents: read
@@ -41,11 +37,9 @@ jobs:
 
       - name: Check release tag, version, and main branch
         id: release
-        if: >-
-          (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')) ||
-          (github.event_name == 'workflow_dispatch' && inputs.publish)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/')
         env:
-          PUBLISH_REQUESTED: ${{ inputs.publish }}
+          TAG_CREATED: ${{ github.event.created }}
         run: |
           node scripts/check-release.mjs
           echo "publish=true" >> "$GITHUB_OUTPUT"
@@ -82,7 +76,7 @@ jobs:
 
   publish:
     name: Publish to ${{ matrix.registry }}
-    needs: build
+    needs: [build, release]
     if: >-
       github.repository == 'aalto-opencs/opencs-ide-plugin' &&
       needs.build.outputs.publish == 'true'

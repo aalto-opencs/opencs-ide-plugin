@@ -168,16 +168,36 @@ counts because missing configuration causes integration cases to skip.
 
 ## Releases
 
-Merge the version update in `package.json` and `package-lock.json` into `main`,
-then push the matching `vMAJOR.MINOR.PATCH` tag. GitHub Actions runs the release
-checks and tests, builds the production VSIX, and publishes that same package to
-**Visual Studio Marketplace and Open VSX** automatically after the build succeeds.
-It also creates the **GitHub Release**, with the matching `CHANGELOG.md` entry
-and that same VSIX attached. Missing, duplicate or empty changelog entries fail
-validation before publication.
+Publishing starts only when a **new `vMAJOR.MINOR.PATCH` tag is pushed**. A maintainer
+or AI creates and pushes the tag; the workflow does not bump versions or create tags.
+Both plugin repositories use the same release process:
 
-The [publishing guide](docs/publishing.md) explains the one-time trusted-publisher
-setup, tag commands, manual publication, and retrying a failed marketplace job.
+1. Update `package.json` and `package-lock.json` together, for example with
+   `npm version patch --no-git-tag-version`. Add a non-empty entry for that exact
+   version to `CHANGELOG.md` under `## [MAJOR.MINOR.PATCH]`.
+2. Merge those changes into `main` and wait for CI to pass.
+3. Create and push the matching tag on the tested commit. Replace `X.Y.Z` below
+   with the new package version:
+
+   ```sh
+   git fetch origin main
+   git tag -a vX.Y.Z origin/main -m "Release X.Y.Z"
+   git push origin vX.Y.Z
+   ```
+
+The tag workflow validates the new tag, versions, changelog and membership in
+`main`, runs tests, and builds one VSIX. It then creates the **GitHub Release**
+with that changelog and VSIX attached. After the release succeeds, it uploads
+that same VSIX to **Visual Studio Marketplace and Open VSX** using trusted publishing.
+A validation, test, build or GitHub Release failure prevents marketplace uploads.
+
+Branch pushes, pull requests and manual workflow runs only validate/package;
+they never publish. Moving an existing tag is rejected. For a failed release,
+use **Re-run failed jobs** on the original tag run so it reuses the same artifact;
+do not move tags or rerun successful marketplace uploads.
+
+The [publishing guide](docs/publishing.md) records the trusted-publisher setup,
+release safeguards, dry runs and retry procedure.
 
 ## Package status
 
