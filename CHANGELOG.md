@@ -4,6 +4,14 @@ All notable changes to OpenCS will be documented in this file.
 
 Check [Keep a Changelog](http://keepachangelog.com/) for recommendations on how to structure this file.
 
+## [0.5.5] - 2026-11-12
+
+- Use the OpenCS brand icons in the Marketplace listing and Activity Bar.
+- Remove the Preview label from the extension and its listing documentation.
+- Explain expired sign-ins during downloads and submissions.
+- Publish tested release packages to Visual Studio Marketplace and Open VSX
+  automatically using trusted publishing.
+
 ## [0.5.4] - 2026-10-29
 
 - Fix the Marketplace description's link to the step-by-step guide on OpenCS

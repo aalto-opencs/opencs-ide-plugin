@@ -58,6 +58,16 @@ Open VSX gives a PAT precedence over trusted publishing.
 
 ## Release procedure
 
+The release tag is the publishing trigger. Once the environment and both
+trusted-publisher policies are configured, a tag push runs this sequence:
+
+1. Validate the tag, package versions, extension identity, and membership in `main`.
+2. Run the tests and build the installable VSIX.
+3. Publish the tested VSIX to both registries automatically after the build job
+   succeeds. A failed test or build prevents both publishing jobs from running.
+
+To prepare a release:
+
 1. Merge the changes to release, including any branding updates.
 2. Update `package.json` and `package-lock.json` together, for example with
    `npm version patch --no-git-tag-version`. Use a new version in both registries,
@@ -65,6 +75,18 @@ Open VSX gives a PAT precedence over trusted publishing.
 3. Wait for the repository's CI checks to pass.
 4. Tag that merged commit with exactly `v` followed by the package version, and
    push the tag to `origin`.
+
+For the release prepared here, run these commands after the version change is
+merged and CI passes:
+
+```sh
+git fetch origin main
+git tag -a v0.5.5 origin/main -m "Release 0.5.5"
+git push origin v0.5.5
+```
+
+For later releases, replace the version in both tag commands with the new
+manifest version. Do not reuse a published version or move an existing tag.
 
 The release gate rejects a mismatched version, a stale lockfile, an unexpected
 extension identity, a preview package, or a commit outside `main`.
