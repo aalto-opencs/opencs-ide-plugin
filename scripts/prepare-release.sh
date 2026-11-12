@@ -9,4 +9,4 @@ cd "$repository_root"
 npm run prepare:release
 
 cd "$repository_root/release"
-npm exec --yes --package=@vscode/vsce -- vsce package --no-dependencies
+../node_modules/.bin/vsce package --no-dependencies

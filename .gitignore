@@ -6,7 +6,7 @@ node_modules
 *.vsix
 DEVELOPMENT_DIARY.md
 .env.test.local
-release/
+/release/
 .agents
 AGENTS.md
 skills-lock.json

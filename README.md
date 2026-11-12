@@ -12,12 +12,12 @@ Students work on local files while the OpenCS platform remains authoritative for
 - [How to use this repository](#how-to-use-this-repository)
 - [Configuration](#configuration)
 - [Development](#development)
+- [Publishing releases](docs/publishing.md)
 
 ## Overview
 
 The OpenCS platform remains authoritative for authentication, enrolments,
-course structure, submissions, grading, points, and completion. The extension
-is currently published as a preview.
+course structure, submissions, grading, points, and completion.
 
 ## Student workflow
 
@@ -169,7 +169,6 @@ counts because missing configuration causes integration cases to skip.
 - Package: `aalto-opencs-ide`
 - Publisher: `aalto-opencs`
 - Extension identifier: `aalto-opencs.aalto-opencs-ide`
-- Marketplace status: Preview
 - License: MIT
 
 ## Licensing and contributions
