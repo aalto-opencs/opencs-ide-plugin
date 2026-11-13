@@ -1,0 +1,50 @@
+{
+  "baseBranch": "main",
+  "coursePaths": [
+    "materials",
+    "assignment-repository",
+    "opencs-materials",
+    "opencs-assignment-repository",
+    "test-opencs-materials",
+    "test-opencs-assignment-repository"
+  ],
+  "dependencyFiles": {
+    "package.json": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml"
+    ],
+    "package-lock.json": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml"
+    ]
+  },
+  "actionWorkflows": {
+    ".github/workflows/publish.yml": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml"
+    ],
+    ".github/workflows/ci.yml": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml"
+    ],
+    ".github/workflows/dependabot-policy.yml": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml"
+    ],
+    ".github/workflows/dependabot-automerge.yml": [
+      ".github/workflows/ci.yml",
+      ".github/workflows/publish.yml"
+    ]
+  },
+  "workflows": {
+    ".github/workflows/ci.yml": [
+      "^Verify on ubuntu-latest$",
+      "^Verify on windows-latest$",
+      "^Verify on macos-latest$",
+      "^UI tests on Linux$"
+    ],
+    ".github/workflows/publish.yml": [
+      "^Validate and package$"
+    ]
+  }
+}
