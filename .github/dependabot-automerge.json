@@ -44,7 +44,7 @@
       "^UI tests on Linux$"
     ],
     ".github/workflows/publish.yml": [
-      "^build$"
+      "^Validate and package$"
     ]
   }
 }
